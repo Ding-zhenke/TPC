@@ -189,23 +189,6 @@ End With
         else:
             print("没有该材料，请手动添加")
         self.cst_file.model3d.add_to_history (name , f1)
-    def boundary(self):
-        f1="""
-            With Boundary
-        .Xmin "expanded open"
-        .Xmax "expanded open"
-        .Ymin "expanded open"
-        .Ymax "expanded open"
-        .Zmin "expanded open"
-        .Zmax "expanded open"
-        .Xsymmetry "none"
-        .Ysymmetry "none"
-        .Zsymmetry "none"
-        .ApplyInAllDirections "True"
-        .OpenAddSpaceFactor "0.5"
-    End With
-    """
-        self.cst_file.model3d.add_to_history ('Define boundary' , f1)
 
     def run(self):
         self.cst_file.model3d.run_solver()
@@ -317,10 +300,10 @@ End With
         f1=f1+f2+f3
         # print(f1)
         if log_flag==1:
-            self.cst_file.model3d.add_to_history (" polyline "+name , f1)
+            self.cst_file.model3d.add_to_history (" Polyline "+name , f1)
         return f1
-    def arc(self,center,p,angle,name="arc1",curve='curve1',orientation='Counter clockwise',log_flag=1):
-        #orientation='Clockwise' OR 'Counter clockwise'
+    def arc(self,center,p,angle,name="arc1",curve='curve1',orientation='Counterclockwise',log_flag=1):
+        #orientation='Clockwise' OR 'Counterclockwise'
         f1=f"""With Arc
         .Reset 
         .Name "{name}" 
@@ -457,7 +440,11 @@ End With
         f1=f"""Pick.PickEdgeFromId "{component}:{name}", "{id1}", "{id2}"
         """
         self.cst_file.model3d.add_to_history ("Pick edge: "+str(name)+f'{id1}_{id2}' , f1)
-
+    def pick_endpoint(self,name,id,component='component1'):
+        #选择端点
+        f1=f"""Pick.PickEndpointFromId "{component}:{name}", "{id}"
+        """
+        self.cst_file.model3d.add_to_history ("Pick endpoint: "+str(name) , f1)
     def pick_face(self,name,id,component='component1'):
         #选择面
         f1=f"""Pick.PickFaceFromId "{component}:{name}", "{id}"
@@ -525,7 +512,8 @@ End With"""
 End With"""
         self.cst_file.model3d.add_to_history ("Trace on curve: "+str(name) , f1)
 
-    def add_port(self,id):
+    def add_port(self,id,orientation='positive'):
+        #positive or negative
         f1=f"""With Port 
             .Reset 
             .PortNumber "{id}" 
@@ -538,7 +526,7 @@ End With"""
             .TextSize "50"
             .TextMaxLimit "0"
             .Coordinates "Picks"
-            .Orientation "positive"
+            .Orientation "{orientation}"
             .PortOnBound "True"
             .ClipPickedPortToBound "False"
             .Xrange "-3.4", "-3.4"
@@ -652,3 +640,25 @@ End With
         .Create 
     End With"""
                 self.cst_file.model3d.add_to_history (f"Define {name} Monitor (f={i}) ",f1)
+    def boundary(self,xmax='expand open',xmin='expanded open',ymax='expanded open',ymin='expanded open',zmax='expanded open',zmin='expanded open',
+                 Xsymmetry='none',Ysymmetry='none',Zsymmetry='none',ApplyInAllDirections=True,OpenAddSpaceFactor=0.5):
+        #设置边界条件 electric expand open 
+        f1=f"""
+            With Boundary
+        .Xmin "{xmax}"
+        .Xmax "{xmin}"
+        .Ymin "{ymax}"
+        .Ymax "{ymin}"
+        .Zmin "{zmax}"
+        .Zmax "{zmin}"
+        .Xsymmetry "{Xsymmetry}"
+        .Ysymmetry "{Ysymmetry}"
+        .Zsymmetry "{Zsymmetry}"
+        .ApplyInAllDirections "{ApplyInAllDirections}"
+        .OpenAddSpaceFactor "{OpenAddSpaceFactor}"
+    End With
+    """
+        self.cst_file.model3d.add_to_history ('Define boundary' , f1)
+    def exclude_simulation(self,name,component='component1'):
+        f1=f"""Group.AddItem "solid${component}:{name}", "Excluded from Simulation"""
+        self.cst_file.model3d.add_to_history ('Excluded from Simulation '+name , f1)
