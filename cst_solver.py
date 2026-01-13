@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Created on Mon Oct 20 11:37:16 2025
-
+CST 2025 电磁仿真自动化建模与求解核心类
+封装CST软件的建模、材料、边界、端口、求解等自动化操作API
 @author: PC
 """
 
@@ -16,43 +17,67 @@ import cst.results
 print(cst.__file__) 
 
 class setup():
+    """
+    CST电磁仿真自动化操作核心类
+    功能：封装CST的项目打开、建模、材料创建、参数设置、求解、端口/监视器创建等全流程操作
+    依赖：CST2025 python_cst_libraries 库，需配置正确路径
+    """
     def __init__(self,filename):
-        #运行交互式
+        """
+        类的初始化函数，创建CST交互环境并打开指定CST工程文件
+        :param filename: str, CST工程文件路径（相对/绝对路径均可）
+        :raise FileNotFoundError: 传入的CST工程文件路径不存在时抛出
+        :raise RuntimeError: 打开CST工程失败、文件非法、权限不足等情况抛出
+        """
+        # 初始化临时变量
         self.t=0
+        # 初始化CST交互式设计环境
         self.project = cst.interface.DesignEnvironment()
-        # Normalize filename to absolute path and check existence before opening
+        # 标准化文件路径为绝对路径并前置校验文件是否存在
         try:
             filename_abs = os.path.abspath(filename)
         except Exception:
             filename_abs = filename
 
         if not os.path.exists(filename_abs):
-            # Provide a clearer error when the file cannot be found
+            # 文件不存在时抛出明确的异常信息
             raise FileNotFoundError(f"CST project file not found: {filename_abs}")
 
         try:
-            # Attempt to open the CST project and activate it. If this fails,
-            # capture the underlying exception and raise a clearer RuntimeError
+            # 尝试打开CST工程文件并激活为当前操作工程
             self.cst_file = self.project.open_project(filename_abs)
             self.cst_file.activate()
         except Exception as e:
-            # Repackage the error with helpful debugging information
+            # 捕获底层异常并封装为更友好的运行时异常，附带故障排查提示
             raise RuntimeError(
                 f"Failed to open the CST project '{filename_abs}'. "
                 f"Underlying error: {e!s}.\n"
                 f"Possible causes: file is not a valid .cst project, CST automation not available, or permissions/encoding issues."
             )
+            
     def T_solver(self):
+        """时域求解器配置预留接口，暂未实现功能"""
         pass
         
     def freq_limit(self,fmin,fmax):
+        """
+        设置CST仿真的求解频率范围
+        :param fmin: float/str, 仿真起始频率值
+        :param fmax: float/str, 仿真终止频率值
+        """
         f1 = """
         'Set Freq
         Solver.FrequencyRange %s, %s
         """%(fmin,fmax)
-        # print(f1)
+        # 将频率范围配置指令写入CST操作历史并生效
         self.cst_file.model3d.add_to_history ("Freq_range" , f1)
+
     def new_material(self,name):
+        """
+        在CST工程中创建指定的预设材料，材料属性为固定最优仿真参数
+        :param name: str, 材料名称，可选值：['Copper (annealed)', 'Silicon (lossy)', 'Quartz (Fused) (lossy)']
+        :return: None，匹配不到材料名称时控制台打印提示信息
+        """
         if name=='Copper (annealed)':
             f1="""
             With Material
@@ -191,31 +216,59 @@ End With
         self.cst_file.model3d.add_to_history (name , f1)
 
     def run(self):
+        """执行当前CST工程的求解器计算，提交仿真任务"""
         self.cst_file.model3d.run_solver()
+        
     def close(self):
+        """关闭当前打开的CST工程文件和设计环境，释放资源"""
         self.cst_file.close()
         self.project.close()
+        
     def para(self,name,value,log_flag=0):
-        #创建参数
+        """
+        在CST工程中创建/修改全局仿真参数
+        :param name: str, 参数名称
+        :param value: float/str, 参数赋值
+        :param log_flag: int, 刷新标识 0-不刷新历史 1-全量刷新工程历史使参数立即生效，默认0
+        """
+        # 存储参数到CST工程
         self.cst_file.model3d.StoreParameter(f"{name}",value)
         # 加载到项目历史，使得参数生效
         if log_flag==1:
             self.cst_file.model3d.full_history_rebuild()    
+            
     def expression(self,name,value):
-        #创建参数
+        """
+        在CST工程中创建/修改带表达式的参数（支持公式、关联其他参数）
+        :param name: str, 表达式参数名称
+        :param value: str, 表达式内容（如：'a*2+1', 'sqrt(b)'）
+        """
         self.cst_file.model3d.RestoreParameterExpression(f"{name}",f"{value}")         
+            
     def new_componet(self,name):
+        """
+        在CST工程中创建新的组件分组，用于模型对象归类管理
+        :param name: str, 新建组件的名称
+        """
         f1="""
         '  new component: %s
         Component.New "%s" 
         """%(name,name)
         self.cst_file.model3d.add_to_history ("Freq_range " , f1)
-    def square(self,xmin,xmax,
-                    ymin,ymax,
-                    zmin,zmax,
-                    name,
-                    component='component1',
-                    Material='PEC'):
+        
+    def square(self,xmin,xmax,ymin,ymax,zmin,zmax,name,component='component1',Material='PEC'):
+        """
+        创建长方体(立方体)三维实体模型
+        :param xmin: float/str, X轴最小值
+        :param xmax: float/str, X轴最大值
+        :param ymin: float/str, Y轴最小值
+        :param ymax: float/str, Y轴最大值
+        :param zmin: float/str, Z轴最小值
+        :param zmax: float/str, Z轴最大值
+        :param name: str, 长方体模型名称
+        :param component: str, 归属组件名称，默认component1
+        :param Material: str, 模型材料名称，默认理想导体PEC
+        """
         f1 = f"""
         With Brick
             .Reset 
@@ -228,10 +281,19 @@ End With
             .Create
         End With
         """
-        # print(f1)
         self.cst_file.model3d.add_to_history ("Square: "+name , f1)
-    def cylinder(self,center,r,h,name,axis='z',component='component1',
-                    Material='PEC'):
+        
+    def cylinder(self,center,r,h,name,axis='z',component='component1',Material='PEC'):
+        """
+        创建圆柱体(空心圆柱/圆管)三维实体模型，仅支持Z轴方向
+        :param center: list, 圆柱中心点坐标 [X,Y]
+        :param r: list, 半径参数 [外半径, 内半径] 内半径为0则是实心圆柱
+        :param h: list, Z轴高度范围 [z起始值, z终止值]
+        :param name: str, 圆柱体模型名称
+        :param axis: str, 圆柱中心轴方向，仅支持z轴，默认z
+        :param component: str, 归属组件名称，默认component1
+        :param Material: str, 模型材料名称，默认理想导体PEC
+        """
         if axis=='z':
             f1=f"""
             With Cylinder 
@@ -250,7 +312,18 @@ End With
         End With
         """
         self.cst_file.model3d.add_to_history (f"Cylinder: {name} " , f1)
+        
     def triangle(self,a,h,center,theta,name,curve,materials='Silicon (lossy)'):
+        """
+        创建正三角形棱柱三维实体模型，支持旋转+平移
+        :param a: float/str, 正三角形边长
+        :param h: float/str, 棱柱Z轴拉伸高度
+        :param center: list, 模型最终平移中心坐标 [X,Y,Z]
+        :param theta: list, 旋转角度 [X角度,Y角度,Z角度] 均为0则不旋转
+        :param name: str, 三角形棱柱模型名称
+        :param curve: str, 绘制三角形的曲线名称
+        :param materials: str, 模型材料名称，默认损耗硅 Silicon (lossy)
+        """
         data=[
                 [f"0",f"{a}/sqr(3)"],
                 [f"-{a}/(2)",f"-{a}/2/sqr(3)"],
@@ -266,7 +339,19 @@ End With
         f4=self.translate(f'{name}',center,component='component1',log_flag=0)
         f1=f1+f4
         self.cst_file.model3d.add_to_history (" Triangle: "+name , f1)
+        
     def hexagon(self,a,h,center,theta,name,curve='curve1',component='component1',materials='Silicon (lossy)'):
+        """
+        创建正六边形棱柱三维实体模型，支持旋转+平移
+        :param a: float/str, 正六边形外接圆半径
+        :param h: float/str, 棱柱Z轴拉伸高度
+        :param center: list, 模型最终平移中心坐标 [X,Y,Z]
+        :param theta: list, 旋转角度 [X角度,Y角度,Z角度] 均为0则不旋转
+        :param name: str, 六边形棱柱模型名称
+        :param curve: str, 绘制六边形的曲线名称，默认curve1
+        :param component: str, 归属组件名称，默认component1
+        :param materials: str, 模型材料名称，默认损耗硅 Silicon (lossy)
+        """
         data=[]
         for i in range(7):
             tmp=[f'({a})*cosd({i*60})',f'({a})*sind({i*60})']
@@ -280,7 +365,16 @@ End With
         f4=self.translate(f'{name}',center,component=component,log_flag=0)
         f1=f1+f4
         self.cst_file.model3d.add_to_history (" Hexagon: "+name , f1)
+        
     def polyline(self,data,name='1',curve='curve1',log_flag=1):
+        """
+        绘制二维多边形折线/闭合轮廓，基础绘图函数
+        :param data: list[list], 多边形顶点坐标集合 [[x1,y1],[x2,y2],...] 最后一点需与第一点重合实现闭合
+        :param name: str, 多边形名称，默认1
+        :param curve: str, 归属曲线组名称，默认curve1
+        :param log_flag: int, 写入历史标识 0-仅返回指令不生效 1-写入历史并立即生效，默认1
+        :return: str, CST绘图指令文本
+        """
         f1=f"""
         With Polygon 
             .Reset 
@@ -290,20 +384,28 @@ End With
         """
         f2="""  """
         for i in range(len(data)-1):
-            
             f2=f2+f""".LineTo "{data[i+1][0]}", "{data[i+1][1]}" 
             """
-        
         f3=""".Create 
         End With
         """
         f1=f1+f2+f3
-        # print(f1)
         if log_flag==1:
             self.cst_file.model3d.add_to_history (" Polyline "+name , f1)
         return f1
+        
     def arc(self,center,p,angle,name="arc1",curve='curve1',orientation='Counterclockwise',log_flag=1):
-        #orientation='Clockwise' OR 'Counterclockwise'
+        """
+        绘制二维圆弧曲线，基础绘图函数
+        :param center: list, 圆弧圆心坐标 [X,Y]
+        :param p: list, 圆弧起始点坐标 [X,Y]
+        :param angle: float/str, 圆弧角度
+        :param name: str, 圆弧名称，默认arc1
+        :param curve: str, 归属曲线组名称，默认curve1
+        :param orientation: str, 圆弧绘制方向 Counterclockwise-逆时针 Clockwise-顺时针，默认逆时针
+        :param log_flag: int, 写入历史标识 0-仅返回指令不生效 1-写入历史并立即生效，默认1
+        :return: str, CST绘图指令文本
+        """
         f1=f"""With Arc
         .Reset 
         .Name "{name}" 
@@ -323,8 +425,18 @@ End With
         if log_flag==1:
             self.cst_file.model3d.add_to_history ("Arc "+name , f1)
         return f1
+        
     def extrude(self, curve, name, thickness, component='component1', materials='PEC',log_flag=1):
-        #.Curve "curve1:polygon2"
+        """
+        将二维曲线拉伸为三维实体（挤出成型），核心建模函数
+        :param curve: str, 待拉伸的曲线全名 格式：curve组名:曲线名
+        :param name: str, 拉伸后三维实体的名称
+        :param thickness: float/str, 拉伸高度（Z轴方向）
+        :param component: str, 归属组件名称，默认component1
+        :param materials: str, 实体材料名称，默认理想导体PEC
+        :param log_flag: int, 写入历史标识 0-仅返回指令不生效 1-写入历史并立即生效，默认1
+        :return: str, CST拉伸指令文本
+        """
         f1=f"""
         With ExtrudeCurve
              .Reset 
@@ -342,9 +454,20 @@ End With
         if log_flag==1:
             self.cst_file.model3d.add_to_history (name+"  extrude  " , f1)
         return f1
-    def rotation(self,name,angle,center=['0','0','0'],repetition=1,component='component1',copy=False,unite=False,
-                 log_flag=1):
         
+    def rotation(self,name,angle,center=['0','0','0'],repetition=1,component='component1',copy=False,unite=False,log_flag=1):
+        """
+        对三维实体执行旋转变换，支持复制旋转/合并旋转
+        :param name: str, 待旋转的实体名称
+        :param angle: list, 旋转角度 [X轴角度,Y轴角度,Z轴角度]
+        :param center: list, 旋转中心点坐标 [X,Y,Z]，默认原点
+        :param repetition: int, 旋转复制份数，默认1（仅旋转不复制）
+        :param component: str, 实体归属组件名称，默认component1
+        :param copy: bool, 是否保留原实体 True-复制旋转 False-直接旋转，默认False
+        :param unite: bool, 是否合并旋转后的实体 True-合并 False-独立，默认False
+        :param log_flag: int, 写入历史标识 0-仅返回指令不生效 1-写入历史并立即生效，默认1
+        :return: str, CST旋转指令文本
+        """
         f1=f"""With Transform 
      .Reset 
      .Name "{component}:{name}" 
@@ -362,10 +485,19 @@ End With
         if log_flag==1:
             self.cst_file.model3d.add_to_history (" roation "+name , f1)
         return f1
+        
     def translate(self,name,vector,component='component1',repetitions=1,copy=False,unite=False,log_flag=1):
-        # if repetitions<1:
-        #     repetitions=1
-        #     print("Repetitions不能小于1，已自动设置为1")
+        """
+        对三维实体执行平移变换，支持复制平移/阵列平移
+        :param name: str, 待平移的实体名称
+        :param vector: list, 平移矢量 [X偏移量,Y偏移量,Z偏移量]
+        :param component: str, 实体归属组件名称，默认component1
+        :param repetitions: int, 平移复制份数，默认1（仅平移不复制）
+        :param copy: bool, 是否保留原实体 True-复制平移 False-直接平移，默认False
+        :param unite: bool, 是否合并平移后的实体 True-合并 False-独立，默认False
+        :param log_flag: int, 写入历史标识 0-仅返回指令不生效 1-写入历史并立即生效，默认1
+        :return: str, CST平移指令文本
+        """
         f1=f"""With Transform 
      .Reset 
      .Name "{component}:{name}" 
@@ -383,27 +515,66 @@ End With
         if log_flag==1:
             self.cst_file.model3d.add_to_history (" translate "+name , f1)
         return f1
+        
     def add(self,name1,name2,component='component1'):
+        """
+        布尔运算-相加：将两个实体合并为一个实体，交集部分融合
+        :param name1: str, 实体1名称
+        :param name2: str, 实体2名称
+        :param component: str, 实体归属组件名称，默认component1
+        """
         f1=f"""
         Solid.Add "{component}:{name1}", "{component}:{name2}"
         """
         self.cst_file.model3d.add_to_history (name1+" add "+name2 , f1)
+        
     def substract(self,name1,name2,component='component1'):
+        """
+        布尔运算-相减：从实体1中减去实体2的部分，形成镂空/切槽
+        :param name1: str, 被减实体名称
+        :param name2: str, 裁减实体名称
+        :param component: str, 实体归属组件名称，默认component1
+        """
         f1=f"""
         Solid.Subtract "{component}:{name1}", "{component}:{name2}"
         """
         self.cst_file.model3d.add_to_history (name1+" substract "+name2 , f1)
+        
     def insert(self,name1,name2,component='component1'):
+        """
+        布尔运算-插入：在实体1中嵌入实体2，保留各自独立属性
+        :param name1: str, 基础实体名称
+        :param name2: str, 插入实体名称
+        :param component: str, 实体归属组件名称，默认component1
+        """
         f1=f"""
         Solid.Insert "{component}:{name1}", "{component}:{name2}"
         """
         self.cst_file.model3d.add_to_history (name1+" Insert "+name2 , f1)
+        
     def intersect(self,name1,name2,component='component1'):
+        """
+        布尔运算-相交：仅保留两个实体的重叠交集部分，其余部分删除
+        :param name1: str, 实体1名称
+        :param name2: str, 实体2名称
+        :param component: str, 实体归属组件名称，默认component1
+        """
         f1=f"""
         Solid.Intersect "{component}:{name1}", "{component}:{name2}"
         """
         self.cst_file.model3d.add_to_history (name1+" intersect "+name2 , f1)
+        
     def mirror(self,name,center,plane,component='component1',object='Shape',copy=False,unite=False):
+        """
+        对实体/端口执行镜像变换，基于指定平面生成对称模型
+        :param name: str, 待镜像的对象名称
+        :param center: list, 镜像平面中心点坐标 [X,Y,Z]
+        :param plane: list, 镜像平面法向量 [X,Y,Z] 决定镜像方向
+        :param component: str, 对象归属组件名称，默认component1
+        :param object: str, 镜像对象类型 Shape-三维实体 Port-端口，默认Shape
+        :param copy: bool, 是否保留原对象 True-复制镜像 False-直接镜像，默认False
+        :param unite: bool, 是否合并镜像后的实体 True-合并 False-独立，默认False
+        """
         if object == 'Shape':
             f1=f"""With Transform 
      .Reset 
@@ -436,25 +607,58 @@ End With
     End With
     """
         self.cst_file.model3d.add_to_history (name+"  mirror " , f1)
+        
     def pick_edge(self,name,id1,id2,component='component1'):
+        """
+        拾取实体的指定棱边，用于后续基于棱边的编辑/变换操作
+        :param name: str, 实体名称
+        :param id1: int/str, 棱边起始点ID
+        :param id2: int/str, 棱边终止点ID
+        :param component: str, 实体归属组件名称，默认component1
+        """
         f1=f"""Pick.PickEdgeFromId "{component}:{name}", "{id1}", "{id2}"
         """
         self.cst_file.model3d.add_to_history ("Pick edge: "+str(name)+f'{id1}_{id2}' , f1)
+        
     def pick_endpoint(self,name,id,component='component1'):
-        #选择端点
+        """
+        拾取实体的指定端点，用于后续基于端点的编辑/定位操作
+        :param name: str, 实体名称
+        :param id: int/str, 端点ID
+        :param component: str, 实体归属组件名称，默认component1
+        """
         f1=f"""Pick.PickEndpointFromId "{component}:{name}", "{id}"
         """
         self.cst_file.model3d.add_to_history ("Pick endpoint: "+str(name) , f1)
+        
     def pick_face(self,name,id,component='component1'):
-        #选择面
+        """
+        拾取实体的指定表面，用于后续基于表面的拉伸/旋转/端口创建操作
+        :param name: str, 实体名称
+        :param id: int/str, 表面ID
+        :param component: str, 实体归属组件名称，默认component1
+        """
         f1=f"""Pick.PickFaceFromId "{component}:{name}", "{id}"
         """
         self.cst_file.model3d.add_to_history ("Pick face: "+str(name) , f1)
+        
     def set_edge(self,x1,y1,z1,x2,y2,z2):
+        """
+        手动创建指定两点之间的棱边，用于辅助建模/定位
+        :param x1,y1,z1: float/str, 棱边起始点坐标
+        :param x2,y2,z2: float/str, 棱边终止点坐标
+        """
         f1=f"""Pick.AddEdge "{x1}", "{y1}", "{z1}", "{x2}", "{y2}", "{z2}"
         """
         self.cst_file.model3d.add_to_history ("Set edge " , f1)
-    def rotaion_face(self,name,angle,component='component1'):
+        
+    def rotation_face(self,name,angle,component='component1'):
+        """
+        对拾取的实体表面执行旋转拉伸，生成旋转曲面特征
+        :param name: str, 目标实体名称
+        :param angle: float/str, 旋转角度
+        :param component: str, 实体归属组件名称，默认component1
+        """
         f1=f"""With Rotate 
         .Reset 
         .Name "{name}" 
@@ -477,8 +681,16 @@ End With
         .Create 
         End With
         """
-        self.cst_file.model3d.add_to_history ("Rotaion Face: "+name , f1)
-    def exdude_face(self,name,height,materials='PEC',component='component1'):
+        self.cst_file.model3d.add_to_history ("Rotation Face: "+name , f1)
+
+    def extrude_face(self,name,height,materials='PEC',component='component1'):
+        """
+        对拾取的实体表面执行拉伸操作，生成凸起/凹陷特征
+        :param name: str, 目标实体名称
+        :param height: float/str, 拉伸高度 正数凸起 负数凹陷
+        :param materials: str, 拉伸后特征的材料名称，默认理想导体PEC
+        :param component: str, 实体归属组件名称，默认component1
+        """
         f1=f"""With Extrude 
      .Reset 
      .Name "{name}" 
@@ -495,7 +707,17 @@ End With
      .Create 
 End With"""
         self.cst_file.model3d.add_to_history ("Extrude Face: "+name , f1)
+        
     def trace_curve(self,name,height,weight,materials='PEC',curve='curve1',component='component1'):
+        """
+        沿指定曲线绘制带状实体（走线/传输线），用于创建微带线/共面波导等
+        :param name: str, 带状实体名称
+        :param height: float/str, 带状实体的厚度
+        :param weight: float/str, 带状实体的宽度
+        :param materials: str, 带状实体材料名称，默认理想导体PEC
+        :param curve: str, 走线的中心曲线名称，默认curve1
+        :param component: str, 归属组件名称，默认component1
+        """
         f1=f"""With TraceFromCurve 
      .Reset 
      .Name "{name}" 
@@ -513,7 +735,11 @@ End With"""
         self.cst_file.model3d.add_to_history ("Trace on curve: "+str(name) , f1)
 
     def add_port(self,id,orientation='positive'):
-        #positive or negative
+        """
+        创建标准波导端口/波端口，用于激励和采集S参数
+        :param id: int/str, 端口编号（唯一标识）
+        :param orientation: str, 端口激励方向 positive-正向 negative-反向，默认positive
+        """
         f1=f"""With Port 
             .Reset 
             .PortNumber "{id}" 
@@ -541,7 +767,15 @@ End With"""
         End With
         """
         self.cst_file.model3d.add_to_history ("Define Port: "+str(id) , f1)
+        
     def discrete_port(self,r0,id,fold='',invertdrection=False):
+        """
+        创建离散端口（集总端口），用于射频器件的端接激励，适合芯片/封装仿真
+        :param r0: float/str, 端口特征阻抗（如50欧姆）
+        :param id: int/str, 端口编号（唯一标识）
+        :param fold: str, 端口归属文件夹，默认空
+        :param invertdrection: bool, 是否反转端口激励方向，默认False
+        """
         f1=f"""With DiscreteFacePort 
      .Reset 
      .PortNumber "{id}" 
@@ -563,7 +797,13 @@ End With"""
      .Create 
 End With"""
         self.cst_file.model3d.add_to_history ("Define Discrete Port: "+str(id) , f1)
+        
     def lumped_element(self,id,r):
+        """
+        在指定位置添加集总RLC元件（串并联电阻/电感/电容），用于等效负载/匹配电路
+        :param id: int/str, 元件编号
+        :param r: float/str, 元件电阻值（电感电容默认0）
+        """
         f1=f"""With LumpedFaceElement
      .Reset 
      .SetName "element{id}" 
@@ -589,7 +829,13 @@ End With"""
 End With
 """
         self.cst_file.model3d.add_to_history (f"Define lumped_element: {id})",f1)
-    def define_monitor(self,name,freq,):
+        
+    def define_monitor(self,name,freq):
+        """
+        创建场监视器，用于采集指定频率点的电磁场分布/远场辐射特性
+        :param name: str, 监视器类型 可选：E-电场监视器 H-磁场监视器 Farfield-远场监视器
+        :param freq: list, 需要采集场分布的频率点集合 [f1,f2,f3...]
+        """
         if name=='E':
             for i in freq:
                 f1=f"""With Monitor 
@@ -640,9 +886,19 @@ End With
         .Create 
     End With"""
                 self.cst_file.model3d.add_to_history (f"Define {name} Monitor (f={i}) ",f1)
-    def boundary(self,xmax='expand open',xmin='expanded open',ymax='expanded open',ymin='expanded open',zmax='expanded open',zmin='expanded open',
-                 Xsymmetry='none',Ysymmetry='none',Zsymmetry='none',ApplyInAllDirections=True,OpenAddSpaceFactor=0.5):
-        #设置边界条件 electric expand open 
+                
+    def boundary(self,xmax='expand open',xmin='expanded open',ymax='expanded open',ymin='expanded open',zmax='expanded open',zmin='expanded open',Xsymmetry='none',Ysymmetry='none',Zsymmetry='none',ApplyInAllDirections=True,OpenAddSpaceFactor=0.5):
+        """
+        配置仿真区域的边界条件，决定电磁场在边界的反射/透射特性，核心仿真配置
+        :param xmax/xmin: str, X轴最大/最小值边界类型 expand open-开放边界 electric-电边界 magnetic-磁边界
+        :param ymax/ymin: str, Y轴最大/最小值边界类型，同X轴
+        :param zmax/zmin: str, Z轴最大/最小值边界类型，同X轴
+        :param Xsymmetry: str, X轴对称特性 none-无 symmetry-电对称 antisymmetry-磁对称
+        :param Ysymmetry: str, Y轴对称特性，同X轴
+        :param Zsymmetry: str, Z轴对称特性，同X轴
+        :param ApplyInAllDirections: bool, 是否全局应用边界条件，默认True
+        :param OpenAddSpaceFactor: float, 开放边界的扩展空间系数，默认0.5
+        """
         f1=f"""
             With Boundary
         .Xmin "{xmax}"
@@ -659,6 +915,12 @@ End With
     End With
     """
         self.cst_file.model3d.add_to_history ('Define boundary' , f1)
+        
     def exclude_simulation(self,name,component='component1'):
+        """
+        将指定实体排除出仿真计算，保留建模结构但不参与电磁场求解，提升仿真速度
+        :param name: str, 需要排除的实体名称
+        :param component: str, 实体归属组件名称，默认component1
+        """
         f1=f"""Group.AddItem "solid${component}:{name}", "Excluded from Simulation"""
         self.cst_file.model3d.add_to_history ('Excluded from Simulation '+name , f1)
