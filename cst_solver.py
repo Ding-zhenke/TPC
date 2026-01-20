@@ -734,7 +734,7 @@ End With"""
 End With"""
         self.cst_file.model3d.add_to_history ("Trace on curve: "+str(name) , f1)
 
-    def add_port(self,id,orientation='positive',shield='electric'):
+    def add_port(self,id,orientation='positive',shield=''):
         """
         创建标准波导端口/波端口，用于激励和采集S参数
         :param id: int/str, 端口编号（唯一标识）
@@ -746,7 +746,7 @@ End With"""
         elif shield=='magnetic':
             f2='.Shield "PMC"'
         else:
-            f2=' '
+            f2=''
         f1=f"""With Port 
             .Reset 
             .PortNumber "{id}" 
