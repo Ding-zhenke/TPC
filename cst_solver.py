@@ -734,12 +734,19 @@ End With"""
 End With"""
         self.cst_file.model3d.add_to_history ("Trace on curve: "+str(name) , f1)
 
-    def add_port(self,id,orientation='positive'):
+    def add_port(self,id,orientation='positive',shield='electric'):
         """
         创建标准波导端口/波端口，用于激励和采集S参数
         :param id: int/str, 端口编号（唯一标识）
         :param orientation: str, 端口激励方向 positive-正向 negative-反向，默认positive
+        :param shield: str, 端口屏蔽类型 electric-电屏蔽 magnetic-磁屏蔽，默认electric
         """
+        if shield=='electric':
+            f2='.Shield "PEC"'
+        elif shield=='magnetic':
+            f2='.Shield "PMC"'
+        else:
+            f2=' '
         f1=f"""With Port 
             .Reset 
             .PortNumber "{id}" 
@@ -763,6 +770,7 @@ End With"""
             .ZrangeAdd "0.0", "0.0"
             .SingleEnded "False"
             .WaveguideMonitor "False"
+            {f2}
             .Create 
         End With
         """
