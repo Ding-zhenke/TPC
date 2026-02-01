@@ -8,6 +8,7 @@ CST 2025 电磁仿真自动化建模与求解核心类
 
 import sys
 import os
+import numpy as np
 # ensure the CST python libraries path is added correctly (use raw string)
 sys.path.append(r"D:\CST2025\location\AMD64\python_cst_libraries")
 import cst
@@ -932,3 +933,101 @@ End With
         """
         f1=f"""Group.AddItem "solid${component}:{name}", "Excluded from Simulation"""
         self.cst_file.model3d.add_to_history ('Excluded from Simulation '+name , f1)
+
+    def field_export(self,tree_item,save_path,mode='FixedWidth',step=-1):
+        """
+        field_export 的 Docstring
+        
+        :param self: 说明
+        :param tree_item: 说明
+        :param save_path: 说明
+        The field data export functionality is available for the following result items:
+            1D signals
+            1D and 2D/3D farfields
+            2D/3D field results
+        """
+        ascii_export = self.cst_file.model3d.ASCIIExport
+        self.cst_file.model3d.SelectTreeItem("2D/3D Results\\"+tree_item)
+
+        ascii_export.Reset()
+        #Sets the absolute name of the exported file.
+        ascii_export.FileName(save_path)
+        # "FixedNumber":Fixed number of samples,"FixedWidth":Fixed step width
+        #Number of steps or step width in all directions. 
+        # Use the .Mode method to select the step definition. This setting is only available for 2D/3D field results.
+        #Number of steps or step width in all directions. StepX, StepY, and StepZ are used for 2D/3D field results.
+        if mode=='FixedWidth':
+            ascii_export.Mode(mode)
+            ascii_export.Step(step)
+        elif mode=='FixedNumber':
+            ascii_export.Mode(mode)
+            ascii_export.Step(step)
+
+        ascii_export.Execute()
+
+    def patten_export(self,tree_item,save_path,
+                      plottype='3d',
+                      plotmode='realized gain',
+                      step=-1):
+        """
+        field_export 的 Docstring
+        
+        :param self: 说明
+        :param tree_item: 说明
+        :param save_path: 说明
+        help 文件里面 post processing->farfieldplot中里面找
+
+        plottype:polar,cartesian,2d,2dortho,3d
+        plotmode:realized gain,directivity,efield,hfield,power density
+        """
+        ascii_export = self.cst_file.model3d.ASCIIExport
+        self.cst_file.model3d.SelectTreeItem("Farfields\\"+tree_item)
+        ascii_export.FileName(save_path)
+        FarfieldPlot = self.cst_file.model3d.FarfieldPlot
+        #polar,cartesian,2d,2dortho,3d
+        FarfieldPlot.Reset()
+        FarfieldPlot.Plottype(plottype)
+        FarfieldPlot.SetPlotMode(plotmode)
+        FarfieldPlot.Plot()
+
+        ascii_export.Execute()
+
+
+    def export_data(self,tree_item,save_path):
+        """
+        export_data 的 Docstring
+        
+        :param self: 说明
+        :param tree_item: 说明
+        :param save_path: 说明
+        The ASCII data export functionality is available for the following result items:
+            1D signals
+            1D and 2D/3D farfields
+            2D/3D field results
+        """
+        ascii_export = self.cst_file.model3d.ASCIIExport
+        self.cst_file.model3d.SelectTreeItem(tree_item)
+
+        ascii_export.Reset()
+        #Sets the absolute name of the exported file.
+        ascii_export.FileName(save_path)
+        # "FixedNumber":Fixed number of samples,"FixedWidth":Fixed step width
+        # ascii_export.Mode("FixedWidth")
+        #Number of steps or step width in all directions. 
+        # Use the .Mode method to select the step definition. This setting is only available for 2D/3D field results.
+        # ascii_export.Step(1)
+        ascii_export.Execute()
+
+
+
+class result():
+    def __init__(self,cst_file):
+        self.app_result = cst.results.ProjectFile(cst_file,allow_interactive=True)
+
+    def read_1D(self,tree_path):
+        data = self.app_result.get_3d().get_result_item("1D Results\\" + tree_path)
+        ss = np.asarray([data.get_xdata(), data.get_ydata()]).T
+        return ss
+    def get_tree_items(self):
+        self.app_result.get_3d().get_tree_items()
+
