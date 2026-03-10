@@ -219,7 +219,13 @@ End With
     def run(self):
         """执行当前CST工程的求解器计算，提交仿真任务"""
         self.cst_file.model3d.run_solver()
-        
+    def project_open(self,filename):
+        self.cst_file = self.project.open_project(filename)
+        self.cst_file.activate()
+        print('项目已打开并激活')
+    def project_close(self):
+        self.cst_file.close()
+        print('项目已关闭')
     def close(self):
         """关闭当前打开的CST工程文件和设计环境，释放资源"""
         self.cst_file.close()
@@ -237,7 +243,15 @@ End With
         # 加载到项目历史，使得参数生效
         if log_flag==1:
             self.cst_file.model3d.full_history_rebuild()    
-            
+    def paras(self,name,value,log_flag=0):
+        """
+        批量创建/修改全局仿真参数
+        :param paras_dict: dict, 参数字典 {参数名称: 参数值, ...}
+        :param log_flag: int, 刷新标识 0-不刷新历史 1-全量刷新工程历史使参数立即生效，默认0
+        """
+        self.cst_file.model3d.StoreParameters(name,value)
+        if log_flag==1:
+            self.cst_file.model3d.full_history_rebuild()
     def expression(self,name,value):
         """
         在CST工程中创建/修改带表达式的参数（支持公式、关联其他参数）
