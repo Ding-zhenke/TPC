@@ -219,6 +219,9 @@ End With
     def run(self):
         """执行当前CST工程的求解器计算，提交仿真任务"""
         self.cst_file.model3d.run_solver()
+    def update(self):
+        """刷新当前CST工程的模型历史，使得参数修改等操作生效"""
+        self.cst_file.model3d.full_history_rebuild()
     def project_open(self,filename):
         self.cst_file = self.project.open_project(filename)
         self.cst_file.activate()

@@ -9,25 +9,22 @@ import os
 # ====================== 1. 参数初始化 ======================
 
 # 遗传算法参数
-GA = {
-    "StartFlag": 0,          # 是否从断点继续：1=是，0=否
-    "Gen_No": 4,             # 种群数量
-    "Gen_Length": 3,        # 种群长度（X方向像素数）
-    "Gen_Width": 5,         # 种群宽度（Y方向像素数）
-    "mut_prob": 0.3,         # 变异概率
-    "cross_prob": 0.8,       # 交叉概率
-    "tol": 1e-6,             # 收敛阈值
-    "max_iter": 20           # 最大迭代次数
-}
+# GA = {
+#     "StartFlag": 0,          # 是否从断点继续：1=是，0=否
+#     "Gen_No": 4,             # 种群数量
+#     "Gen_Length": 3,        # 种群长度（X方向像素数）
+#     "Gen_Width": 5,         # 种群宽度（Y方向像素数）
+#     "mut_prob": 0.3,         # 变异概率
+#     "cross_prob": 0.8,       # 交叉概率
+#     "tol": 1e-6,             # 收敛阈值
+#     "max_iter": 20           # 最大迭代次数
+# }
 # ====================== 2. 种群初始化 ======================
 # 随机生成初始种群（0-1矩阵，阈值0.2）
 def pop_init(GA,per=0.2):
     pop = np.random.rand(GA["Gen_Length"], GA["Gen_Width"], GA["Gen_No"])
     pop[pop >= per] = 1
     pop[pop < per] = 0
-    # 迭代控制参数
-    GA["tol"] = 1e-6                  # 收敛阈值
-    GA["max_iter"] = 20              # 最大迭代次数
     fi = np.zeros((GA["Gen_No"], GA["max_iter"]))  # 保存每代适应度
     all_pop = np.zeros((GA["Gen_Length"], GA["Gen_Width"], GA["Gen_No"], GA["max_iter"]))  # 保存所有种群
     all_prob = np.zeros((GA["Gen_No"], GA["max_iter"]))  # 保存选择概率
@@ -124,7 +121,7 @@ def selection(x, fitness):
             pop[:, :, far_idx[up]] = pop[:, :, bet_idx[up]]
     return pop, prob
 
-def crossover(x, cross_prob):
+def crossover(GA, x):
     """
     交叉操作：随机交叉点交换两个个体的基因
     :param pop: 当前种群 (Gen_Length, Gen_Width, Gen_No)
@@ -134,7 +131,7 @@ def crossover(x, cross_prob):
     pop=x.copy()  # 避免修改原种群
     # 遍历偶数索引（m=1,3,... 对应MATLAB中1:2:Gen_No）
     for m in range(0, GA["Gen_No"]-1, 2):
-        if np.random.rand() < cross_prob:
+        if np.random.rand() < GA["cross_prob"]:
             # 随机选交叉点（X/Y方向）
             cross_i = np.random.randint(1, GA["Gen_Length"]-1)
             cross_j = np.random.randint(1, GA["Gen_Width"]-1)
@@ -144,7 +141,7 @@ def crossover(x, cross_prob):
             pop[cross_i:, cross_j:, m+1] = temp
     return pop
 
-def mutation(x, mut_prob):
+def mutation(GA,x):
     """
     变异操作：随机翻转基因位（0→1 或 1→0）
     :param pop: 当前种群 (Gen_Length, Gen_Width, Gen_No)
@@ -153,7 +150,7 @@ def mutation(x, mut_prob):
     """
     pop=x.copy()  # 避免修改原种群
     for m in range(GA["Gen_No"]):
-        if np.random.rand() < mut_prob:
+        if np.random.rand() < GA["mut_prob"]:
             # 随机选变异点
             mut_i = np.random.randint(0, GA["Gen_Length"]-1)
             mut_j = np.random.randint(0, GA["Gen_Width"]-1)
@@ -164,7 +161,7 @@ def mutation(x, mut_prob):
 def save_population(base_path, x, ga, iter_count):
     pop=x.copy()  # 避免修改原种群
     """保存当前迭代的种群到文件"""
-    for n in range(1, ga.Gen_No + 1):
+    for n in range(1, ga["Gen_No"] + 1):
         pop_file = f'Iter_{iter_count}_POP.txt'
         pop_dir = os.path.join(base_path, str(iter_count), str(n))
         os.makedirs(pop_dir, exist_ok=True)
@@ -175,11 +172,13 @@ def save_population(base_path, x, ga, iter_count):
     
 # ===================== 5. 计算适应度 =====================
 
-def calculate_fitness_single(s11_data, s21_data, freq_min=200, freq_max=1000):
+def calculate_fitness_single(s11_data, s21_data,s11_target,s21_target, freq_min=200, freq_max=1000):
     """
     单个个体的适应度计算（直接接收S11、S21数据，返回适应度值）
     :param s11_data: S11参数数据，二维数组（行数≥freq_max，列数=2，格式[频率, S11值]）
     :param s21_data: S21参数数据，二维数组（行数≥freq_max，列数=2，格式[频率, S21值]）
+    :param s11_target: S11目标数据
+    :param s21_target: S21目标数据
     :param freq_min: 计算起始频率点（默认200，与原逻辑一致）
     :param freq_max: 计算结束频率点（默认1000，与原逻辑一致）
     :return: 该个体的适应度值（误差平方和，值越小越优）
@@ -204,8 +203,8 @@ def calculate_fitness_single(s11_data, s21_data, freq_min=200, freq_max=1000):
         s21_value = s21_row[1]
         
         # 原逻辑：(S11-4)^2/2 + (S21-2)^2/2
-        s11_error = (s11_value - 4) ** 2
-        s21_error = (s21_value - 2) ** 2
+        s11_error = (s11_value - (s11_target)) ** 2
+        s21_error = (s21_value - (s21_target)) ** 2
         fit_sum += 0.5 * s11_error + 0.5 * s21_error
     
     # 返回单个个体的适应度值
