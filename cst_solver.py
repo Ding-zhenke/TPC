@@ -534,7 +534,7 @@ End With
             self.cst_file.model3d.add_to_history (" translate "+name , f1)
         return f1
         
-    def add(self,name1,name2,component='component1'):
+    def add(self,name1,name2,component1='component1',component2='component1' ):
         """
         布尔运算-相加：将两个实体合并为一个实体，交集部分融合
         :param name1: str, 实体1名称
@@ -542,11 +542,11 @@ End With
         :param component: str, 实体归属组件名称，默认component1
         """
         f1=f"""
-        Solid.Add "{component}:{name1}", "{component}:{name2}"
+        Solid.Add "{component1}:{name1}", "{component2}:{name2}"
         """
         self.cst_file.model3d.add_to_history (name1+" add "+name2 , f1)
         
-    def substract(self,name1,name2,component='component1'):
+    def substract(self,name1,name2,component1='component1',component2='component1'):
         """
         布尔运算-相减：从实体1中减去实体2的部分，形成镂空/切槽
         :param name1: str, 被减实体名称
@@ -554,11 +554,11 @@ End With
         :param component: str, 实体归属组件名称，默认component1
         """
         f1=f"""
-        Solid.Subtract "{component}:{name1}", "{component}:{name2}"
+        Solid.Subtract "{component1}:{name1}", "{component2}:{name2}"
         """
         self.cst_file.model3d.add_to_history (name1+" substract "+name2 , f1)
         
-    def insert(self,name1,name2,component='component1'):
+    def insert(self,name1,name2,component1='component1',component2='component1'):
         """
         布尔运算-插入：在实体1中嵌入实体2，保留各自独立属性
         :param name1: str, 基础实体名称
@@ -566,11 +566,11 @@ End With
         :param component: str, 实体归属组件名称，默认component1
         """
         f1=f"""
-        Solid.Insert "{component}:{name1}", "{component}:{name2}"
+        Solid.Insert "{component1}:{name1}", "{component2}:{name2}"
         """
         self.cst_file.model3d.add_to_history (name1+" Insert "+name2 , f1)
         
-    def intersect(self,name1,name2,component='component1'):
+    def intersect(self,name1,name2,component1='component1',component2='component1'):
         """
         布尔运算-相交：仅保留两个实体的重叠交集部分，其余部分删除
         :param name1: str, 实体1名称
@@ -578,7 +578,7 @@ End With
         :param component: str, 实体归属组件名称，默认component1
         """
         f1=f"""
-        Solid.Intersect "{component}:{name1}", "{component}:{name2}"
+        Solid.Intersect "{component1}:{name1}", "{component2}:{name2}"
         """
         self.cst_file.model3d.add_to_history (name1+" intersect "+name2 , f1)
         
@@ -1035,7 +1035,42 @@ End With
         # ascii_export.Step(1)
         ascii_export.Execute()
 
-
+    def sat_import(self,filename):
+        f1=f"""
+            With SAT
+            .Reset 
+            .FileName "{filename}" 
+            .Id "1" 
+            .Version "9.0" 
+            .ScaleToUnit "0" 
+            .ImportToActiveCoordinateSystem "True" 
+            .Curves "True" 
+            .TypePECForNewMaterials "False" 
+            .Read 
+        End With
+        """
+        self.cst_file.model3d.add_to_history ('Import Sat: '+filename , f1)
+    #更改名字
+    def rename(self,old,new,type='Solid'):
+        """
+        type: Solid or Component
+        """
+        f1=f"""
+        {type}.Rename "{old}", "{new}"
+        """
+        self.cst_file.model3d.add_to_history ('Rename: '+old+' to '+new , f1) 
+        
+    def change_component(self,model,component):
+        f1=f"""
+        Solid.ChangeComponent "{model}", "{component}"
+        """    
+        self.cst_file.model3d.add_to_history ('Change_ChangeComponent:'+model+' to '+component , f1)
+    
+    def change_material(self,model,material):
+        f1=f"""
+        Solid.ChangeMaterial "{model}", "{material}"
+        """    
+        self.cst_file.model3d.add_to_history ('Change_material:'+model+' to '+material , f1)
 
 class result():
     def __init__(self,cst_file):
