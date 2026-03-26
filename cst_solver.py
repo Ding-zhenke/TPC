@@ -1040,11 +1040,58 @@ End With
 class result():
     def __init__(self,cst_file):
         self.app_result = cst.results.ProjectFile(cst_file,allow_interactive=True)
-
-    def read_1D(self,tree_path):
-        data = self.app_result.get_3d().get_result_item("1D Results\\" + tree_path)
+        #获取3d结果模型对象
+        self.result_module=self.app_result.get_3d()
+        
+    #这一块是module的接口，后续可以根据需要增加一些功能函数，比如直接获取某个tree item的结果数据等
+    def get_tree_items(self):
+        """
+        List navigation tree items.
+        """
+        self.result_module.get_tree_items()
+        
+    def get_all_run_ids(self, max_mesh_passes_only: bool = True):
+        """
+        Get all existing run ids (independent of a tree path).
+        In case of a mesh adaptation, max_mesh_passes_only=True yields only results with the highest mesh pass
+        number, while max_mesh_passes_only=False also includes results from previous mesh passes.
+        """
+        return self.result_module.get_all_run_ids(max_mesh_passes_only)
+    
+    def get_result_item(self, treepath: str, run_id = 0, load_impedances: bool = True):
+        """
+        -> cst.results.ResultItem:
+        Get result of a navigation tree item. 
+        The setting ‘load_impedances=False’ omits automatic loading of reference impedances.
+        """
+        return self.result_module.get_result_item(treepath, run_id, load_impedances)
+    
+    def get_run_ids(self, treepath: str, skip_nonparametric: bool = False):
+        """
+        Get all existing run ids for a tree item. 
+        The setting ‘skip_nonparametric=True’ enforces run id = 0 to be excluded from the list.
+        """
+        return self.result_module.get_run_ids(treepath, skip_nonparametric)
+    
+    #这一块是item的接口，后续可以根据需要增加一些功能函数，比如直接获取某个tree item的结果数据等
+    def read_1D(self,tree_path, run_id: int = 0):
+        #result_module里面
+        data = self.result_module.get_result_item("1D Results\\" + tree_path, run_id)
         ss = np.asarray([data.get_xdata(), data.get_ydata()]).T
         return ss
-    def get_tree_items(self):
-        self.app_result.get_3d().get_tree_items()
 
+
+
+
+"""
+ba_filename="MZI_data\AB-light.cst"
+ba_result=result(ba_filename)
+print(ba_result.get_all_run_ids())
+
+x=ba_result.result_module.get_run_ids("1D Results\\S-Parameters\\S2,1")
+print(x)
+ba_result.result_module.get_tree_items()
+
+data = ba_result.result_module.get_result_item("1D Results\\S-Parameters\\S2,1")
+# ba_s21=ba_result.read_1D("S-Parameters\\S2,1", run_id=3)
+"""
