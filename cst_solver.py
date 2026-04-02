@@ -274,7 +274,7 @@ End With
         """%(name,name)
         self.cst_file.model3d.add_to_history ("Freq_range " , f1)
         
-    def square(self,xmin,xmax,ymin,ymax,zmin,zmax,name,component='component1',Material='PEC'):
+    def square(self,xmin,xmax,ymin,ymax,zmin,zmax,name,component='component1',material='PEC'):
         """
         创建长方体(立方体)三维实体模型
         :param xmin: float/str, X轴最小值
@@ -285,14 +285,14 @@ End With
         :param zmax: float/str, Z轴最大值
         :param name: str, 长方体模型名称
         :param component: str, 归属组件名称，默认component1
-        :param Material: str, 模型材料名称，默认理想导体PEC
+        :param material: str, 模型材料名称，默认理想导体PEC
         """
         f1 = f"""
         With Brick
             .Reset 
             .Name "{name}"
             .Component "{component}"
-            .Material "{Material}" 
+            .Material "{material}" 
             .Xrange "{xmin}", "{xmax}" 
             .Yrange "{ymin}", "{ymax}"
             .Zrange "{zmin}", "{zmax}"
@@ -301,7 +301,7 @@ End With
         """
         self.cst_file.model3d.add_to_history ("Square: "+name , f1)
         
-    def cylinder(self,center,r,h,name,axis='z',component='component1',Material='PEC'):
+    def cylinder(self,center,r,h,name,axis='z',component='component1',material='PEC'):
         """
         创建圆柱体(空心圆柱/圆管)三维实体模型，仅支持Z轴方向
         :param center: list, 圆柱中心点坐标 [X,Y]
@@ -310,7 +310,7 @@ End With
         :param name: str, 圆柱体模型名称
         :param axis: str, 圆柱中心轴方向，仅支持z轴，默认z
         :param component: str, 归属组件名称，默认component1
-        :param Material: str, 模型材料名称，默认理想导体PEC
+        :param material: str, 模型材料名称，默认理想导体PEC
         """
         if axis=='z':
             f1=f"""
@@ -318,7 +318,7 @@ End With
             .Reset 
             .Name "{name}" 
             .Component "{component}" 
-            .Material "{Material}" 
+            .Material "{material}" 
             .OuterRadius "{r[0]}" 
             .InnerRadius "{r[1]}" 
             .Axis "z" 
@@ -331,7 +331,7 @@ End With
         """
         self.cst_file.model3d.add_to_history (f"Cylinder: {name} " , f1)
         
-    def triangle(self,a,h,center,theta,name,curve,materials='Silicon (lossy)'):
+    def triangle(self,a,h,center,theta,name,curve,material='Silicon (lossy)'):
         """
         创建正三角形棱柱三维实体模型，支持旋转+平移
         :param a: float/str, 正三角形边长
@@ -340,7 +340,7 @@ End With
         :param theta: list, 旋转角度 [X角度,Y角度,Z角度] 均为0则不旋转
         :param name: str, 三角形棱柱模型名称
         :param curve: str, 绘制三角形的曲线名称
-        :param materials: str, 模型材料名称，默认损耗硅 Silicon (lossy)
+        :param material: str, 模型材料名称，默认损耗硅 Silicon (lossy)
         """
         data=[
                 [f"0",f"{a}/sqr(3)"],
@@ -349,7 +349,7 @@ End With
                 ["0",f"{a}/sqr(3)"]
                 ]
         f1=self.polyline(data,name,curve,log_flag=0)
-        f2=self.extrude(f'{curve}:{name}',f'{name}',f'{h}',component='component1',materials=materials,log_flag=0)
+        f2=self.extrude(f'{curve}:{name}',f'{name}',f'{h}',component='component1',material=material,log_flag=0)
         f1=f1+f2
         if theta!=[0,0,0]:
             f3=self.rotation(f'{name}',theta,component='component1',log_flag=0)
@@ -358,7 +358,7 @@ End With
         f1=f1+f4
         self.cst_file.model3d.add_to_history (" Triangle: "+name , f1)
         
-    def hexagon(self,a,h,center,theta,name,curve='curve1',component='component1',materials='Silicon (lossy)'):
+    def hexagon(self,a,h,center,theta,name,curve='curve1',component='component1',material='Silicon (lossy)'):
         """
         创建正六边形棱柱三维实体模型，支持旋转+平移
         :param a: float/str, 正六边形外接圆半径
@@ -368,14 +368,14 @@ End With
         :param name: str, 六边形棱柱模型名称
         :param curve: str, 绘制六边形的曲线名称，默认curve1
         :param component: str, 归属组件名称，默认component1
-        :param materials: str, 模型材料名称，默认损耗硅 Silicon (lossy)
+        :param material: str, 模型材料名称，默认损耗硅 Silicon (lossy)
         """
         data=[]
         for i in range(7):
             tmp=[f'({a})*cosd({i*60})',f'({a})*sind({i*60})']
             data.append(tmp)
         f1=self.polyline(data,name,log_flag=0)
-        f2=self.extrude(f'{curve}:{name}',f'{name}',f'{h}',component=component,materials=materials,log_flag=0)
+        f2=self.extrude(f'{curve}:{name}',f'{name}',f'{h}',component=component,material=material,log_flag=0)
         f1=f1+f2
         if theta!=[0,0,0]:
             f3=self.rotation(f'{name}',theta,component=component,log_flag=0)
@@ -444,14 +444,14 @@ End With
             self.cst_file.model3d.add_to_history ("Arc "+name , f1)
         return f1
         
-    def extrude(self, curve, name, thickness, component='component1', materials='PEC',log_flag=1):
+    def extrude(self, curve, name, thickness, component='component1', material='PEC',log_flag=1):
         """
         将二维曲线拉伸为三维实体（挤出成型），核心建模函数
         :param curve: str, 待拉伸的曲线全名 格式：curve组名:曲线名
         :param name: str, 拉伸后三维实体的名称
         :param thickness: float/str, 拉伸高度（Z轴方向）
         :param component: str, 归属组件名称，默认component1
-        :param materials: str, 实体材料名称，默认理想导体PEC
+        :param material: str, 实体材料名称，默认理想导体PEC
         :param log_flag: int, 写入历史标识 0-仅返回指令不生效 1-写入历史并立即生效，默认1
         :return: str, CST拉伸指令文本
         """
@@ -460,7 +460,7 @@ End With
              .Reset 
              .Name "{name} "
              .Component "{component}"
-             .Material "{materials}"
+             .Material "{material}"
              .Thickness "{thickness}" 
              .Twistangle "0.0" 
              .Taperangle "0.0" 
@@ -670,7 +670,7 @@ End With
         """
         self.cst_file.model3d.add_to_history ("Set edge " , f1)
         
-    def rotation_face(self,name,angle,component='component1'):
+    def rotation_face(self,name,angle,component='component1',material='Vacuum'):
         """
         对拾取的实体表面执行旋转拉伸，生成旋转曲面特征
         :param name: str, 目标实体名称
@@ -682,7 +682,7 @@ End With
         .Name "{name}" 
         .Component "{component}" 
         .NumberOfPickedFaces "1" 
-        .Material "Copper (annealed)" 
+        .Material "{material}" 
         .Mode "Picks" 
         .Angle "{angle}" 
         .Height "0.0" 
@@ -701,38 +701,38 @@ End With
         """
         self.cst_file.model3d.add_to_history ("Rotation Face: "+name , f1)
 
-    def extrude_face(self,name,height,materials='PEC',component='component1'):
+    def extrude_face(self,name,height,material='PEC',component='component1'):
         """
         对拾取的实体表面执行拉伸操作，生成凸起/凹陷特征
         :param name: str, 目标实体名称
         :param height: float/str, 拉伸高度 正数凸起 负数凹陷
-        :param materials: str, 拉伸后特征的材料名称，默认理想导体PEC
+        :param material: str, 拉伸后特征的材料名称，默认理想导体PEC
         :param component: str, 实体归属组件名称，默认component1
         """
         f1=f"""With Extrude 
      .Reset 
      .Name "{name}" 
      .Component "{component}" 
-     .Material "{materials}" 
+     .Material "{material}" 
      .Mode "Picks" 
      .Height "{height}" 
      .Twist "0.0" 
      .Taper "0.0" 
      .UsePicksForHeight "False" 
      .DeleteBaseFaceSolid "False" 
-     .KeepMaterials "False" 
+     .Keepmaterial "False" 
      .ClearPickedFace "True" 
      .Create 
 End With"""
         self.cst_file.model3d.add_to_history ("Extrude Face: "+name , f1)
         
-    def trace_curve(self,name,height,weight,materials='PEC',curve='curve1',component='component1'):
+    def trace_curve(self,name,height,weight,material='PEC',curve='curve1',component='component1'):
         """
         沿指定曲线绘制带状实体（走线/传输线），用于创建微带线/共面波导等
         :param name: str, 带状实体名称
         :param height: float/str, 带状实体的厚度
         :param weight: float/str, 带状实体的宽度
-        :param materials: str, 带状实体材料名称，默认理想导体PEC
+        :param material: str, 带状实体材料名称，默认理想导体PEC
         :param curve: str, 走线的中心曲线名称，默认curve1
         :param component: str, 归属组件名称，默认component1
         """
@@ -740,7 +740,7 @@ End With"""
      .Reset 
      .Name "{name}" 
      .Component "{component}" 
-     .Material "{materials}" 
+     .Material "{material}" 
      .Curve "{curve}:{name}" 
      .Thickness "{height}" 
      .Width "{weight}" 
@@ -913,13 +913,13 @@ End With
     End With"""
                 self.cst_file.model3d.add_to_history (f"Define {name} Monitor (f={i}) ",f1)
                 
-    def boundary(self,xmax='expand open',xmin='expanded open',ymax='expanded open',ymin='expanded open',zmax='expanded open',zmin='expanded open',Xsymmetry='none',Ysymmetry='none',Zsymmetry='none',ApplyInAllDirections=True,OpenAddSpaceFactor=0.5):
+    def boundary(self,xmax='expand open',xmin='expanded open',ymax='expanded open',ymin='expanded open',zmax='expanded open',zmin='expanded open',Xsymmetry='none',Ysymmetry='none',Zsymmetry='none',ApplyInAllDirections=False,OpenAddSpaceFactor=0.5):
         """
         配置仿真区域的边界条件，决定电磁场在边界的反射/透射特性，核心仿真配置
         :param xmax/xmin: str, X轴最大/最小值边界类型 expand open-开放边界 electric-电边界 magnetic-磁边界
         :param ymax/ymin: str, Y轴最大/最小值边界类型，同X轴
         :param zmax/zmin: str, Z轴最大/最小值边界类型，同X轴
-        :param Xsymmetry: str, X轴对称特性 none-无 symmetry-电对称 antisymmetry-磁对称
+        :param Xsymmetry: str, X轴对称特性 magnetic-磁对称 electric-电对称 none-无对称，默认无对称
         :param Ysymmetry: str, Y轴对称特性，同X轴
         :param Zsymmetry: str, Z轴对称特性，同X轴
         :param ApplyInAllDirections: bool, 是否全局应用边界条件，默认True
@@ -1045,7 +1045,7 @@ End With
             .ScaleToUnit "0" 
             .ImportToActiveCoordinateSystem "True" 
             .Curves "True" 
-            .TypePECForNewMaterials "False" 
+            .TypePECForNewmaterial "False" 
             .Read 
         End With
         """
