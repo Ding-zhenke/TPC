@@ -1050,6 +1050,34 @@ End With
         End With
         """
         self.cst_file.model3d.add_to_history ('Import Sat: '+filename , f1)
+    def dxf_import(self,filename,
+                   component='component2',material='Silicon (lossy)',height='0'):
+        f1=f'''
+        With DXF
+            .Reset 
+            .FileName "{filename}" 
+            .AddAllShapes "False" 
+            .PreserveHoles "True" 
+            .CloseShapes "True" 
+            .AsCurves "False" 
+            .HealSelfIntersections "False" 
+            .Id "1" 
+            .SetSimplifyActive "True" 
+            .SetSimplifyAngle "5.0" 
+            .SetSimplifyRadiusTol "2.0" 
+            .SetSimplifyEdgeLength "0.0" 
+            .ScaleToUnit "False" 
+            .ImportFileUnits "m" 
+            .UseModelTolerance "False" 
+            .ModelTolerance "0.0001" 
+            .ConsiderPolylineStartAndEndWidth "True" 
+            .Version "11.3" 
+            .DiscardElevationsReadFromDXFFile "True" 
+            .AddLayer "{component}", "{material}", "0", "{height}", "0" 
+            .Read
+        End With
+        '''
+        self.cst_file.model3d.add_to_history ("Import DXF:"+filename , f1)
     #更改名字
     def rename(self,old,new,type='Solid'):
         """
