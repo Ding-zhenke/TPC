@@ -5,6 +5,7 @@ from tri_lib import *
 # from cst_solver import setup, result
 from hexlib import HexLib, HexGridVisualizer
 import os
+from matplotlib.ticker import AutoMinorLocator
 
 # ====================== 1. 参数初始化 ======================
 
@@ -206,6 +207,20 @@ def calculate_fitness_single(s11_data, s21_data,s11_target,s21_target, freq_min=
         s11_error = (s11_value - (s11_target)) ** 2
         s21_error = (s21_value - (s21_target)) ** 2
         fit_sum += 0.5 * s11_error + 0.5 * s21_error
+    plt.figure(figsize=(8, 6))
+    plt.plot(valid_s11[:, 0], 20*np.log10(np.abs(valid_s11[:, 1])), label='S11 Data', marker='o')
+    plt.plot(valid_s21[:, 0], 20*np.log10(np.abs(valid_s21[:, 1])), label='S21 Data', marker='x')
+    plt.axhline(y=20*np.log10(np.abs(s11_target)), color='blue', linestyle='--', label='S11 Target')
+    plt.axhline(y=20*np.log10(np.abs(s21_target)), color='orange', linestyle='--', label='S21 Target')
+    plt.title('S11 and S21 Data with Targets')
+    plt.xlabel('Frequency (GHz)')
+    plt.ylabel('S-parameter')
+    plt.ylim(-20, 0)
+    plt.minorticks_on()
+    # y轴每2个主刻度之间显示4个小刻度
+    plt.gca().yaxis.set_minor_locator(AutoMinorLocator(4))
+    plt.legend()
+    plt.show()
     
     # 返回单个个体的适应度值
     return fit_sum
@@ -227,27 +242,25 @@ def create_hexagon_polygon(center, cell_width):
                 yc + cell_width * np.sin(angle)) for angle in angles]
     return Polygon(points)
 
-def save_to_dxf(intersected_hexagons, filename="hex_grid.dxf"):
+def save_to_dxf(hex_all, filename="hex_grid.dxf",layer_name="hexgrid"):
     """将六边形网格保存为DXF文件"""
     doc = ezdxf.new(dxfversion="R2010")
     msp = doc.modelspace()
     # 添加图层
-    doc.layers.new(name="HexGrid", dxfattribs={"color": 1})  # 红色
-    for polygon in intersected_hexagons:
-        if polygon.geom_type == 'Polygon':
-            # 获取多边形边界点
-            coords = list(polygon.exterior.coords)
-            # 创建闭合的多段线
-            points = [(x, y, 0) for x, y in coords[:-1]]  # 忽略重复的最后一个点
-            if len(points) >= 3:
-                msp.add_lwpolyline(points, dxfattribs={"layer": "HexGrid"})
-        elif polygon.geom_type == 'MultiPolygon':
-            # 处理多个多边形的情况
-            for poly in polygon.geoms:
-                coords = list(poly.exterior.coords)
-                points = [(x, y, 0) for x, y in coords[:-1]]
-                if len(points) >= 3:
-                    msp.add_lwpolyline(points, dxfattribs={"layer": "HexGrid"})
+    doc.layers.new(name=layer_name, dxfattribs={"color": 1})  # 红色
+    
+    all = unary_union(hex_all)
+    all=all.buffer(1e-6).buffer(-1e-6)
+    
+    # 如果是 MultiPolygon，需要遍历
+    if all.geom_type == 'MultiPolygon':
+        for poly in all.geoms:
+            points = list(poly.exterior.coords[:-1])
+            msp.add_lwpolyline(points, close=True, dxfattribs={"layer": layer_name})
+    else:
+        points = list(all.exterior.coords[:-1])
+        msp.add_lwpolyline(points, close=True, dxfattribs={"layer": layer_name})
+    
     doc.saveas(filename)
     print(f"DXF文件已保存: {filename}")
     
@@ -276,3 +289,5 @@ def read_and_display_dxf_matplotlib(filename="hex_grid.dxf"):
         plt.show()
     except Exception as e:
         print(f"读取DXF文件时出错: {e}")
+        
+print('reloaded optimizer.py2ssss32')
