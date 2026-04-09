@@ -720,7 +720,7 @@ End With
      .Taper "0.0" 
      .UsePicksForHeight "False" 
      .DeleteBaseFaceSolid "False" 
-     .Keepmaterial "False" 
+     .KeepMaterials "False" 
      .ClearPickedFace "True" 
      .Create 
 End With"""
@@ -1050,13 +1050,22 @@ End With
         End With
         """
         self.cst_file.model3d.add_to_history ('Import Sat: '+filename , f1)
-    def dxf_import(self,filename,
+    def dxf_import(self,filename,add='True',
                    component='component2',material='Silicon (lossy)',height='0'):
+        """_summary_
+
+        Args:
+            filename (_type_): _description_
+            add (str, optional): _description_. Defaults to 'True'.
+            component (str, optional): 这个应是层的名字。
+            material (str, optional): _description_. Defaults to 'Silicon (lossy)'.
+            height (str, optional): _description_. Defaults to '0'.
+        """
         f1=f'''
         With DXF
             .Reset 
             .FileName "{filename}" 
-            .AddAllShapes "False" 
+            .AddAllShapes "{add}" 
             .PreserveHoles "True" 
             .CloseShapes "True" 
             .AsCurves "False" 
