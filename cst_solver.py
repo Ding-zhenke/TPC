@@ -1035,7 +1035,7 @@ End With
         # ascii_export.Step(1)
         ascii_export.Execute()
 
-    def sat_import(self,filename):
+    def sat_import(self,filename,tpn='True'):
         f1=f"""
             With SAT
             .Reset 
@@ -1045,7 +1045,7 @@ End With
             .ScaleToUnit "0" 
             .ImportToActiveCoordinateSystem "True" 
             .Curves "True" 
-            .TypePECForNewmaterial "False" 
+            .TypePECForNewmaterial "{tpn}" 
             .Read 
         End With
         """
