@@ -1045,7 +1045,7 @@ End With
             .ScaleToUnit "0" 
             .ImportToActiveCoordinateSystem "True" 
             .Curves "True" 
-            .TypePECForNewmaterial "{tpn}" 
+            .TypePECForNewMaterials "{tpn}" 
             .Read 
         End With
         """
