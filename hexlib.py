@@ -15,7 +15,7 @@ plt.rcParams['font.sans-serif'] = ['SimHei']
 plt.rcParams['axes.unicode_minus'] = False
 import collections
 import numpy as np
-
+from tqdm import tqdm
 
 #写入dxf
 from matplotlib.patches import RegularPolygon
@@ -514,6 +514,29 @@ def save_to_dxf(hex_all, filename="hex_grid.dxf",layer_name="hexgrid"):
     doc.saveas(filename)
     print(f"DXF文件已保存: {filename}")
     
+def save_multi_dxf(hex, filename="hex_grid.dxf",layer_name="hexgrid"):
+    """将六边形网格个体组件保存为DXF文件，多个连成一大片适用"""
+    doc = ezdxf.new(dxfversion="R2010")
+    msp = doc.modelspace()
+    # 添加图层
+    doc.layers.new(name=layer_name, dxfattribs={"color": 1})  # 红色
+    
+    for i in tqdm(range(len(hex))):
+        hex_all = hex[i]
+        all = unary_union(hex_all)
+        all=all.buffer(1e-6).buffer(-1e-6)
+        
+        # 如果是 MultiPolygon，需要遍历
+        if all.geom_type == 'MultiPolygon':
+            for poly in all.geoms:
+                points = list(poly.exterior.coords[:-1])
+                msp.add_lwpolyline(points, close=True, dxfattribs={"layer": layer_name+str(i)})
+        else:
+            points = list(all.exterior.coords[:-1])
+            msp.add_lwpolyline(points, close=True, dxfattribs={"layer": layer_name+str(i)})
+    doc.saveas(filename)
+    print(f"DXF文件已保存: {filename}")
+
 def read_and_display_dxf_matplotlib(filename="hex_grid.dxf"):
     """使用matplotlib读取并显示DXF文件"""
     try:

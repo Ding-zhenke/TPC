@@ -531,7 +531,7 @@ End With
 End With
 """
         if log_flag==1:
-            self.cst_file.model3d.add_to_history (" translate "+name , f1)
+            self.cst_file.model3d.add_to_history (" translate "+name+f'{vector} {repetitions}' , f1)
         return f1
         
     def add(self,name1,name2,component1='component1',component2='component1' ):
@@ -1050,17 +1050,25 @@ End With
         End With
         """
         self.cst_file.model3d.add_to_history ('Import Sat: '+filename , f1)
-    def dxf_import(self,filename,add='True',
+    def dxf_import(self,filename,add='True',HealSelfIntersections='False',
                    component='component2',material='Silicon (lossy)',height='0'):
         """_summary_
 
         Args:
             filename (_type_): _description_
             add (str, optional): _description_. Defaults to 'True'.
+            HealSelfIntersections (str, optional): _description_. Defaults to 'False'.
             component (str, optional): 这个应是层的名字。
             material (str, optional): _description_. Defaults to 'Silicon (lossy)'.
             height (str, optional): _description_. Defaults to '0'.
         """
+        count=len(height)
+        f2=''
+        if count>1:
+            for i in range(count):
+                f2=f2+f'.AddLayer "{component[i]}", "{material[i]}", "0", "{height[i]}", "0"\n  '
+        else:
+            f2=f'  .AddLayer "{component}", "{material}", "0", "{height}", "0"\n  '
         f1=f'''
         With DXF
             .Reset 
@@ -1069,9 +1077,9 @@ End With
             .PreserveHoles "True" 
             .CloseShapes "True" 
             .AsCurves "False" 
-            .HealSelfIntersections "False" 
+            .HealSelfIntersections "{HealSelfIntersections}" 
             .Id "1" 
-            .SetSimplifyActive "True" 
+            .SetSimplifyActive "False" 
             .SetSimplifyAngle "5.0" 
             .SetSimplifyRadiusTol "2.0" 
             .SetSimplifyEdgeLength "0.0" 
@@ -1082,7 +1090,7 @@ End With
             .ConsiderPolylineStartAndEndWidth "True" 
             .Version "11.3" 
             .DiscardElevationsReadFromDXFFile "True" 
-            .AddLayer "{component}", "{material}", "0", "{height}", "0" 
+            {f2}
             .Read
         End With
         '''
@@ -1101,7 +1109,7 @@ End With
         f1=f"""
         Solid.ChangeComponent "{model}", "{component}"
         """    
-        self.cst_file.model3d.add_to_history ('Change_ChangeComponent:'+model+' to '+component , f1)
+        self.cst_file.model3d.add_to_history ('ChangeComponent:'+model+' to '+component , f1)
     
     def change_material(self,model,material):
         f1=f"""
