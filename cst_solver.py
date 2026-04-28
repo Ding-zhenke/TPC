@@ -329,6 +329,40 @@ End With
             .Create 
         End With
         """
+        elif axis=='y':
+            f1=f"""
+            With Cylinder 
+            .Reset 
+            .Name "{name}" 
+            .Component "{component}" 
+            .Material "{material}" 
+            .OuterRadius "{r[0]}" 
+            .InnerRadius "{r[1]}" 
+            .Axis "y" 
+            .Yrange "{h[0]}", "{h[1]}" 
+            .Xcenter "{center[0]}" 
+            .Zcenter "{center[1]}" 
+            .Segments "0" 
+            .Create 
+        End With
+        """
+        elif axis=='x':
+            f1=f"""
+            With Cylinder 
+            .Reset 
+            .Name "{name}" 
+            .Component "{component}" 
+            .Material "{material}" 
+            .OuterRadius "{r[0]}" 
+            .InnerRadius "{r[1]}" 
+            .Axis "x" 
+            .Xrange "{h[0]}", "{h[1]}" 
+            .Ycenter "{center[0]}" 
+            .Zcenter "{center[1]}" 
+            .Segments "0" 
+            .Create 
+        End With
+        """
         self.cst_file.model3d.add_to_history (f"Cylinder: {name} " , f1)
         
     def triangle(self,a,h,center,theta,name,curve,material='Silicon (lossy)'):
