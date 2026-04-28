@@ -725,6 +725,16 @@ End With
      .Create 
 End With"""
         self.cst_file.model3d.add_to_history ("Extrude Face: "+name , f1)
+    def pick_edge(self,name,id1,id2,component='component1'):
+        f1=f"""
+        Pick.PickEdgeFromId "{component}:{name}", "{id1}", "{id2}"
+        """
+        self.cst_file.model3d.add_to_history ("Pick edge: "+name , f1)
+    def blend(self,r):
+        f1=f"""
+        Solid.BlendEdge "{r}"
+        """
+        self.cst_file.model3d.add_to_history ("Blend edge " , f1)
         
     def trace_curve(self,name,height,weight,material='PEC',curve='curve1',component='component1'):
         """
