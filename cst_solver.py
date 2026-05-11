@@ -477,7 +477,21 @@ End With
         if log_flag==1:
             self.cst_file.model3d.add_to_history ("Arc "+name , f1)
         return f1
-        
+    def ellipse(self,a,b,center,name="arc1",curve='curve1'):
+        f1=f"""With Ellipse
+            .Reset 
+            .Name "{name}" 
+            .Curve "{curve}" 
+            .XRadius "{a}" 
+            .YRadius "{b}" 
+            .Xcenter "{center[0]}" 
+            .Ycenter "{center[1]}" 
+            .Segments "0" 
+            .Create
+        End With
+        """
+        self.cst_file.model3d.add_to_history ("ellipse curve "+name , f1)
+        return f1
     def extrude(self, curve, name, thickness, component='component1', material='PEC',log_flag=1):
         """
         将二维曲线拉伸为三维实体（挤出成型），核心建模函数
