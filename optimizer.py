@@ -1,9 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt 
 import matplotlib.patches as patches
-from tri_lib import *
-# from cst_solver import setup, result
-from hexlib import HexLib, HexGridVisualizer
+from mesh_grid.tri_grid import *
+from mesh_grid.hex_grid import HexLib, HexGridVisualizer
 import os
 from matplotlib.ticker import AutoMinorLocator
 
@@ -225,69 +224,5 @@ def calculate_fitness_single(s11_data, s21_data,s11_target,s21_target, freq_min=
     # 返回单个个体的适应度值
     return fit_sum
 
-
-
-from matplotlib.patches import RegularPolygon
-import ezdxf
-from ezdxf.addons.drawing import matplotlib as drawing
-from ezdxf.addons.drawing.config import Configuration
-from shapely.geometry import Polygon, box
-from shapely.ops import unary_union
-
-def create_hexagon_polygon(center, cell_width):
-    """创建一个六边形多边形"""
-    xc, yc = center
-    angles = np.linspace(0, 2*np.pi, 7)[:-1] + np.pi/6  # 旋转30度使六边形平顶
-    points = [(xc + cell_width * np.cos(angle), 
-                yc + cell_width * np.sin(angle)) for angle in angles]
-    return Polygon(points)
-
-def save_to_dxf(hex_all, filename="hex_grid.dxf",layer_name="hexgrid"):
-    """将六边形网格保存为DXF文件"""
-    doc = ezdxf.new(dxfversion="R2010")
-    msp = doc.modelspace()
-    # 添加图层
-    doc.layers.new(name=layer_name, dxfattribs={"color": 1})  # 红色
-    
-    all = unary_union(hex_all)
-    all=all.buffer(1e-6).buffer(-1e-6)
-    
-    # 如果是 MultiPolygon，需要遍历
-    if all.geom_type == 'MultiPolygon':
-        for poly in all.geoms:
-            points = list(poly.exterior.coords[:-1])
-            msp.add_lwpolyline(points, close=True, dxfattribs={"layer": layer_name})
-    else:
-        points = list(all.exterior.coords[:-1])
-        msp.add_lwpolyline(points, close=True, dxfattribs={"layer": layer_name})
-    
-    doc.saveas(filename)
-    print(f"DXF文件已保存: {filename}")
-    
-def read_and_display_dxf_matplotlib(filename="hex_grid.dxf"):
-    """使用matplotlib读取并显示DXF文件"""
-    try:
-        doc = ezdxf.readfile(filename)
-        msp = doc.modelspace()
-        fig, ax = plt.subplots(figsize=(12, 10))
-        # 提取所有线条
-        for entity in msp.query("LWPOLYLINE"):
-            points = list(entity.get_points())
-            x_coords = [p[0] for p in points]
-            y_coords = [p[1] for p in points]
-            # 闭合多边形
-            x_coords.append(x_coords[0])
-            y_coords.append(y_coords[0])
-            ax.plot(x_coords, y_coords, 'b-', linewidth=1.5)
-        # 设置图形属性
-        ax.set_aspect('equal')
-        ax.grid(True, alpha=0.3)
-        ax.set_xlabel('X (mm)', fontsize=12)
-        ax.set_ylabel('Y (mm)', fontsize=12)
-        ax.set_title(f'DXF文件: {filename}\n六边形网格', fontsize=14)
-        plt.tight_layout()
-        plt.show()
-    except Exception as e:
-        print(f"读取DXF文件时出错: {e}")
-        
-print('reloaded optimizer.py2ssss32')
+# DXF 导出功能已迁移至 mesh_grid.hex_grid
+# 请改用 from mesh_grid.hex_grid import create_hex_polygon, save_to_dxf, read_and_display_dxf_matplotlib

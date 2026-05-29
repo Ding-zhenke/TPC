@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mesh_grid.hex_grid — 六边形网格 API 文档</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 960px;
+               margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+        h2 { color: #2980b9; margin-top: 30px; }
+        .module-doc { background: #f8f9fa; padding: 15px; border-radius: 5px;
+                      margin: 20px 0; border-left: 4px solid #3498db; }
+        .item { background: #fff; border: 1px solid #ddd; border-radius: 5px;
+                margin: 12px 0; padding: 15px; }
+        .item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .item-header { display: flex; align-items: baseline; gap: 10px; }
+        .item-name { font-family: 'Consolas', monospace; font-size: 14px;
+                     font-weight: bold; color: #2c3e50; }
+        .item-type { font-size: 11px; padding: 2px 8px; border-radius: 3px;
+                     color: #fff; }
+        .type-class { background: #e74c3c; }
+        .type-function { background: #27ae60; }
+        .item-signature { font-family: 'Consolas', monospace; font-size: 13px;
+                          color: #7f8c8d; margin: 5px 0; }
+        .item-doc { margin-top: 8px; font-size: 14px; white-space: pre-wrap; }
+        .summary { background: #eaf2f8; padding: 15px; border-radius: 5px;
+                   margin: 20px 0; }
+        .summary a { color: #2980b9; text-decoration: none; }
+        .summary a:hover { text-decoration: underline; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #3498db; color: #fff; }
+        tr:nth-child(even) { background: #f2f2f2; }
+        footer { margin-top: 40px; color: #95a5a6; font-size: 12px;
+                 text-align: center; border-top: 1px solid #ecf0f1;
+                 padding-top: 10px; }
+        .nav { position: sticky; top: 0; background: #fff; padding: 10px 0;
+               border-bottom: 1px solid #ddd; margin-bottom: 20px; }
+        .nav a { margin-right: 15px; }
+        </style>
+</head>
+<body>
+    <div class="nav">
+        <strong>📖 mesh_grid.hex_grid — 六边形网格 API 文档</strong> |
+        <a href='#Configuration'>Configuration</a><a href='#DoubledCoord'>DoubledCoord</a><a href='#Hex'>Hex</a><a href='#HexGridVisualizer'>HexGridVisualizer</a><a href='#HexLib'>HexLib</a><a href='#Layout'>Layout</a><a href='#OffsetCoord'>OffsetCoord</a><a href='#Orientation'>Orientation</a><a href='#Path'>Path</a><a href='#Point'>Point</a><a href='#Polygon'>Polygon</a><a href='#RegularPolygon'>RegularPolygon</a><a href='#box'>box</a><a href='#create_hex_polygon'>create_hex_polygon</a><a href='#read_and_display_dxf_matplotlib'>read_and_display_dxf_matplotlib</a><a href='#save_multi_dxf'>save_multi_dxf</a><a href='#save_to_dxf'>save_to_dxf</a><a href='#tqdm'>tqdm</a>
+    </div>
+
+    <h1>mesh_grid.hex_grid — 六边形网格 API 文档</h1>
+
+    <div class="module-doc">
+        <br>六边形网格核心算法库<br>===================<br>提供六边形网格的坐标系统、网格生成、可视化和 DXF 导出功能。<br><br>核心类:<br>    HexLib — 六边形网格核心算法（坐标操作、网格生成、坐标转换）<br>    HexGridVisualizer — 基于 matplotlib 的六边形网格可视化<br><br>工具函数:<br>    create_hex_polygon — 创建 Shapely 六边形多边形<br>    save_to_dxf — 将合并后的六边形网格导出为 DXF<br>    save_multi_dxf — 将多组六边形分别导出为 DXF（多层）<br>    read_and_display_dxf_matplotlib — 读取并显示 DXF 文件<br><br>@author: PC<br>
+    </div>
+
+    <div class="summary">
+        <h2>📋 API 总览</h2>
+        <table>
+            <tr><th>类型</th><th>名称</th><th>描述</th></tr>
+            <tr><td>📦</td><td><a href='#Configuration'>Configuration</a></td><td>Configuration options for the :mod:`drawing` add-on.</td></tr><tr><td>📦</td><td><a href='#DoubledCoord'>DoubledCoord</a></td><td>DoubledCoord(col, row)</td></tr><tr><td>📦</td><td><a href='#Hex'>Hex</a></td><td>Hex(q, r, s)</td></tr><tr><td>📦</td><td><a href='#HexGridVisualizer'>HexGridVisualizer</a></td><td>六边形网格可视化类（基于 matplotlib）</td></tr><tr><td>📦</td><td><a href='#HexLib'>HexLib</a></td><td>六边形网格核心算法类</td></tr><tr><td>📦</td><td><a href='#Layout'>Layout</a></td><td>Layout(orientation, size, origin)</td></tr><tr><td>📦</td><td><a href='#OffsetCoord'>OffsetCoord</a></td><td>OffsetCoord(col, row)</td></tr><tr><td>📦</td><td><a href='#Orientation'>Orientation</a></td><td>Orientation(f0, f1, f2, f3, b0, b1, b2, b3, start_angle)</td></tr><tr><td>📦</td><td><a href='#Path'>Path</a></td><td>A series of possibly disconnected, possibly closed, line and curve</td></tr><tr><td>📦</td><td><a href='#Point'>Point</a></td><td>Point(x, y)</td></tr><tr><td>📦</td><td><a href='#Polygon'>Polygon</a></td><td>A geometry type representing an area that is enclosed by a linear ring.</td></tr><tr><td>📦</td><td><a href='#RegularPolygon'>RegularPolygon</a></td><td>A regular polygon patch.</td></tr><tr><td>🔧</td><td><a href='#box'>box</a></td><td>Return a rectangular polygon with configurable normal vector.</td></tr><tr><td>🔧</td><td><a href='#create_hex_polygon'>create_hex_polygon</a></td><td>创建一个 Shapely 六边形多边形</td></tr><tr><td>🔧</td><td><a href='#read_and_display_dxf_matplotlib'>read_and_display_dxf_matplotlib</a></td><td>使用 matplotlib 读取并显示 DXF 文件</td></tr><tr><td>🔧</td><td><a href='#save_multi_dxf'>save_multi_dxf</a></td><td>将多组六边形分别导出为 DXF 文件（每组独立图层）</td></tr><tr><td>🔧</td><td><a href='#save_to_dxf'>save_to_dxf</a></td><td>将六边形网格合并后导出为 DXF 文件</td></tr><tr><td>📦</td><td><a href='#tqdm'>tqdm</a></td><td>Decorate an iterable object, returning an iterator which acts exactly</td></tr>
+        </table>
+        <p>共 <strong>18</strong> 个公开符号</p>
+    </div>
+
+    <h2>📚 详细文档</h2>
+    
+        <div class="item" id="Configuration">
+            <div class="item-header">
+                <span class="item-name">Configuration</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">Configuration(pdsize: &#x27;Optional[int]&#x27; = None, pdmode: &#x27;Optional[int]&#x27; = None, measurement: &#x27;Optional[Measurement]&#x27; = None, show_defpoints: &#x27;bool&#x27; = False, proxy_graphic_policy: &#x27;ProxyGraphicPolicy&#x27; = &lt;ProxyGraphicPolicy.SHOW: 2&gt;, line_policy: &#x27;LinePolicy&#x27; = &lt;LinePolicy.ACCURATE: 3&gt;, hatch_policy: &#x27;HatchPolicy&#x27; = &lt;HatchPolicy.NORMAL: 1&gt;, infinite_line_length: &#x27;float&#x27; = 20, lineweight_scaling: &#x27;float&#x27; = 1.0, min_lineweight: &#x27;Optional[float]&#x27; = None, min_dash_length: &#x27;float&#x27; = 0.1, max_flattening_distance: &#x27;float&#x27; = 0.01, circle_approximation_count: &#x27;int&#x27; = 128, hatching_timeout: &#x27;float&#x27; = 30.0, min_hatch_line_distance: &#x27;float&#x27; = 0.0001, color_policy: &#x27;ColorPolicy&#x27; = &lt;ColorPolicy.COLOR: 1&gt;, custom_fg_color: &#x27;Color&#x27; = &#x27;#000000&#x27;, background_policy: &#x27;BackgroundPolicy&#x27; = &lt;BackgroundPolicy.DEFAULT: 1&gt;, custom_bg_color: &#x27;Color&#x27; = &#x27;#ffffff&#x27;, lineweight_policy: &#x27;LineweightPolicy&#x27; = &lt;LineweightPolicy.ABSOLUTE: 1&gt;, text_policy: &#x27;TextPolicy&#x27; = &lt;TextPolicy.FILLING: 1&gt;, image_policy: &#x27;ImagePolicy&#x27; = &lt;ImagePolicy.DISPLAY: 1&gt;) -&gt; None</div>
+            <div class="item-doc">Configuration options for the :mod:`drawing` add-on.<br><br>Attributes:<br>    pdsize: the size to draw POINT entities (in drawing units)<br>        set to None to use the $PDSIZE value from the dxf document header<br><br>        ======= ====================================================<br>        0       5% of draw area height<br>        &lt;0      Specifies a percentage of the viewport size<br>        &gt;0      Specifies an absolute size<br>        None    use the $PDMODE value from the dxf document header<br>        ======= ====================================================<br><br>    pdmode: point styling mode (see POINT documentation)<br><br>        see :class:`~ezdxf.entities.Point` class documentation<br><br>    measurement: whether to use metric or imperial units as enum :class:`ezdxf.enums.Measurement`<br><br>        ======= ======================================================<br>        0       use imperial units (in, ft, yd, ...)<br>        1       use metric units (ISO meters)<br>        None    use the $MEASUREMENT value from the dxf document header<br>        ======= ======================================================<br><br>    show_defpoints: whether to show or filter out POINT entities on the defpoints layer<br>    proxy_graphic_policy: the action to take when a proxy graphic is encountered<br>    line_policy: the method to use when drawing styled lines (eg dashed,<br>        dotted etc)<br>    hatch_policy: the method to use when drawing HATCH entities<br>    infinite_line_length: the length to use when drawing infinite lines<br>    lineweight_scaling:<br>        multiplies every lineweight by this factor; set this factor to 0.0 for a<br>        constant minimum line width defined by the :attr:`min_lineweight` setting<br>        for all lineweights;<br>        the correct DXF lineweight often looks too thick in SVG, so setting a<br>        factor &lt; 1 can improve the visual appearance<br>    min_lineweight: the minimum line width in 1/300 inch; set to ``None`` for<br>        let the backend choose.<br>    min_dash_length: the minimum length for a dash when drawing a styled line<br>        (default value is arbitrary)<br>    max_flattening_distance: Max flattening distance in drawing units<br>        see Path.flattening documentation.<br>        The backend implementation should calculate an appropriate value,<br>        like 1 screen- or paper pixel on the output medium, but converted<br>        into drawing units. Sets Path() approximation accuracy<br>    circle_approximation_count: Approximate a full circle by `n` segments, arcs<br>        have proportional less segments. Only used for approximation of arcs<br>        in banded polylines.<br>    hatching_timeout: hatching timeout for a single entity, very dense<br>        hatching patterns can cause a very long execution time, the default<br>        timeout for a single entity is 30 seconds.<br>    min_hatch_line_distance: minimum hatch line distance to render, narrower pattern<br>        lines are rendered as solid filling<br>    color_policy:<br>    custom_fg_color: Used for :class:`ColorPolicy.custom` policy, custom foreground<br>        color as &quot;#RRGGBBAA&quot; color string (RGB+alpha)<br>    background_policy:<br>    custom_bg_color: Used for :class:`BackgroundPolicy.custom` policy, custom<br>        background color as &quot;#RRGGBBAA&quot; color string (RGB+alpha)<br>    lineweight_policy:<br>    text_policy:<br>    image_policy: the method for drawing IMAGE entities</div>
+        </div>
+        
+        <div class="item" id="DoubledCoord">
+            <div class="item-header">
+                <span class="item-name">DoubledCoord</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">DoubledCoord(col, row)</div>
+            <div class="item-doc">DoubledCoord(col, row)</div>
+        </div>
+        
+        <div class="item" id="Hex">
+            <div class="item-header">
+                <span class="item-name">Hex</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">Hex(q, r, s)</div>
+            <div class="item-doc">Hex(q, r, s)</div>
+        </div>
+        
+        <div class="item" id="HexGridVisualizer">
+            <div class="item-header">
+                <span class="item-name">HexGridVisualizer</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">HexGridVisualizer(hex_size=30, orientation=&#x27;pointy&#x27;, origin=(0, 0))</div>
+            <div class="item-doc">六边形网格可视化类（基于 matplotlib）</div>
+        </div>
+        
+        <div class="item" id="HexLib">
+            <div class="item-header">
+                <span class="item-name">HexLib</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">HexLib(hex_size=20, orientation=&#x27;pointy&#x27;, origin=(0, 0))</div>
+            <div class="item-doc">六边形网格核心算法类</div>
+        </div>
+        
+        <div class="item" id="Layout">
+            <div class="item-header">
+                <span class="item-name">Layout</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">Layout(orientation, size, origin)</div>
+            <div class="item-doc">Layout(orientation, size, origin)</div>
+        </div>
+        
+        <div class="item" id="OffsetCoord">
+            <div class="item-header">
+                <span class="item-name">OffsetCoord</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">OffsetCoord(col, row)</div>
+            <div class="item-doc">OffsetCoord(col, row)</div>
+        </div>
+        
+        <div class="item" id="Orientation">
+            <div class="item-header">
+                <span class="item-name">Orientation</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">Orientation(f0, f1, f2, f3, b0, b1, b2, b3, start_angle)</div>
+            <div class="item-doc">Orientation(f0, f1, f2, f3, b0, b1, b2, b3, start_angle)</div>
+        </div>
+        
+        <div class="item" id="Path">
+            <div class="item-header">
+                <span class="item-name">Path</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">Path(vertices, codes=None, _interpolation_steps=1, closed=False, readonly=False)</div>
+            <div class="item-doc">A series of possibly disconnected, possibly closed, line and curve<br>segments.<br><br>The underlying storage is made up of two parallel numpy arrays:<br><br>- *vertices*: an (N, 2) float array of vertices<br>- *codes*: an N-length `numpy.uint8` array of path codes, or None<br><br>These two arrays always have the same length in the first<br>dimension.  For example, to represent a cubic curve, you must<br>provide three vertices and three `CURVE4` codes.<br><br>The code types are:<br><br>- `STOP`   :  1 vertex (ignored)<br>    A marker for the end of the entire path (currently not required and<br>    ignored)<br><br>- `MOVETO` :  1 vertex<br>    Pick up the pen and move to the given vertex.<br><br>- `LINETO` :  1 vertex<br>    Draw a line from the current position to the given vertex.<br><br>- `CURVE3` :  1 control point, 1 endpoint<br>    Draw a quadratic Bézier curve from the current position, with the given<br>    control point, to the given end point.<br><br>- `CURVE4` :  2 control points, 1 endpoint<br>    Draw a cubic Bézier curve from the current position, with the given<br>    control points, to the given end point.<br><br>- `CLOSEPOLY` : 1 vertex (ignored)<br>    Draw a line segment to the start point of the current polyline.<br><br>If *codes* is None, it is interpreted as a `MOVETO` followed by a series<br>of `LINETO`.<br><br>Users of Path objects should not access the vertices and codes arrays<br>directly.  Instead, they should use `iter_segments` or `cleaned` to get the<br>vertex/code pairs.  This helps, in particular, to consistently handle the<br>case of *codes* being None.<br><br>Some behavior of Path objects can be controlled by rcParams. See the<br>rcParams whose keys start with &#x27;path.&#x27;.<br><br>.. note::<br><br>    The vertices and codes arrays should be treated as<br>    immutable -- there are a number of optimizations and assumptions<br>    made up front in the constructor that will not change when the<br>    data changes.</div>
+        </div>
+        
+        <div class="item" id="Point">
+            <div class="item-header">
+                <span class="item-name">Point</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">Point(x, y)</div>
+            <div class="item-doc">Point(x, y)</div>
+        </div>
+        
+        <div class="item" id="Polygon">
+            <div class="item-header">
+                <span class="item-name">Polygon</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">Polygon(shell=None, holes=None)</div>
+            <div class="item-doc">A geometry type representing an area that is enclosed by a linear ring.<br><br>A polygon is a two-dimensional feature and has a non-zero area. It may<br>have one or more negative-space &quot;holes&quot; which are also bounded by linear<br>rings. If any rings cross each other, the feature is invalid and<br>operations on it may fail.<br><br>Parameters<br>----------<br>shell : sequence<br>    A sequence of (x, y [,z]) numeric coordinate pairs or triples, or<br>    an array-like with shape (N, 2) or (N, 3).<br>    Also can be a sequence of Point objects.<br>holes : sequence<br>    A sequence of objects which satisfy the same requirements as the<br>    shell parameters above<br><br>Attributes<br>----------<br>exterior : LinearRing<br>    The ring which bounds the positive space of the polygon.<br>interiors : sequence<br>    A sequence of rings which bound all existing holes.<br><br>Examples<br>--------<br>Create a square polygon with no holes<br><br>&gt;&gt;&gt; from shapely import Polygon<br>&gt;&gt;&gt; coords = ((0., 0.), (0., 1.), (1., 1.), (1., 0.), (0., 0.))<br>&gt;&gt;&gt; polygon = Polygon(coords)<br>&gt;&gt;&gt; polygon.area<br>1.0</div>
+        </div>
+        
+        <div class="item" id="RegularPolygon">
+            <div class="item-header">
+                <span class="item-name">RegularPolygon</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">RegularPolygon(xy, numVertices, *, radius=5, orientation=0, **kwargs)</div>
+            <div class="item-doc">A regular polygon patch.</div>
+        </div>
+        
+        <div class="item" id="box">
+            <div class="item-header">
+                <span class="item-name">box</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">box(minx, miny, maxx, maxy, ccw=True)</div>
+            <div class="item-doc">Return a rectangular polygon with configurable normal vector.</div>
+        </div>
+        
+        <div class="item" id="create_hex_polygon">
+            <div class="item-header">
+                <span class="item-name">create_hex_polygon</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">create_hex_polygon(center, cell_width, theta=0.5235987755982988)</div>
+            <div class="item-doc">创建一个 Shapely 六边形多边形<br><br>默认旋转 30° 使六边形平顶（flat-top）。<br><br><b>Args:</b><br>    center: tuple (x, y)，六边形中心坐标<br>    cell_width: float，六边形外接圆半径（中心到顶点距离）<br>    theta: float，旋转角度（弧度），默认 np.pi/6<br><br><b>Returns:</b><br>    shapely.geometry.Polygon: 六边形多边形</div>
+        </div>
+        
+        <div class="item" id="read_and_display_dxf_matplotlib">
+            <div class="item-header">
+                <span class="item-name">read_and_display_dxf_matplotlib</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">read_and_display_dxf_matplotlib(filename=&#x27;hex_grid.dxf&#x27;)</div>
+            <div class="item-doc">使用 matplotlib 读取并显示 DXF 文件<br><br><b>Args:</b><br>    filename: str，DXF 文件路径</div>
+        </div>
+        
+        <div class="item" id="save_multi_dxf">
+            <div class="item-header">
+                <span class="item-name">save_multi_dxf</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">save_multi_dxf(hex_groups, filename=&#x27;hex_grid.dxf&#x27;, layer_name=&#x27;hexgrid&#x27;)</div>
+            <div class="item-doc">将多组六边形分别导出为 DXF 文件（每组独立图层）<br><br>适用于多组六边形需在不同图层导出的场景。<br>每组先通过 unary_union 合并再导出到对应图层。<br><br><b>Args:</b><br>    hex_groups: list[list[shapely.geometry.Polygon]]，多组六边形多边形列表<br>    filename: str，输出 DXF 文件名<br>    layer_name: str，DXF 图层名前缀</div>
+        </div>
+        
+        <div class="item" id="save_to_dxf">
+            <div class="item-header">
+                <span class="item-name">save_to_dxf</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">save_to_dxf(hex_all, filename=&#x27;hex_grid.dxf&#x27;, layer_name=&#x27;hexgrid&#x27;)</div>
+            <div class="item-doc">将六边形网格合并后导出为 DXF 文件<br><br>多个六边形先通过 unary_union 合并再导出，<br>适用于六边形连成一片的场景。<br><br><b>Args:</b><br>    hex_all: list[shapely.geometry.Polygon]，六边形多边形列表<br>    filename: str，输出 DXF 文件名<br>    layer_name: str，DXF 图层名</div>
+        </div>
+        
+        <div class="item" id="tqdm">
+            <div class="item-header">
+                <span class="item-name">tqdm</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">tqdm(*_, **__)</div>
+            <div class="item-doc">Decorate an iterable object, returning an iterator which acts exactly<br>like the original iterable, but prints a dynamically updating<br>progressbar every time a value is requested.</div>
+        </div>
+        
+
+    <footer>
+        <p>自动生成于 2026-05-26 18:45</p>
+        <p>TPC Project — mesh_grid 文档</p>
+    </footer>
+</body>
+</html>

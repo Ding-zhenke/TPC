@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>mesh_grid.tri_grid — 三角形网格 API 文档</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 960px;
+               margin: 0 auto; padding: 20px; color: #333; line-height: 1.6; }
+        h1 { color: #2c3e50; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+        h2 { color: #2980b9; margin-top: 30px; }
+        .module-doc { background: #f8f9fa; padding: 15px; border-radius: 5px;
+                      margin: 20px 0; border-left: 4px solid #3498db; }
+        .item { background: #fff; border: 1px solid #ddd; border-radius: 5px;
+                margin: 12px 0; padding: 15px; }
+        .item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .item-header { display: flex; align-items: baseline; gap: 10px; }
+        .item-name { font-family: 'Consolas', monospace; font-size: 14px;
+                     font-weight: bold; color: #2c3e50; }
+        .item-type { font-size: 11px; padding: 2px 8px; border-radius: 3px;
+                     color: #fff; }
+        .type-class { background: #e74c3c; }
+        .type-function { background: #27ae60; }
+        .item-signature { font-family: 'Consolas', monospace; font-size: 13px;
+                          color: #7f8c8d; margin: 5px 0; }
+        .item-doc { margin-top: 8px; font-size: 14px; white-space: pre-wrap; }
+        .summary { background: #eaf2f8; padding: 15px; border-radius: 5px;
+                   margin: 20px 0; }
+        .summary a { color: #2980b9; text-decoration: none; }
+        .summary a:hover { text-decoration: underline; }
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #3498db; color: #fff; }
+        tr:nth-child(even) { background: #f2f2f2; }
+        footer { margin-top: 40px; color: #95a5a6; font-size: 12px;
+                 text-align: center; border-top: 1px solid #ecf0f1;
+                 padding-top: 10px; }
+        .nav { position: sticky; top: 0; background: #fff; padding: 10px 0;
+               border-bottom: 1px solid #ddd; margin-bottom: 20px; }
+        .nav a { margin-right: 15px; }
+        </style>
+</head>
+<body>
+    <div class="nav">
+        <strong>📖 mesh_grid.tri_grid — 三角形网格 API 文档</strong> |
+        <a href='#Polygon'>Polygon</a><a href='#build_triangle_lattice'>build_triangle_lattice</a><a href='#equilateral_triangle_vertices'>equilateral_triangle_vertices</a><a href='#find_corner_points'>find_corner_points</a><a href='#find_different_points'>find_different_points</a><a href='#is_above_segment'>is_above_segment</a><a href='#line_cal'>line_cal</a><a href='#path_loc_to_xy'>path_loc_to_xy</a><a href='#plot_tri_color'>plot_tri_color</a><a href='#plot_triangle_grid'>plot_triangle_grid</a><a href='#point_in_polygon'>point_in_polygon</a><a href='#pos_to_xy'>pos_to_xy</a><a href='#select_above'>select_above</a><a href='#select_below'>select_below</a><a href='#select_inside'>select_inside</a><a href='#shortest_path'>shortest_path</a><a href='#test_triangle_grid'>test_triangle_grid</a><a href='#tqdm'>tqdm</a><a href='#xy_to_pos'>xy_to_pos</a>
+    </div>
+
+    <h1>mesh_grid.tri_grid — 三角形网格 API 文档</h1>
+
+    <div class="module-doc">
+        <br>三角形网格核心算法库<br>===================<br>提供三角形网格的坐标计算、网格生成、可视化、空间分析等功能。<br><br>函数分类:<br>    几何计算: equilateral_triangle_vertices, build_triangle_lattice<br>    坐标转换: pos_to_xy, xy_to_pos, path_loc_to_xy<br>    可视化: plot_tri_color, plot_triangle_grid<br>    空间分析: find_different_points, find_corner_points,<br>              is_above_segment, select_above, select_below,<br>              point_in_polygon, select_inside<br>    路径规划: shortest_path<br>    工具函数: line_cal, test_triangle_grid<br><br>@author: PC<br>
+    </div>
+
+    <div class="summary">
+        <h2>📋 API 总览</h2>
+        <table>
+            <tr><th>类型</th><th>名称</th><th>描述</th></tr>
+            <tr><td>📦</td><td><a href='#Polygon'>Polygon</a></td><td>A general polygon patch.</td></tr><tr><td>🔧</td><td><a href='#build_triangle_lattice'>build_triangle_lattice</a></td><td>生成三角形网格结构数据</td></tr><tr><td>🔧</td><td><a href='#equilateral_triangle_vertices'>equilateral_triangle_vertices</a></td><td>计算等边三角形的三个顶点坐标</td></tr><tr><td>🔧</td><td><a href='#find_corner_points'>find_corner_points</a></td><td>找出点集中的四个角落点（左下、右下、左上、右上）</td></tr><tr><td>🔧</td><td><a href='#find_different_points'>find_different_points</a></td><td>筛选出 P1 中与 P2 所有点在误差范围内不相等的点</td></tr><tr><td>🔧</td><td><a href='#is_above_segment'>is_above_segment</a></td><td>判断点是否在直线段的上方</td></tr><tr><td>🔧</td><td><a href='#line_cal'>line_cal</a></td><td>根据直线上已知点、斜率和另一点的已知坐标，计算未知坐标</td></tr><tr><td>🔧</td><td><a href='#path_loc_to_xy'>path_loc_to_xy</a></td><td>将路径的位置坐标转换为 XY 坐标</td></tr><tr><td>🔧</td><td><a href='#plot_tri_color'>plot_tri_color</a></td><td>生成带颜色的三角形多边形对象</td></tr><tr><td>🔧</td><td><a href='#plot_triangle_grid'>plot_triangle_grid</a></td><td>绘制三角形网格并标记中心（修复右侧三角形重叠问题）</td></tr><tr><td>🔧</td><td><a href='#point_in_polygon'>point_in_polygon</a></td><td>判断点是否在多边形内部（射线法）</td></tr><tr><td>🔧</td><td><a href='#pos_to_xy'>pos_to_xy</a></td><td>将位置坐标 (r, c) 转换为实际 XY 坐标</td></tr><tr><td>🔧</td><td><a href='#select_above'>select_above</a></td><td>筛选出位于折线所有线段上方的点</td></tr><tr><td>🔧</td><td><a href='#select_below'>select_below</a></td><td>筛选出位于折线所有线段下方的点</td></tr><tr><td>🔧</td><td><a href='#select_inside'>select_inside</a></td><td>筛选出位于多边形内部的点</td></tr><tr><td>🔧</td><td><a href='#shortest_path'>shortest_path</a></td><td>生成网格中两点间的最短路径（曼哈顿路径）</td></tr><tr><td>🔧</td><td><a href='#test_triangle_grid'>test_triangle_grid</a></td><td>测试三角形网格生成和坐标转换功能</td></tr><tr><td>📦</td><td><a href='#tqdm'>tqdm</a></td><td>Decorate an iterable object, returning an iterator which acts exactly</td></tr><tr><td>🔧</td><td><a href='#xy_to_pos'>xy_to_pos</a></td><td>将 XY 坐标转换为位置坐标 (r, c)</td></tr>
+        </table>
+        <p>共 <strong>19</strong> 个公开符号</p>
+    </div>
+
+    <h2>📚 详细文档</h2>
+    
+        <div class="item" id="Polygon">
+            <div class="item-header">
+                <span class="item-name">Polygon</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">Polygon(xy, *, closed=True, **kwargs)</div>
+            <div class="item-doc">A general polygon patch.</div>
+        </div>
+        
+        <div class="item" id="build_triangle_lattice">
+            <div class="item-header">
+                <span class="item-name">build_triangle_lattice</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">build_triangle_lattice(row_range: Tuple[int, int], col_range: Tuple[int, int], a: float, offset: Tuple[float, float] = (0.0, 0.0), theta: float = 0.0) -&gt; Tuple[List[numpy.ndarray], List[Tuple[float, float]], List[Tuple[float, float]], Dict[Tuple[int, int], Tuple[float, float]], Dict[Tuple[int, int], Tuple[float, float]]]</div>
+            <div class="item-doc">生成三角形网格结构数据<br><br><b>参数:</b><br>    row_range: 行号范围 (start_row, end_row)，包含端点<br>    col_range: 列号范围 (start_col, end_col)，包含端点<br>    a: 三角形边长<br>    offset: 网格整体偏移量 (dx, dy)<br>    theta: 旋转角度（度）<br><br><b>返回:</b><br>    triangles: 三角形顶点列表<br>    centers_up: 朝上三角形中心坐标列表<br>    centers_dn: 朝下三角形中心坐标列表<br>    pos_to_center_up: 朝上三角形位置坐标到中心坐标的映射<br>    pos_to_center_dn: 朝下三角形位置坐标到中心坐标的映射</div>
+        </div>
+        
+        <div class="item" id="equilateral_triangle_vertices">
+            <div class="item-header">
+                <span class="item-name">equilateral_triangle_vertices</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">equilateral_triangle_vertices(center: Tuple[float, float], a: float, theta: float = 0) -&gt; numpy.ndarray</div>
+            <div class="item-doc">计算等边三角形的三个顶点坐标<br><br><b>参数:</b><br>    center: 三角形中心坐标 (x, y)<br>    a: 三角形边长<br>    theta: 旋转角度（度），默认 0 度（朝上）<br><br><b>返回:</b><br>    3x2 的 numpy 数组，包含三个顶点的 (x, y) 坐标</div>
+        </div>
+        
+        <div class="item" id="find_corner_points">
+            <div class="item-header">
+                <span class="item-name">find_corner_points</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">find_corner_points(points: Union[List[Tuple[float, float]], numpy.ndarray]) -&gt; numpy.ndarray</div>
+            <div class="item-doc">找出点集中的四个角落点（左下、右下、左上、右上）<br><br><b>参数:</b><br>    points: 点集，格式为 [(x1,y1), (x2,y2), ...] 或二维数组<br><br><b>返回:</b><br>    4x2 的 numpy 数组，按顺序 [左下, 右下, 左上, 右上]<br><br><b>异常:</b><br>    ValueError: 点集数量不足 4 个</div>
+        </div>
+        
+        <div class="item" id="find_different_points">
+            <div class="item-header">
+                <span class="item-name">find_different_points</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">find_different_points(P1, P2, eps=1e-09)</div>
+            <div class="item-doc">筛选出 P1 中与 P2 所有点在误差范围内不相等的点<br><br><b>参数:</b><br>    P1: numpy 数组，形状为 (N, D)<br>    P2: numpy 数组，形状为 (M, D)<br>    eps: 允许的绝对误差阈值（默认 1e-9）<br><br><b>返回:</b><br>    P3: numpy 数组，形状为 (K, D)，P1 中与 P2 所有点都不同的点</div>
+        </div>
+        
+        <div class="item" id="is_above_segment">
+            <div class="item-header">
+                <span class="item-name">is_above_segment</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">is_above_segment(point: Tuple[float, float], seg_start: Tuple[float, float], seg_end: Tuple[float, float]) -&gt; bool</div>
+            <div class="item-doc">判断点是否在直线段的上方<br><br><b>参数:</b><br>    point: 待判断点 (x, y)<br>    seg_start: 线段起点 (x1, y1)<br>    seg_end: 线段终点 (x2, y2)<br><br><b>返回:</b><br>    布尔值，True 表示点在线段上方</div>
+        </div>
+        
+        <div class="item" id="line_cal">
+            <div class="item-header">
+                <span class="item-name">line_cal</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">line_cal(point, slope, known_value, is_x=True)</div>
+            <div class="item-doc">根据直线上已知点、斜率和另一点的已知坐标，计算未知坐标<br><br><b>参数:</b><br>    point: tuple (x0, y0)，直线上已知点的坐标<br>    slope: float，直线的斜率 (k)<br>    known_value: float，另一点已知的坐标值（X 或 Y）<br>    is_x: bool，若为 True 表示已知 X 求 Y，False 表示已知 Y 求 X<br><br><b>返回:</b><br>    计算得到的未知坐标值，若无法计算则返回 None</div>
+        </div>
+        
+        <div class="item" id="path_loc_to_xy">
+            <div class="item-header">
+                <span class="item-name">path_loc_to_xy</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">path_loc_to_xy(path: numpy.ndarray, a: float) -&gt; numpy.ndarray</div>
+            <div class="item-doc">将路径的位置坐标转换为 XY 坐标<br><br><b>参数:</b><br>    path: 路径位置坐标数组，形状为 (N, 2)，每个元素为 (r, c)<br>    a: 三角形边长<br><br><b>返回:</b><br>    XY 坐标数组，形状为 (N, 2)</div>
+        </div>
+        
+        <div class="item" id="plot_tri_color">
+            <div class="item-header">
+                <span class="item-name">plot_tri_color</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">plot_tri_color(center: Tuple[float, float], a: float, theta: float = 0, color: str = &#x27;black&#x27;) -&gt; matplotlib.patches.Polygon</div>
+            <div class="item-doc">生成带颜色的三角形多边形对象<br><br><b>参数:</b><br>    center: 三角形中心坐标 (x, y)<br>    a: 三角形边长<br>    theta: 旋转角度（度）<br>    color: 填充和边框颜色<br><br><b>返回:</b><br>    matplotlib 的 Polygon 对象</div>
+        </div>
+        
+        <div class="item" id="plot_triangle_grid">
+            <div class="item-header">
+                <span class="item-name">plot_triangle_grid</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">plot_triangle_grid(row_range: Tuple[int, int], col_range: Tuple[int, int], a: float = 1.0, offset: Tuple[float, float] = (0.0, 0.0), theta: float = 0.0, show_labels: bool = True, show_points: bool = True) -&gt; Tuple[matplotlib.figure.Figure, matplotlib.axes._axes.Axes]</div>
+            <div class="item-doc">绘制三角形网格并标记中心（修复右侧三角形重叠问题）<br><br><b>参数:</b><br>    row_range: 行号范围 (start_row, end_row)<br>    col_range: 列号范围 (start_col, end_col)<br>    a: 三角形边长<br>    offset: 网格偏移量<br>    theta: 旋转角度（度）<br>    show_labels: 是否显示位置坐标标签<br>    show_points: 是否显示中心标记点<br><br><b>返回:</b><br>    fig: 图形对象<br>    ax: 坐标轴对象</div>
+        </div>
+        
+        <div class="item" id="point_in_polygon">
+            <div class="item-header">
+                <span class="item-name">point_in_polygon</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">point_in_polygon(point: Tuple[float, float], polygon: Union[List[Tuple[float, float]], numpy.ndarray]) -&gt; bool</div>
+            <div class="item-doc">判断点是否在多边形内部（射线法）<br><br><b>参数:</b><br>    point: 待判断点 (x, y)<br>    polygon: 多边形顶点数组，至少包含 3 个点<br><br><b>返回:</b><br>    布尔值，True 表示点在多边形内部</div>
+        </div>
+        
+        <div class="item" id="pos_to_xy">
+            <div class="item-header">
+                <span class="item-name">pos_to_xy</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">pos_to_xy(row_range: Tuple[int, int], col_range: Tuple[int, int], a: float, r: int, c: int, triangle_type: str = &#x27;up&#x27;, offset: Tuple[float, float] = (0.0, 0.0)) -&gt; Tuple[float, float]</div>
+            <div class="item-doc">将位置坐标 (r, c) 转换为实际 XY 坐标<br><br>注意: 函数内部使用固定偏移 [a/2, h - a/sqrt(3)]<br>      以对齐三角形网格中心，参数 offset 仅保留接口兼容性。<br><br><b>参数:</b><br>    row_range: 行号范围 (start_row, end_row)<br>    col_range: 列号范围 (start_col, end_col)<br>    a: 三角形边长<br>    r: 行号<br>    c: 列号<br>    triangle_type: 三角形类型，&#x27;up&#x27;（朝上）或 &#x27;down&#x27;（朝下）<br>    offset: 网格偏移量（保留参数，内部使用固定对齐偏移）<br><br><b>返回:</b><br>    三角形中心的 (x, y) 坐标<br><br><b>异常:</b><br>    ValueError: 行号或列号超出范围，或三角形类型无效</div>
+        </div>
+        
+        <div class="item" id="select_above">
+            <div class="item-header">
+                <span class="item-name">select_above</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">select_above(points: Union[List[Tuple[float, float]], numpy.ndarray], polyline: Union[List[Tuple[float, float]], numpy.ndarray]) -&gt; numpy.ndarray</div>
+            <div class="item-doc">筛选出位于折线所有线段上方的点<br><br><b>参数:</b><br>    points: 待筛选点集<br>    polyline: 折线点集，至少包含 2 个点<br><br><b>返回:</b><br>    筛选后的点集数组<br><br><b>异常:</b><br>    ValueError: 折线点数量不足</div>
+        </div>
+        
+        <div class="item" id="select_below">
+            <div class="item-header">
+                <span class="item-name">select_below</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">select_below(points: Union[List[Tuple[float, float]], numpy.ndarray], polyline: Union[List[Tuple[float, float]], numpy.ndarray]) -&gt; numpy.ndarray</div>
+            <div class="item-doc">筛选出位于折线所有线段下方的点<br><br><b>参数:</b><br>    points: 待筛选点集<br>    polyline: 折线点集，至少包含 2 个点<br><br><b>返回:</b><br>    筛选后的点集数组<br><br><b>异常:</b><br>    ValueError: 折线点数量不足</div>
+        </div>
+        
+        <div class="item" id="select_inside">
+            <div class="item-header">
+                <span class="item-name">select_inside</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">select_inside(points: Union[List[Tuple[float, float]], numpy.ndarray], polygon: Union[List[Tuple[float, float]], numpy.ndarray]) -&gt; numpy.ndarray</div>
+            <div class="item-doc">筛选出位于多边形内部的点<br><br><b>参数:</b><br>    points: 待筛选点集<br>    polygon: 多边形顶点数组，至少包含 3 个点<br><br><b>返回:</b><br>    筛选后的点集数组<br><br><b>异常:</b><br>    ValueError: 多边形顶点数量不足</div>
+        </div>
+        
+        <div class="item" id="shortest_path">
+            <div class="item-header">
+                <span class="item-name">shortest_path</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">shortest_path(start: Tuple[int, int], end: Tuple[int, int], first_direction: str = &#x27;x&#x27;) -&gt; numpy.ndarray</div>
+            <div class="item-doc">生成网格中两点间的最短路径（曼哈顿路径）<br><br>支持多种优先方向策略:<br>&emsp;- &#x27;x&#x27;: 先沿列方向移动，再沿行方向移动<br>&emsp;- &#x27;y&#x27;: 先沿行方向移动，再沿列方向移动<br>&emsp;- &#x27;xy&#x27;: 斜向移动优先，适用于三角形网格坐标方向相反的情况<br>&emsp;- &#x27;xxy&#x27;: 先沿列方向到终点行/列对齐，再斜向移动<br><br><b>参数:</b><br>    start: 起始位置坐标 (r, c)<br>    end: 终点位置坐标 (r, c)<br>    first_direction: 优先移动方向，&#x27;x&#x27; / &#x27;y&#x27; / &#x27;xy&#x27; / &#x27;xxy&#x27;<br><br><b>返回:</b><br>    路径点数组，形状为 (N, 2)，包含所有路径点的 (r, c) 坐标<br><br><b>异常:</b><br>    ValueError: 无效的优先方向</div>
+        </div>
+        
+        <div class="item" id="test_triangle_grid">
+            <div class="item-header">
+                <span class="item-name">test_triangle_grid</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">test_triangle_grid()</div>
+            <div class="item-doc">测试三角形网格生成和坐标转换功能</div>
+        </div>
+        
+        <div class="item" id="tqdm">
+            <div class="item-header">
+                <span class="item-name">tqdm</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">tqdm(*_, **__)</div>
+            <div class="item-doc">Decorate an iterable object, returning an iterator which acts exactly<br>like the original iterable, but prints a dynamically updating<br>progressbar every time a value is requested.</div>
+        </div>
+        
+        <div class="item" id="xy_to_pos">
+            <div class="item-header">
+                <span class="item-name">xy_to_pos</span>
+                <span class="item-type type-function">function</span>
+            </div>
+            <div class="item-signature">xy_to_pos(row_range: Tuple[int, int], col_range: Tuple[int, int], a: float, x: float, y: float, triangle_type: str = &#x27;up&#x27;, offset: Tuple[float, float] = (0.0, 0.0)) -&gt; Tuple[int, int]</div>
+            <div class="item-doc">将 XY 坐标转换为位置坐标 (r, c)<br><br><b>参数:</b><br>    row_range: 行号范围 (start_row, end_row)<br>    col_range: 列号范围 (start_col, end_col)<br>    a: 三角形边长<br>    x: X 坐标<br>    y: Y 坐标<br>    triangle_type: 三角形类型，&#x27;up&#x27;（朝上）或 &#x27;down&#x27;（朝下）<br>    offset: 网格偏移量<br><br><b>返回:</b><br>    位置坐标 (r, c)</div>
+        </div>
+        
+
+    <footer>
+        <p>自动生成于 2026-05-26 18:45</p>
+        <p>TPC Project — mesh_grid 文档</p>
+    </footer>
+</body>
+</html>
