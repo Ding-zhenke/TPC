@@ -341,3 +341,38 @@ class ModelingPrimitivesMixin:
         等同于 hexagon()
         """
         self.hexagon(a, h, center, theta, name, curve, component, material)
+
+    # ================================================================
+    # Wire — 3D 导线/圆柱体创建
+    # ================================================================
+
+    def create_wire(self, name, start_point, end_point, radius,
+                    component='component1', material='PEC',
+                    segments=0):
+        """
+        创建 3D 导线（Wire）
+
+        :param name: str, 导线名称
+        :param start_point: list, 起点坐标 [X, Y, Z]
+        :param end_point: list, 终点坐标 [X, Y, Z]
+        :param radius: float/str, 导线半径
+        :param component: str, 归属组件
+        :param material: str, 材料名称
+        :param segments: int, 分段数（0 表示自动）
+        """
+        f1 = f"""With Wire
+     .Reset
+     .Name "{name}"
+     .Component "{component}"
+     .Material "{material}"
+     .WireRadius "{radius}"
+     .X1 "{start_point[0]}"
+     .Y1 "{start_point[1]}"
+     .Z1 "{start_point[2]}"
+     .X2 "{end_point[0]}"
+     .Y2 "{end_point[1]}"
+     .Z2 "{end_point[2]}"
+     .Segments "{segments}"
+     .Create
+End With"""
+        self.cst_file.model3d.add_to_history(f"Wire: {name}", f1)

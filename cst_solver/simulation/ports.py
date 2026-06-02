@@ -200,3 +200,48 @@ End With
 """
         self.cst_file.model3d.add_to_history(
             f"Create lumped element: {id_val}", f1)
+
+    # ================================================================
+    # Floquet 端口（用于周期结构/频率选择表面）
+    # ================================================================
+
+    def create_floquet_port(self, id_val, number_of_modes=2,
+                            label='', folder=''):
+        """
+        创建 Floquet 端口（周期性端口）
+        适用于周期结构、频率选择表面 (FSS)、超表面等场景
+
+        :param id_val: int/str, 端口编号
+        :param number_of_modes: int, 模式数量，默认 2（TE0,0 + TM0,0）
+        :param label: str, 端口标签
+        :param folder: str, 端口归属文件夹
+        """
+        f1 = f"""With FloquetPort
+     .Reset
+     .PortNumber "{id_val}"
+     .Label "{label}"
+     .Folder "{folder}"
+     .NumberOfModes "{number_of_modes}"
+     .Distance "0"
+     .Create
+End With"""
+        self.cst_file.model3d.add_to_history(
+            f"FloquetPort: {id_val}", f1)
+
+    def create_cable_port(self, id_val, label='', impedance=50):
+        """
+        创建电缆端口
+
+        :param id_val: int/str, 端口编号
+        :param label: str, 端口标签
+        :param impedance: float, 端口阻抗，默认 50 欧姆
+        """
+        f1 = f"""With CablePort
+     .Reset
+     .PortNumber "{id_val}"
+     .Label "{label}"
+     .Impedance "{impedance}"
+     .Create
+End With"""
+        self.cst_file.model3d.add_to_history(
+            f"CablePort: {id_val}", f1)

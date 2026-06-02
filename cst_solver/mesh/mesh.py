@@ -79,3 +79,77 @@ End With"""
      .Automesh "True"
 End With"""
         self.cst_file.model3d.add_to_history("Mesh Auto Config", f1)
+
+    # ================================================================
+    # MeshSettings — 网格设置增强
+    # ================================================================
+
+    def set_mesh_settings(self, **kwargs):
+        """
+        设置网格高级参数（通过 MeshSettings 对象）
+        支持的关键字参数:
+            - Properties: dict, 网格属性键值对
+
+        示例:
+            >>> app.set_mesh_settings(StepsPerWavelength=12,
+            ...                       MeshType="Tetrahedral")
+        """
+        settings_code = ""
+        for key, value in kwargs.items():
+            settings_code += f'     .{key} "{value}"\n'
+        f1 = f"""With MeshSettings
+     .Reset
+{settings_code}End With"""
+        self.cst_file.model3d.add_to_history("MeshSettings Config", f1)
+
+    # ================================================================
+    # MeshShapes — 网格形状控制
+    # ================================================================
+
+    def set_mesh_shape(self, shape='hexahedral'):
+        """
+        设置网格形状类型
+
+        :param shape: str, 网格形状
+            'hexahedral' - 六面体网格
+            'tetrahedral' - 四面体网格
+            'surface' - 表面网格
+        """
+        f1 = f"""With MeshShapes
+     .Reset
+     .ShapeType "{shape}"
+End With"""
+        self.cst_file.model3d.add_to_history(f"MeshShape: {shape}", f1)
+
+    def set_mesh_region(self, name, priority=0, xmin=None, xmax=None,
+                        ymin=None, ymax=None, zmin=None, zmax=None,
+                        mesh_type=None, step=None):
+        """
+        设置网格加密区域
+
+        :param name: str, 区域名称
+        :param priority: int, 优先级，默认 0
+        :param xmin/xmax/ymin/ymax/zmin/zmax: float 可选, 区域边界
+        :param mesh_type: str 可选, 区域网格类型
+        :param step: float 可选, 区域网格步长
+        """
+        f1 = f"""With MeshShapes
+     .Reset
+     .Name "{name}"
+     .Priority "{priority}"
+"""
+        bounds = [
+            ('Xmin', xmin), ('Xmax', xmax),
+            ('Ymin', ymin), ('Ymax', ymax),
+            ('Zmin', zmin), ('Zmax', zmax),
+        ]
+        for attr, val in bounds:
+            if val is not None:
+                f1 += f'     .{attr} "{val}"\n'
+        if mesh_type:
+            f1 += f'     .ShapeType "{mesh_type}"\n'
+        if step:
+            f1 += f'     .Step "{step}"\n'
+        f1 += """     .Create
+End With"""
+        self.cst_file.model3d.add_to_history(f"MeshRegion: {name}", f1)

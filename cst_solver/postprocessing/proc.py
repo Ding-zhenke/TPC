@@ -72,7 +72,8 @@ End With"""
         """
         执行 1D 后处理操作
 
-        :param operation: str, 操作类型 'calc'/'smooth'/'integrate'/'differentiate'
+        :param operation: str, 操作类型
+            'calc'/'smooth'/'integrate'/'differentiate'
         :param result_path: str, 结果路径
         :param new_name: str, 新结果名称
         """
@@ -84,3 +85,39 @@ End With"""
      .Execute
 End With"""
         self.cst_file.model3d.add_to_history(f"PostProcess1D: {operation}", f1)
+
+    # ================================================================
+    # PostProcess1D 增强（参考 py4cst-ccly — 操作链模式）
+    # ================================================================
+
+    def post_process_apply_to(self, apply_target='S-parameter'):
+        """
+        设置 1D 后处理的应用目标
+
+        :param apply_target: str, 应用目标
+            'S-parameter' / 'Probes' / 'Monitors'
+        """
+        f1 = f"""With PostProcess1D
+     .Reset
+     .ApplyTo "{apply_target}"
+End With"""
+        self.cst_file.model3d.add_to_history(f"PostProcess ApplyTo: {apply_target}", f1)
+
+    def post_process_add_operation(self, operation_type):
+        """
+        添加后处理操作
+
+        :param operation_type: str, 操作类型
+            'Time Window' / 'AR-Filter' / 'Phase Deembedding'
+            'Renormalization' / 'VSWR' / 'YZ-matrices' / 'Exclude Port Modes'
+        """
+        f1 = f"""With PostProcess1D
+     .Reset
+     .AddOperation "{operation_type}"
+End With"""
+        self.cst_file.model3d.add_to_history(f"PostProcess Op: {operation_type}", f1)
+
+    def post_process_run(self):
+        """运行 1D 后处理"""
+        f1 = "PostProcess1D.Run\n"
+        self.cst_file.model3d.add_to_history("PostProcess Run", f1)

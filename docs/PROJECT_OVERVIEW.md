@@ -1,7 +1,7 @@
-# TPC 项目概览
+# cst_solver 项目概览
 
 > 用于 AI 快速理解本项目结构和功能的导读文档。
-> 最后更新: 2026-05-26
+> 最后更新: 2026-06-01
 
 ---
 
@@ -21,39 +21,42 @@
 ```
 TPC/
 ├── cst_solver/                    # 📦 CST 自动化 Python 包（核心）
-│   ├── __init__.py                # setup 主类（Mixin 聚合）
+│   ├── __init__.py                # setup 主类（196 方法，22 Mixin）
 │   ├── config_template.py         # 配置模板（提交 git）
 │   ├── config.py                  # 本地配置（gitignored）
 │   ├── project.py                 # 项目操作：打开/关闭/保存
 │   ├── parameters.py              # 参数管理：参数/表达式/频率
-│   ├── result.py                  # 结果读取类（独立）
+│   ├── units.py                   # 单位设置
+│   ├── result.py                  # 结果读取类（Result/result）
 │   ├── modeling/
-│   │   ├── primitives.py          # 基本体：Brick, Cylinder, Sphere...
-│   │   ├── curves.py              # 曲线：Polygon, Arc, Circle...
+│   │   ├── primitives.py          # 基本体：Brick, Cylinder, Sphere, Wire...
+│   │   ├── curves.py              # 曲线：Polygon, Arc, Circle, Spline...
 │   │   ├── curves_ops.py          # 曲线操作：Extrude, Loft, Sweep...
-│   │   ├── booleans.py            # 布尔运算：Add, Subtract...
+│   │   ├── booleans.py            # 布尔运算：Add, Subtract, Intersect...
 │   │   ├── transforms.py          # 变换：Translate, Rotate, Mirror...
-│   │   └── picks.py               # 选取：Pick edge/face/vertex...
+│   │   ├── picks.py               # 选取：Pick edge/face/vertex...
+│   │   └── wcs.py                 # 工作坐标系（★ 新增）
 │   ├── material/
 │   │   └── materials.py           # 材料与组件
 │   ├── simulation/
-│   │   ├── ports.py               # 端口：Port, DiscretePort...
-│   │   ├── sources.py             # 激励源：PlaneWave, Coil...
+│   │   ├── ports.py               # 端口：Port, DiscretePort, FloquetPort...
+│   │   ├── sources.py             # 激励源：PlaneWave, Coil, FarfieldSource...
 │   │   ├── monitors.py            # 监视器：Monitor, Probe
 │   │   ├── boundary.py            # 边界条件：Boundary, Background
-│   │   └── solver.py              # 求解器：Solver, FDSolver...
+│   │   └── solver.py              # 求解器：Solver, FDSolver, SolverParameter...
 │   ├── mesh/
-│   │   └── mesh.py                # 网格设置
+│   │   └── mesh.py                # 网格：Mesh, MeshAdaption3D, MeshSettings...
 │   ├── import_export/
-│   │   └── io.py                  # 导入导出：SAT, DXF, STEP...
+│   │   └── io.py                  # 导入导出：SAT, DXF, STEP, IGES, STL
 │   └── postprocessing/
-│       ├── proc.py                # 后处理：QFactor, CombineResults
+│       ├── proc.py                # 后处理：QFactor, CombineResults, SAR
 │       ├── farfield.py            # 远场分析
+│       ├── plot.py                # 绘图控制（★ 新增）
 │       └── result_export.py       # 结果导出
 ├── scripts/
 │   └── gen_docs.py               # HTML 文档自动生成脚本
 ├── docs/
-│   ├── cst_solver_api.html        # API 文档（生成）
+│   ├── cst_solver_api.html        # API 文档（196 方法，22 类别）
 │   ├── PROJECT_OVERVIEW.md        # ← 本文件
 │   └── TODO_LIST.md               # 待实现功能清单
 ├── 遗传算法/
@@ -69,7 +72,7 @@ TPC/
 ├── read.py                        # S2P 数据解析
 ├── setup.py                       # 路径配置（启动时导入）
 ├── test.ipynb                     # 测试/示例笔记本
-├── old_cst_solver.py              # 旧版单文件（已废弃）
+├── cst_solver.py                  # 旧版兼容入口（推荐用 from cst_solver import setup）
 ├── .gitignore                     # Git 忽略规则
 └── README.md                      # 项目说明
 ```
@@ -81,9 +84,14 @@ TPC/
 所有功能通过 `setup` 类统一暴露，底层使用 Python Mixin 多继承：
 
 ```python
-class setup(ProjectMixin, ParametersMixin, ModelingPrimitivesMixin,
-             CurvesMixin, CurveOpsMixin, SolidOpsMixin, ...):
-    """全部 138 个方法通过一个 setup 对象调用"""
+class setup(ProjectMixin, UnitsMixin, ParametersMixin,
+             ModelingPrimitivesMixin, CurvesMixin, CurveOpsMixin,
+             WCSMixin, SolidOpsMixin, TransformMixin, PickMixin,
+             FaceOpsMixin, MaterialMixin, PortMixin, SourceMixin,
+             MonitorMixin, BoundaryMixin, SolverMixin, MeshMixin,
+             IOMixin, PostProcMixin, FarfieldMixin,
+             PlotMixin, ExportMixin):
+    """全部 196 个方法通过一个 setup 对象调用"""
 ```
 
 ### 命名规范
@@ -115,47 +123,52 @@ CST_PYTHON_LIB = r"C:\SOFTWARE\CST Studio Suite 2026\AMD64\python_cst_libraries"
 
 ---
 
-## 五、方法分类速查
+## 五、方法分类速查（196 方法，22 类别）
 
 | 类别 | 方法数 | 主要函数 |
 |------|--------|----------|
-| 项目操作 | 10 | `open_project`, `close`, `save`, `activate` |
-| 参数管理 | 10 | `para`, `expression`, `set_frequency_range` |
-| 基本体建模 | 12 | `create_brick`, `create_cylinder`, `create_sphere` |
-| 曲线绘制 | 14 | `polyline`, `arc`, `create_circle`, `create_spline` |
-| 曲线操作 | 8 | `extrude`, `loft_curves`, `sweep_curve` |
-| 布尔运算 | 12 | `add`, `substract`, `intersect`, `boolean_imprint` |
-| 变换操作 | 7 | `rotation`, `translate`, `mirror`, `scale` |
-| 选取操作 | 7 | `pick_edge`, `pick_face`, `pick_vertex` |
-| 面操作 | 3 | `rotation_face`, `extrude_face`, `trace_curve` |
-| 材料与组件 | 10 | `new_material`, `create_component`, `change_material` |
-| 端口设置 | 10 | `add_port`, `discrete_port`, `create_discrete_port` |
-| 激励源 | 8 | `create_plane_wave`, `create_coil`, `create_voltage_wire` |
-| 监视器 | 5 | `define_monitor`, `create_probe` |
-| 边界条件 | 3 | `boundary`, `set_background` |
-| 求解器 | 9 | `run`, `configure_fd_solver`, `exclude_simulation` |
-| 网格设置 | 2 | `set_mesh_properties`, `configure_mesh_adaption` |
-| 导入导出 | 10 | `sat_import`, `import_step`, `export_data` |
-| 后处理 | 2 | `calculate_q_factor`, `combine_results` |
-| 远场分析 | 2 | `set_farfield_plot`, `compute_farfield_array` |
-| 结果导出 | 3 | `export_result_1d`, `export_result_2d3d` |
+| 项目操作 | 9 | `open_project`, `close`, `save`, `activate` |
+| 单位设置 | 1 | `set_units` |
+| 参数管理 | 11 | `para`, `expression`, `set_frequency_range` |
+| 基本体建模 | 13 | `create_brick`, `create_cylinder`, `create_sphere`, `create_wire` |
+| 曲线绘制 | 10 | `polyline`, `arc`, `create_circle`, `create_spline` |
+| 曲线操作 | 9 | `extrude`, `loft_curves`, `sweep_curve`, `blend_curve` |
+| 工作坐标系 | 17 | `reset_wcs`, `rotate_wcs`, `translate_wcs`, `align_wcs` |
+| 布尔运算 | 11 | `add`, `substract`, `intersect`, `boolean_imprint`, `blend_edge` |
+| 变换操作 | 5 | `rotate`, `translate`, `mirror`, `scale` |
+| 选取操作 | 6 | `pick_edge`, `pick_face`, `pick_vertex` |
+| 面操作 | 4 | `rotation_face`, `extrude_face`, `trace_curve` |
+| 材料与组件 | 8 | `create_material`, `create_component`, `change_material` |
+| 端口设置 | 9 | `add_port`, `discrete_port`, `create_floquet_port` |
+| 激励源 | 11 | `create_plane_wave`, `create_coil`, `create_farfield_source` |
+| 监视器 | 3 | `define_monitor`, `create_probe` |
+| 边界条件 | 3 | `boundary`, `set_background`, `set_layer_stacking` |
+| 求解器 | 16 | `run`, `configure_fd_solver`, `set_solver_parameter` |
+| 网格设置 | 6 | `set_mesh_properties`, `configure_mesh_adaption`, `set_mesh_region` |
+| 导入导出 | 7 | `import_sat`, `import_step`, `import_dxf` |
+| 后处理 | 4 | `calculate_q_factor`, `combine_results`, `calculate_sar` |
+| 远场分析 | 5 | `set_farfield_plot`, `compute_farfield_array`, `farfield_plot_polar` |
+| 绘图控制 | 13 | `plot_1d`, `plot_2d3d`, `scalar_plot_3d`, `vector_plot_3d` |
+| 结果导出 | 7 | `export_result_1d`, `export_result_2d3d` |
 
 ---
 
 ## 六、使用示例
 
 ```python
-from cst_solver import setup, result
+from cst_solver import setup
+from cst_solver.result import Result
 
 # 打开工程
 app = setup("example.cst")
+app.set_units(frequency='GHz', length='mm')
 app.set_frequency_range(1, 10)
 
 # 建模
 app.create_brick(0, 10, 0, 10, 0, 2, "substrate", material="Quartz (lossy)")
 app.create_cylinder([5, 5], [2, 0], [0, 2], "via", material="Copper (annealed)")
 
-# 设置端口和边界
+# 端口和边界
 app.add_port(1)
 app.boundary(xmax="expanded open", ymax="expanded open")
 
@@ -163,7 +176,7 @@ app.boundary(xmax="expanded open", ymax="expanded open")
 app.run()
 
 # 读取结果
-res = result("example.cst")
+res = Result("example.cst")
 s11 = res.read_s_parameter("S1,1")
 
 # 关闭
@@ -176,10 +189,10 @@ app.close()
 
 | 文件 | 用途 |
 |------|------|
-| `cst_solver/result.py` | CST 结果读取类（独立于 setup） |
-| `docs/cst_solver_api.html` | 完整 API 文档（脚本生成） |
-| `scripts/gen_docs.py` | 文档生成脚本 |
-| `setup.py` | 启动时配置路径 |
+| `cst_solver/result.py` | CST 结果读取类（Result + result 别名） |
+| `docs/cst_solver_api.html` | 完整 API 文档（196 方法，脚本生成） |
+| `scripts/gen_docs.py` | 文档生成脚本（扫描 docstring） |
+| `cst_solver.py` | 旧版兼容入口（`from cst_solver import setup, result`） |
 | `cst_solver/config.py` | 本地 CST 路径配置 |
 | `test.ipynb` | 测试/示例笔记本 |
 
@@ -189,6 +202,7 @@ app.close()
 
 1. **CST 必须已安装** — `cst_solver` 需要 CST 的 Python 库
 2. **首次使用配置** — 复制 `config_template.py` 为 `config.py`，修改 CST 路径
-3. **`from cst_solver import result`** — 得到的是 `result` 类（不是模块）
+3. **`from cst_solver import setup`** — 推荐（通过包直接导入）
 4. **旧函数名可用** — 但推荐使用 snake_case 新名
 5. **CST VBA 文档** — 位于 `C:\SOFTWARE\CST Studio Suite 2026\Online Help\`
+6. **文档生成** — 运行 `python scripts/gen_docs.py` 重新生成 HTML 文档

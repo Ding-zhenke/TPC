@@ -198,3 +198,60 @@ End With"""
      .Create
 End With"""
         self.cst_file.model3d.add_to_history(f"PredefinedField: {name}", f1)
+
+    # ================================================================
+    # FarfieldSource — 远场源激励
+    # ================================================================
+
+    def create_farfield_source(self, name, source_file, polarization='Theta',
+                               distance=1.0):
+        """
+        创建远场源激励（用于天线耦合仿真等）
+
+        :param name: str, 远场源名称
+        :param source_file: str, 远场源文件路径 (*.farfield 或 *.txt)
+        :param polarization: str, 极化类型 'Theta'/'Phi'/'Both'
+        :param distance: float, 源到目标距离（波长）
+        """
+        f1 = f"""With FarfieldSource
+     .Reset
+     .Name "{name}"
+     .SourceFile "{source_file}"
+     .Polarization "{polarization}"
+     .Distance "{distance}"
+     .Create
+End With"""
+        self.cst_file.model3d.add_to_history(
+            f"FarfieldSource: {name}", f1)
+
+    # ================================================================
+    # TimeSignal — 时域信号定义
+    # ================================================================
+
+    def create_time_signal(self, name, signal_type='Gaussian',
+                           amplitude=1.0, center_time=0.0,
+                           width=1.0, frequency=1.0):
+        """
+        创建时域信号定义（用于时域求解器激励）
+
+        :param name: str, 信号名称
+        :param signal_type: str, 信号类型
+            'Gaussian' / 'GaussianSingleCycle' / 'Ramp' / 'Step' / 'Custom'
+        :param amplitude: float, 信号幅度
+        :param center_time: float, 中心时间
+        :param width: float, 信号宽度
+        :param frequency: float, 调制频率（仅 GaussianSingleCycle）
+        """
+        f1 = f"""With TimeSignal
+     .Reset
+     .Name "{name}"
+     .Type "{signal_type}"
+     .Amplitude "{amplitude}"
+     .CenterTime "{center_time}"
+     .Width "{width}"
+"""
+        if signal_type == 'GaussianSingleCycle':
+            f1 += f'     .Frequency "{frequency}"\n'
+        f1 += """     .Create
+End With"""
+        self.cst_file.model3d.add_to_history(f"TimeSignal: {name}", f1)

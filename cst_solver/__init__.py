@@ -24,22 +24,45 @@ import sys
 import os
 
 # ============================================================
-# 加载配置：用户只需配置 CST_INSTALL_PATH，其余路径自动推导
-# 配置优先顺序: config.py > config_template.py > 默认值
+# 加载配置：仅通过文件系统路径读取 config.py（避免循环导入）
+# 配置优先顺序: config.py → config_template.py → 内置默认值
 # ============================================================
-try:
-    from cst_solver.config import CST_INSTALL_PATH, CST_PYTHON_LIB, CST_MATERIAL_LIB
-except ImportError:
+_cfg_dir = os.path.dirname(os.path.abspath(__file__))
+
+def _load_cfg(filename):
+    """从文件路径读取配置变量（避免模块导入的循环依赖）"""
+    ns = {"__builtins__": __builtins__}
     try:
-        from cst_solver.config_template import CST_INSTALL_PATH, CST_PYTHON_LIB, CST_MATERIAL_LIB
-        print("⚠ 未找到 config.py，使用 config_template.py 中的默认配置")
-        print("   请复制 config_template.py 为 config.py 并修改 CST_INSTALL_PATH")
-    except ImportError:
-        CST_INSTALL_PATH = r"C:\SOFTWARE\CST Studio Suite 2026"
-        CST_PYTHON_LIB = os.path.join(CST_INSTALL_PATH, "AMD64", "python_cst_libraries")
-        CST_MATERIAL_LIB = os.path.join(CST_INSTALL_PATH, "Library", "Materials")
-        print("⚠ 未找到配置文件，使用默认 CST 路径")
-        print("   请创建 cst_solver/config.py 并设置 CST_INSTALL_PATH")
+        with open(filename, encoding="utf-8") as f:
+            code = compile(f.read(), filename, 'exec')
+            exec(code, ns)
+    except Exception:
+        pass
+    return ns
+
+_cfg = {}
+for _name in ["config.py", "config_template.py"]:
+    _path = os.path.join(_cfg_dir, _name)
+    if os.path.exists(_path):
+        _cfg = _load_cfg(_path)
+        if _name == "config_template.py":
+            print("⚠ 未找到 config.py，使用 config_template.py 中的默认配置")
+            print("   请复制 config_template.py 为 config.py 并修改 CST_INSTALL_PATH")
+        break
+
+def _derive_python_lib(install_path):
+    return os.path.join(install_path, "AMD64", "python_cst_libraries")
+
+def _derive_material_lib(install_path):
+    return os.path.join(install_path, "Library", "Materials")
+
+CST_INSTALL_PATH = _cfg.get("CST_INSTALL_PATH", r"C:\SOFTWARE\CST Studio Suite 2026")
+CST_PYTHON_LIB = _cfg.get("CST_PYTHON_LIB") or _derive_python_lib(CST_INSTALL_PATH)
+CST_MATERIAL_LIB = _cfg.get("CST_MATERIAL_LIB") or _derive_material_lib(CST_INSTALL_PATH)
+
+if not _cfg:
+    print("⚠ 未找到配置文件，使用默认 CST 路径")
+    print("   请创建 cst_solver/config.py 并设置 CST_INSTALL_PATH")
 
 # 将 CST Python 库路径添加到系统路径
 if CST_PYTHON_LIB and CST_PYTHON_LIB not in sys.path:
@@ -70,8 +93,10 @@ from cst_solver.simulation.boundary import BoundaryMixin
 from cst_solver.simulation.solver import SolverMixin
 from cst_solver.mesh.mesh import MeshMixin
 from cst_solver.import_export.io import IOMixin
+from cst_solver.modeling.wcs import WCSMixin
 from cst_solver.postprocessing.proc import PostProcMixin
 from cst_solver.postprocessing.farfield import FarfieldMixin
+from cst_solver.postprocessing.plot import PlotMixin
 from cst_solver.postprocessing.result_export import ExportMixin
 
 # ============================================================
@@ -82,8 +107,10 @@ from cst_solver.postprocessing.result_export import ExportMixin
 # 或使用旧兼容层:
 #   from cst_solver import setup, result   # 通过 cst_solver.py 兼容层
 # ============================================================
-from cst_solver.result import result as _result_class
-# 注意: 直接使用 result 变量名会被子模块覆盖，故这里不做赋值
+from cst_solver._result_core import result as _result_class
+from cst_solver._result_core import Result
+# 导出 result 类到包顶层（子模块重命名为 _result_core 避免冲突）
+result = _result_class  # 现在 from cst_solver import result 得到的是类
 
 # ============================================================
 # 额外建模功能 — 面操作（依赖 pick）
@@ -206,6 +233,7 @@ class setup(
     ModelingPrimitivesMixin,
     CurvesMixin,
     CurveOpsMixin,
+    WCSMixin,
     SolidOpsMixin,
     TransformMixin,
     PickMixin,
@@ -220,6 +248,7 @@ class setup(
     IOMixin,
     PostProcMixin,
     FarfieldMixin,
+    PlotMixin,
     ExportMixin,
 ):
     """
@@ -228,22 +257,24 @@ class setup(
     通过多继承聚合所有功能模块，包括:
         - 项目操作: 打开/关闭/保存
         - 参数管理: 参数/表达式/频率范围
-        - 基本体建模: 长方体/圆柱/球/圆锥/圆环/椭圆柱/三角形/六边形
-        - 曲线绘制: 多边形/圆弧/圆/椭圆/直线/样条
-        - 曲线操作: 拉伸/放样/扫掠/混合/修剪
+        - 基本体建模: 长方体/圆柱/球/圆锥/圆环/椭圆柱/三角形/六边形/导线
+        - 曲线绘制: 多边形/圆弧/圆/椭圆/直线/样条/矩形
+        - 曲线操作: 拉伸/放样/扫掠/混合/倒角/覆盖/修剪
         - 布尔运算: 相加/相减/相交/插入/压印/倒角
-        - 变换: 平移/旋转/镜像/缩放
+        - 变换: 平移/旋转/镜像/缩放/对齐
+        - 工作坐标系: 旋转/平移/对齐/保存/恢复/缩放
         - 选取: 棱边/端点/表面/顶点
         - 面操作: 表面拉伸/旋转/走线
         - 材料与组件: 材料创建/组件管理
-        - 端口: 波导端口/离散端口/集总元件
-        - 激励源: 平面波/电流源/线圈/磁体
+        - 端口: 波导端口/离散端口/集总元件/Floquet端口/电缆端口
+        - 激励源: 平面波/电流源/线圈/磁体/远场源/时域信号
         - 监视器: 场监视器/探针
-        - 边界条件: 边界/背景/对称面
-        - 求解器: 时域/频域/本征模
-        - 网格: 网格属性/自适应
+        - 边界条件: 边界/背景/对称面/层叠
+        - 求解器: 时域/频域/本征模/积分方程/渐近/参数扫描/优化
+        - 网格: 网格属性/自适应/区域控制
         - 导入导出: SAT/DXF/STEP/IGES/STL
-        - 后处理: 远场/Q因子/结果导出
+        - 绘图控制: 1D/2D/3D/标量/矢量/远场极坐标/动画
+        - 后处理: 远场/Q因子/SAR/结果组合/结果导出
 
     用法:
         >>> app = setup("example.cst")

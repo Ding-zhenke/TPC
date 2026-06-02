@@ -1,64 +1,44 @@
 # cst_solver 待实现功能清单
 
-> 最后更新: 2026-06-02
+> 最后更新: 2026-06-01
 > 当前覆盖: **207 个方法** / **22 个 Mixin 类别**
 
 ---
 
 ## ✅ 已实现功能总览
 
-### 包结构与模块 (207 方法 / 22 类别)
+### 🎯 核心建模
 
-```
-cst_solver/
-├── __init__.py              # setup 主类（207 方法，22 Mixin）
-├── config / config_template # 配置系统（.gitignore）
-├── project.py / parameters  # 项目管理 + 参数（20 方法）
-├── units.py                 # 单位设置（2 方法）
-├── _result_core.py          # 结果读取（Result + result 别名，9 方法）
-│
-├── modeling/                # ★ 几何建模（7 模块，67 方法）
-│   ├── primitives.py        # Brick, Cylinder, Sphere, Cone, Torus, Wire
-│   ├── curves.py            # Polygon, Arc, Circle, Ellipse, Line, Spline
-│   ├── curves_ops.py        # ExtrudeCurve, Loft, SweepCurve, Blend/Chamfer/Cover/Trim
-│   ├── booleans.py          # Solid.Add/Subtract/Insert/Intersect/Imprint/Blend
-│   ├── transforms.py        # Translate, Rotate, Mirror, Scale
-│   ├── picks.py             # PickEdge/Face/Vertex/Endpoint
-│   └── wcs.py               # WCS 旋转/平移/对齐/保存/恢复/缩放
-│
-├── material/
-│   └── materials.py         # 材料预设 + 自定义 + **.mtd 库加载**（10 方法）
-│
-├── simulation/              # ★ 仿真设置（5 模块，49 方法）
-│   ├── ports.py             # Port, DiscretePort/DiscreteFacePort, FloquetPort, CablePort
-│   ├── sources.py           # PlaneWave, Coil, FieldSource, FarfieldSource, TimeSignal
-│   ├── monitors.py          # Monitor, Probe
-│   ├── boundary.py          # Boundary, Background, LayerStacking
-│   └── solver.py            # T/FD/Eigenmode/IE/Asymptotic + ParamSweep + Optimizer
-│
-├── mesh/
-│   └── mesh.py              # Mesh/MeshAdaption3D/MeshSettings/MeshShapes（6 方法）
-│
-├── import_export/
-│   └── io.py                # SAT/DXF/STEP/IGES/STL 导入
-│
-└── postprocessing/          # ★ 后处理（4 模块，32 方法）
-    ├── proc.py              # QFactor/SAR/CombineResults/PostProcess1D
-    ├── farfield.py          # FarfieldPlot/FarfieldArray
-    ├── plot.py              # Plot1D/Plot2D3D/标量/矢量/远场极坐标/动画
-    └── result_export.py     # ASCIIExport
+- [x] **项目管理** — 打开/关闭/保存/激活 (`project.py`)
+- [x] **参数管理** — StoreParameter / RestoreParameterExpression (`parameters.py`)
+- [x] **单位设置** — Units 对象 + 单位查询 (`units.py`)
 
-mesh_grid/                   # 网格算法包（2026-06-02 重构）
-├── __init__.py              # 统一入口
-├── hex_grid/                # hexlib → mesh_grid.hex_grid
-│   ├── core.py / io.py / viz.py
-│   └── README.md / SKILL.md
-└── tri_grid/                # tri_lib → mesh_grid.tri_grid
-    ├── core.py
-    └── README.md / SKILL.md
+### 🧊 几何建模
 
-scripts/
-└── gen_docs.py              # API 文档生成器
+- [x] **基本体** — Brick / Cylinder / Sphere / Cone / Torus / ECylinder / Wire (`primitives.py`)
+- [x] **曲线绘制** — Polygon / Arc / Circle / Ellipse / Line / Spline / Rectangle (`curves.py`)
+- [x] **曲线操作** — ExtrudeCurve / Loft / SweepCurve / BlendCurve / ChamferCurve / CoverCurve / TrimCurves (`curves_ops.py`)
+- [x] **布尔运算** — Solid.Add / Subtract / Insert / Intersect / Imprint / BlendEdge (`booleans.py`)
+- [x] **变换操作** — Translate / Rotate / Mirror / Scale / Align (`transforms.py`)
+- [x] **工作坐标系** — WCS 旋转/平移/对齐/保存/恢复/缩放 (`wcs.py`)
+- [x] **选取操作** — PickEdge / PickFace / PickVertex / PickEndpoint (`picks.py`)
+
+### ⚡ 仿真设置
+
+- [x] **端口** — Port / DiscretePort / DiscreteFacePort / **FloquetPort** / **CablePort** / LumpedElement / LumpedFaceElement (`ports.py`)
+- [x] **激励源** — PlaneWave / CurrentPort / Coil / VoltageWire / Charge / CurrentPath / Magnet / FieldSource / PredefinedField / **FarfieldSource** / **TimeSignal** (`sources.py`)
+- [x] **监视器** — Monitor / Probe (`monitors.py`)
+- [x] **边界条件** — Boundary / **Background (增强)** / **LayerStacking** (`boundary.py`)
+- [x] **材料** — Material (预设/自定义) / Component / **材料库加载 (.mtd)** (`materials.py`)
+
+### 🚀 求解器
+
+- [x] **时域求解器** — T-Solver (`solver.py`, 已增强)
+- [x] **频域求解器** — FDSolver
+- [x] **本征模求解器** — EigenmodeSolver (基本 + 扩展)
+- [x] **积分方程求解器** — IESolver (基本 + **增强 `configure_ie_solver_ext`**)
+- [x] **渐近求解器** — AsymptoticSolver
+- [x] **参数扫描** — **ParameterSweep (`add_parameter_sweep_sequence`, `add_sweep_parameter_samples`, `start_parameter_sweep`)**
 - [x] **优化器** — **Optimizer (`add_optimizer_goal`, `add_optimizer_parameter`, `start_optimizer`)**
 - [x] **求解器参数** — SolverParameter (`set_solver_parameter`)
 - [x] **排除仿真** — exclude_from_simulation

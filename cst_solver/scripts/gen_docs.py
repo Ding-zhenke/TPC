@@ -6,10 +6,11 @@ CST Solver API 文档自动生成器
 自动生成结构化 HTML 文档到 docs/cst_solver_api.html
 
 用法:
-    python scripts/gen_docs.py
+    python -m cst_solver.scripts.gen_docs
+    或 cd cst_solver && python scripts/gen_docs.py
 
 输出:
-    docs/cst_solver_api.html
+    cst_solver/docs/cst_solver_api.html
 
 @author: PC
 """
@@ -21,9 +22,9 @@ import inspect
 import textwrap
 from pathlib import Path
 
-# 项目根目录
+# 项目根目录：gen_docs.py 位于 cst_solver/scripts/，其父的父 = 项目根
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CST_SOLVER_DIR = PROJECT_ROOT / "cst_solver"
+CST_SOLVER_DIR = PROJECT_ROOT  # 脚本已在 cst_solver/ 内
 OUTPUT_DIR = PROJECT_ROOT / "docs"
 OUTPUT_FILE = OUTPUT_DIR / "cst_solver_api.html"
 
@@ -37,9 +38,11 @@ sys.path.insert(0, str(PROJECT_ROOT))
 CATEGORIES = {
     "ProjectMixin": "项目操作",
     "ParametersMixin": "参数管理",
+    "UnitsMixin": "单位设置",
     "ModelingPrimitivesMixin": "基本体建模",
     "CurvesMixin": "曲线绘制",
     "CurveOpsMixin": "曲线操作",
+    "WCSMixin": "工作坐标系",
     "SolidOpsMixin": "布尔运算",
     "TransformMixin": "变换操作",
     "PickMixin": "选取操作",
@@ -54,6 +57,7 @@ CATEGORIES = {
     "IOMixin": "导入导出",
     "PostProcMixin": "后处理",
     "FarfieldMixin": "远场分析",
+    "PlotMixin": "绘图控制",
     "ExportMixin": "结果导出",
 }
 
@@ -116,6 +120,15 @@ ALIAS_MAP = {
     "exclude_simulation": "exclude_from_simulation",
     "triangle": "create_triangular_prism",
     "hexagon": "create_hexagonal_prism",
+    "wcs_reset": "reset_wcs",
+    "wcs_rotate": "rotate_wcs",
+    "wcs_translate": "translate_wcs",
+    "wcs_align": "align_wcs",
+    "wcs_set_origin": "set_wcs_origin",
+    "wcs_store": "store_wcs",
+    "wcs_restore": "restore_wcs",
+    "wcs_scale": "scale_wcs",
+    "plot_reset": "reset_plot",
 }
 
 # ============================================================
@@ -790,10 +803,12 @@ def scrape_package():
     """
     import cst_solver
     import cst_solver.project
+    import cst_solver.units
     import cst_solver.parameters
     import cst_solver.modeling.primitives
     import cst_solver.modeling.curves
     import cst_solver.modeling.curves_ops
+    import cst_solver.modeling.wcs
     import cst_solver.modeling.booleans
     import cst_solver.modeling.transforms
     import cst_solver.modeling.picks
@@ -807,16 +822,19 @@ def scrape_package():
     import cst_solver.import_export.io
     import cst_solver.postprocessing.proc
     import cst_solver.postprocessing.farfield
+    import cst_solver.postprocessing.plot
     import cst_solver.postprocessing.result_export
 
     all_methods = []
 
     modules = [
         ("ProjectMixin", cst_solver.project, cst_solver.project.ProjectMixin),
+        ("UnitsMixin", cst_solver.units, cst_solver.units.UnitsMixin),
         ("ParametersMixin", cst_solver.parameters, cst_solver.parameters.ParametersMixin),
         ("ModelingPrimitivesMixin", cst_solver.modeling.primitives, cst_solver.modeling.primitives.ModelingPrimitivesMixin),
         ("CurvesMixin", cst_solver.modeling.curves, cst_solver.modeling.curves.CurvesMixin),
         ("CurveOpsMixin", cst_solver.modeling.curves_ops, cst_solver.modeling.curves_ops.CurveOpsMixin),
+        ("WCSMixin", cst_solver.modeling.wcs, cst_solver.modeling.wcs.WCSMixin),
         ("SolidOpsMixin", cst_solver.modeling.booleans, cst_solver.modeling.booleans.SolidOpsMixin),
         ("TransformMixin", cst_solver.modeling.transforms, cst_solver.modeling.transforms.TransformMixin),
         ("PickMixin", cst_solver.modeling.picks, cst_solver.modeling.picks.PickMixin),
@@ -831,6 +849,7 @@ def scrape_package():
         ("IOMixin", cst_solver.import_export.io, cst_solver.import_export.io.IOMixin),
         ("PostProcMixin", cst_solver.postprocessing.proc, cst_solver.postprocessing.proc.PostProcMixin),
         ("FarfieldMixin", cst_solver.postprocessing.farfield, cst_solver.postprocessing.farfield.FarfieldMixin),
+        ("PlotMixin", cst_solver.postprocessing.plot, cst_solver.postprocessing.plot.PlotMixin),
         ("ExportMixin", cst_solver.postprocessing.result_export, cst_solver.postprocessing.result_export.ExportMixin),
     ]
 

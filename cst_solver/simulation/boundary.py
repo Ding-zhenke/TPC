@@ -63,7 +63,8 @@ class BoundaryMixin:
         self.boundary(**kwargs)
 
     def set_background(self, material='Vacuum', xmin_space=0, xmax_space=0,
-                       ymin_space=0, ymax_space=0, zmin_space=0, zmax_space=0):
+                       ymin_space=0, ymax_space=0, zmin_space=0, zmax_space=0,
+                       background_type='Normal', apply_in_all_directions=False):
         """
         设置背景材料与扩展空间
 
@@ -71,10 +72,13 @@ class BoundaryMixin:
         :param xmin_space/xmax_space: float, X方向扩展空间
         :param ymin_space/ymax_space: float, Y方向扩展空间
         :param zmin_space/zmax_space: float, Z方向扩展空间
+        :param background_type: str, 背景类型 'Normal'/'PEC'/'PMC'/'Open'
+        :param apply_in_all_directions: bool, 是否全局应用
         """
+        apply_str = 'True' if apply_in_all_directions else 'False'
         f1 = f"""With Background
      .Reset
-     .Type "Normal"
+     .Type "{background_type}"
      .Material "{material}"
      .XminSpace "{xmin_space}"
      .XmaxSpace "{xmax_space}"
@@ -82,7 +86,7 @@ class BoundaryMixin:
      .YmaxSpace "{ymax_space}"
      .ZminSpace "{zmin_space}"
      .ZmaxSpace "{zmax_space}"
-     .ApplyInAllDirections "False"
+     .ApplyInAllDirections "{apply_str}"
 End With"""
         self.cst_file.model3d.add_to_history("Set Background", f1)
 
@@ -90,16 +94,21 @@ End With"""
     # 补充: LayerStacking 层叠设置
     # ================================================================
 
-    def set_layer_stacking(self, direction='z', stack_type='Default'):
+    def set_layer_stacking(self, direction='z', stack_type='Default',
+                            periodicity=None):
         """
         设置层叠参数（用于多层板结构仿真）
 
         :param direction: str, 层叠方向 'x'/'y'/'z'，默认 'z'
         :param stack_type: str, 层叠类型 'Default'/'Periodic'，默认 'Default'
+        :param periodicity: list 可选, 周期 [nx, ny]（仅 stack_type='Periodic' 时生效）
         """
         f1 = f"""With LayerStacking
      .Reset
      .Direction "{direction}"
      .StackingType "{stack_type}"
-End With"""
+"""
+        if periodicity:
+            f1 += f'     .Periodicity "{periodicity[0]}", "{periodicity[1]}"\n'
+        f1 += """End With"""
         self.cst_file.model3d.add_to_history("LayerStacking Config", f1)

@@ -44,3 +44,28 @@ class UnitsMixin:
      .Capacitance "{capacitance}"
 End With"""
         self.cst_file.model3d.add_to_history("Set Units", f1)
+
+    # ================================================================
+    # 查询单位（通过 CST 原生接口）
+    # ================================================================
+
+    def get_units(self, unit_type='length'):
+        """
+        查询当前工程中指定类型的单位
+
+        :param unit_type: str, 单位类型
+            'length'/'frequency'/'time'/'temperature'
+        :return: str, 单位字符串
+        """
+        try:
+            units = self.cst_file.model3d.Units
+            if unit_type == 'length':
+                return units.GetLengthUnit()
+            elif unit_type == 'frequency':
+                return units.GetFrequencyUnit()
+            elif unit_type == 'time':
+                return units.GetTimeUnit()
+            elif unit_type == 'temperature':
+                return units.GetTemperatureUnit()
+        except Exception:
+            return 'unknown'
