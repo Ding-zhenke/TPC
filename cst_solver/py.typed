@@ -1,0 +1,2 @@
+# PEP 561 marker file
+# 标记此包支持类型注解，Pylance 会读取 .pyi 存根文件

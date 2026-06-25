@@ -11,6 +11,9 @@
 @author: PC
 """
 
+import numpy as np
+import matplotlib.pyplot as plt
+
 import warnings
 warnings.warn(
     "hexlib 已迁移至 mesh_grid.hex_grid，"

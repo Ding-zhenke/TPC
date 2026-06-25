@@ -43,7 +43,7 @@
 <body>
     <div class="nav">
         <strong>📖 mesh_grid.hex_grid — 六边形网格 API 文档</strong> |
-        <a href='#Configuration'>Configuration</a><a href='#DoubledCoord'>DoubledCoord</a><a href='#Hex'>Hex</a><a href='#HexGridVisualizer'>HexGridVisualizer</a><a href='#HexLib'>HexLib</a><a href='#Layout'>Layout</a><a href='#OffsetCoord'>OffsetCoord</a><a href='#Orientation'>Orientation</a><a href='#Path'>Path</a><a href='#Point'>Point</a><a href='#Polygon'>Polygon</a><a href='#RegularPolygon'>RegularPolygon</a><a href='#box'>box</a><a href='#create_hex_polygon'>create_hex_polygon</a><a href='#read_and_display_dxf_matplotlib'>read_and_display_dxf_matplotlib</a><a href='#save_multi_dxf'>save_multi_dxf</a><a href='#save_to_dxf'>save_to_dxf</a><a href='#tqdm'>tqdm</a>
+        <a href='#Configuration'>Configuration</a><a href='#DoubledCoord'>DoubledCoord</a><a href='#Hex'>Hex</a><a href='#HexGridVisualizer'>HexGridVisualizer</a><a href='#HexLib'>HexLib</a><a href='#Layout'>Layout</a><a href='#OffsetCoord'>OffsetCoord</a><a href='#Orientation'>Orientation</a><a href='#Path'>Path</a><a href='#Point'>Point</a><a href='#PolyCollection'>PolyCollection</a><a href='#Polygon'>Polygon</a><a href='#RegularPolygon'>RegularPolygon</a><a href='#box'>box</a><a href='#create_hex_polygon'>create_hex_polygon</a><a href='#read_and_display_dxf_matplotlib'>read_and_display_dxf_matplotlib</a><a href='#save_multi_dxf'>save_multi_dxf</a><a href='#save_to_dxf'>save_to_dxf</a><a href='#tqdm'>tqdm</a>
     </div>
 
     <h1>mesh_grid.hex_grid — 六边形网格 API 文档</h1>
@@ -56,9 +56,9 @@
         <h2>📋 API 总览</h2>
         <table>
             <tr><th>类型</th><th>名称</th><th>描述</th></tr>
-            <tr><td>📦</td><td><a href='#Configuration'>Configuration</a></td><td>Configuration options for the :mod:`drawing` add-on.</td></tr><tr><td>📦</td><td><a href='#DoubledCoord'>DoubledCoord</a></td><td>DoubledCoord(col, row)</td></tr><tr><td>📦</td><td><a href='#Hex'>Hex</a></td><td>Hex(q, r, s)</td></tr><tr><td>📦</td><td><a href='#HexGridVisualizer'>HexGridVisualizer</a></td><td>六边形网格可视化类（基于 matplotlib）</td></tr><tr><td>📦</td><td><a href='#HexLib'>HexLib</a></td><td>六边形网格核心算法类</td></tr><tr><td>📦</td><td><a href='#Layout'>Layout</a></td><td>Layout(orientation, size, origin)</td></tr><tr><td>📦</td><td><a href='#OffsetCoord'>OffsetCoord</a></td><td>OffsetCoord(col, row)</td></tr><tr><td>📦</td><td><a href='#Orientation'>Orientation</a></td><td>Orientation(f0, f1, f2, f3, b0, b1, b2, b3, start_angle)</td></tr><tr><td>📦</td><td><a href='#Path'>Path</a></td><td>A series of possibly disconnected, possibly closed, line and curve</td></tr><tr><td>📦</td><td><a href='#Point'>Point</a></td><td>Point(x, y)</td></tr><tr><td>📦</td><td><a href='#Polygon'>Polygon</a></td><td>A geometry type representing an area that is enclosed by a linear ring.</td></tr><tr><td>📦</td><td><a href='#RegularPolygon'>RegularPolygon</a></td><td>A regular polygon patch.</td></tr><tr><td>🔧</td><td><a href='#box'>box</a></td><td>Return a rectangular polygon with configurable normal vector.</td></tr><tr><td>🔧</td><td><a href='#create_hex_polygon'>create_hex_polygon</a></td><td>创建一个 Shapely 六边形多边形</td></tr><tr><td>🔧</td><td><a href='#read_and_display_dxf_matplotlib'>read_and_display_dxf_matplotlib</a></td><td>使用 matplotlib 读取并显示 DXF 文件</td></tr><tr><td>🔧</td><td><a href='#save_multi_dxf'>save_multi_dxf</a></td><td>将多组六边形分别导出为 DXF 文件（每组独立图层）</td></tr><tr><td>🔧</td><td><a href='#save_to_dxf'>save_to_dxf</a></td><td>将六边形网格合并后导出为 DXF 文件</td></tr><tr><td>📦</td><td><a href='#tqdm'>tqdm</a></td><td>Decorate an iterable object, returning an iterator which acts exactly</td></tr>
+            <tr><td>📦</td><td><a href='#Configuration'>Configuration</a></td><td>Configuration options for the :mod:`drawing` add-on.</td></tr><tr><td>📦</td><td><a href='#DoubledCoord'>DoubledCoord</a></td><td>DoubledCoord(col, row)</td></tr><tr><td>📦</td><td><a href='#Hex'>Hex</a></td><td>Hex(q, r, s)</td></tr><tr><td>📦</td><td><a href='#HexGridVisualizer'>HexGridVisualizer</a></td><td>六边形网格可视化类（基于 matplotlib，PolyCollection 向量化绘制）</td></tr><tr><td>📦</td><td><a href='#HexLib'>HexLib</a></td><td>六边形网格核心算法类</td></tr><tr><td>📦</td><td><a href='#Layout'>Layout</a></td><td>Layout(orientation, size, origin)</td></tr><tr><td>📦</td><td><a href='#OffsetCoord'>OffsetCoord</a></td><td>OffsetCoord(col, row)</td></tr><tr><td>📦</td><td><a href='#Orientation'>Orientation</a></td><td>Orientation(f0, f1, f2, f3, b0, b1, b2, b3, start_angle)</td></tr><tr><td>📦</td><td><a href='#Path'>Path</a></td><td>A series of possibly disconnected, possibly closed, line and curve</td></tr><tr><td>📦</td><td><a href='#Point'>Point</a></td><td>Point(x, y)</td></tr><tr><td>📦</td><td><a href='#PolyCollection'>PolyCollection</a></td><td>Base class for collections that have an array of sizes.</td></tr><tr><td>📦</td><td><a href='#Polygon'>Polygon</a></td><td>A geometry type representing an area that is enclosed by a linear ring.</td></tr><tr><td>📦</td><td><a href='#RegularPolygon'>RegularPolygon</a></td><td>A regular polygon patch.</td></tr><tr><td>🔧</td><td><a href='#box'>box</a></td><td>Return a rectangular polygon with configurable normal vector.</td></tr><tr><td>🔧</td><td><a href='#create_hex_polygon'>create_hex_polygon</a></td><td>创建一个 Shapely 六边形多边形</td></tr><tr><td>🔧</td><td><a href='#read_and_display_dxf_matplotlib'>read_and_display_dxf_matplotlib</a></td><td>使用 matplotlib 读取并显示 DXF 文件</td></tr><tr><td>🔧</td><td><a href='#save_multi_dxf'>save_multi_dxf</a></td><td>将多组六边形分别导出为 DXF 文件（每组独立图层）</td></tr><tr><td>🔧</td><td><a href='#save_to_dxf'>save_to_dxf</a></td><td>将六边形网格合并后导出为 DXF 文件</td></tr><tr><td>📦</td><td><a href='#tqdm'>tqdm</a></td><td>Decorate an iterable object, returning an iterator which acts exactly</td></tr>
         </table>
-        <p>共 <strong>18</strong> 个公开符号</p>
+        <p>共 <strong>19</strong> 个公开符号</p>
     </div>
 
     <h2>📚 详细文档</h2>
@@ -95,8 +95,8 @@
                 <span class="item-name">HexGridVisualizer</span>
                 <span class="item-type type-class">class</span>
             </div>
-            <div class="item-signature">HexGridVisualizer(hex_size=30, orientation=&#x27;pointy&#x27;, origin=(0, 0))</div>
-            <div class="item-doc">六边形网格可视化类（基于 matplotlib）</div>
+            <div class="item-signature">HexGridVisualizer(hex_size=30, orientation=&#x27;pointy&#x27;, origin=(0, 0), coord_auto_hide_threshold=500)</div>
+            <div class="item-doc">六边形网格可视化类（基于 matplotlib，PolyCollection 向量化绘制）<br><br>使用 matplotlib.collections.PolyCollection 替代逐格 PathPatch，<br>将 N 个独立 Patch 对象降为 1 个 PolyCollection，大幅提升大网格绘制性能。</div>
         </div>
         
         <div class="item" id="HexLib">
@@ -153,6 +153,15 @@
             <div class="item-doc">Point(x, y)</div>
         </div>
         
+        <div class="item" id="PolyCollection">
+            <div class="item-header">
+                <span class="item-name">PolyCollection</span>
+                <span class="item-type type-class">class</span>
+            </div>
+            <div class="item-signature">PolyCollection(verts, sizes=None, *, closed=True, **kwargs)</div>
+            <div class="item-doc">Base class for collections that have an array of sizes.</div>
+        </div>
+        
         <div class="item" id="Polygon">
             <div class="item-header">
                 <span class="item-name">Polygon</span>
@@ -194,8 +203,8 @@
                 <span class="item-name">read_and_display_dxf_matplotlib</span>
                 <span class="item-type type-function">function</span>
             </div>
-            <div class="item-signature">read_and_display_dxf_matplotlib(filename=&#x27;hex_grid.dxf&#x27;)</div>
-            <div class="item-doc">使用 matplotlib 读取并显示 DXF 文件<br><br><b>Args:</b><br>    filename: str，DXF 文件路径</div>
+            <div class="item-signature">read_and_display_dxf_matplotlib(filename=&#x27;hex_grid.dxf&#x27;, show_on=True)</div>
+            <div class="item-doc">使用 matplotlib 读取并显示 DXF 文件<br><br><b>Args:</b><br>    filename: str，DXF 文件路径<br>    show_on: bool，是否显示图表</div>
         </div>
         
         <div class="item" id="save_multi_dxf">
@@ -227,7 +236,7 @@
         
 
     <footer>
-        <p>自动生成于 2026-05-26 18:45</p>
+        <p>自动生成于 2026-06-23 21:41</p>
         <p>TPC Project — mesh_grid 文档</p>
     </footer>
 </body>

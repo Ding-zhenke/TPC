@@ -19,6 +19,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
+from matplotlib.collections import PolyCollection
 from typing import Tuple, List, Dict, Union, Optional
 from tqdm import tqdm
 import matplotlib
@@ -94,18 +95,48 @@ def plot_tri_color(center: Tuple[float, float],
     )
 
 
+def equilateral_triangles_batch(centers: np.ndarray, a: float, theta: float = 0) -> np.ndarray:
+    """向量化：批量计算等边三角形的顶点坐标
+
+    利用 numpy 广播一次性生成所有三角形的顶点坐标。
+
+    参数:
+        centers: numpy 数组，形状 (N, 2)，每行 (cx, cy) 为中心坐标
+        a: 三角形边长
+        theta: 旋转角度（度），默认 0 度（朝上）
+
+    返回:
+        numpy 数组，形状 (N, 3, 2) — N 个三角形，每个 3 个顶点 (x, y)
+    """
+    R = a / np.sqrt(3)
+    base_angles = np.deg2rad([90, 210, 330])
+    rot = np.radians(theta)
+    angles = base_angles + rot  # (3,)
+
+    # centers: (N, 2), 广播到 (N, 3, 2)
+    cx = centers[:, 0:1]  # (N, 1)
+    cy = centers[:, 1:2]  # (N, 1)
+
+    x = cx + R * np.cos(angles[np.newaxis, :])  # (N, 3)
+    y = cy + R * np.sin(angles[np.newaxis, :])  # (N, 3)
+
+    return np.stack([x, y], axis=-1)  # (N, 3, 2)
+
+
 def build_triangle_lattice(row_range: Tuple[int, int],
                           col_range: Tuple[int, int],
                           a: float,
                           offset: Tuple[float, float] = (0.0, 0.0),
                           theta: float = 0.0) -> Tuple[
-                              List[np.ndarray],
-                              List[Tuple[float, float]],
-                              List[Tuple[float, float]],
+                              np.ndarray,
+                              np.ndarray,
+                              np.ndarray,
                               Dict[Tuple[int, int], Tuple[float, float]],
                               Dict[Tuple[int, int], Tuple[float, float]]]:
     """
-    生成三角形网格结构数据
+    生成三角形网格结构数据（向量化版本）
+
+    使用 numpy 网格广播替代逐格双重 for 循环，大幅提升大网格生成性能。
 
     参数:
         row_range: 行号范围 (start_row, end_row)，包含端点
@@ -115,39 +146,46 @@ def build_triangle_lattice(row_range: Tuple[int, int],
         theta: 旋转角度（度）
 
     返回:
-        triangles: 三角形顶点列表
-        centers_up: 朝上三角形中心坐标列表
-        centers_dn: 朝下三角形中心坐标列表
+        triangles: numpy 数组，形状 (N, 3, 2)，所有朝上三角形顶点
+        centers_up: numpy 数组，形状 (N, 2)，朝上三角形中心坐标
+        centers_dn: numpy 数组，形状 (N, 2)，朝下三角形中心坐标
         pos_to_center_up: 朝上三角形位置坐标到中心坐标的映射
         pos_to_center_dn: 朝下三角形位置坐标到中心坐标的映射
     """
     h = a * np.sqrt(3) / 2  # 三角形高
-    triangles, centers_up, centers_dn = [], [], []
-    pos_to_center_up: Dict[Tuple[int, int], Tuple[float, float]] = {}
-    pos_to_center_dn: Dict[Tuple[int, int], Tuple[float, float]] = {}
-
     start_row, end_row = row_range
     start_col, end_col = col_range
 
-    for r in tqdm(range(start_row, end_row + 1)):
+    # 用 numpy 网格广播生成所有 (r, c) 组合
+    rows = np.arange(start_row, end_row + 1, dtype=float)
+    cols = np.arange(start_col, end_col + 1, dtype=float)
+    RR, CC = np.meshgrid(rows, cols, indexing='ij')  # (NR, NC)
+
+    # 朝上三角形中心
+    cx_up = offset[0] + CC * a + (RR % 2) * (a / 2)   # (NR, NC)
+    cy_up = offset[1] + RR * h                          # (NR, NC)
+    centers = np.stack([cx_up, cy_up], axis=-1).reshape(-1, 2)  # (N, 2)
+
+    # 向量化批量顶点计算
+    triangles = equilateral_triangles_batch(centers, a, theta)  # (N, 3, 2)
+
+    # 朝下三角形中心
+    centers_dn = centers.copy()
+    centers_dn[:, 1] -= h * 2 / 3
+
+    # 构建位置映射字典
+    pos_to_center_up: Dict[Tuple[int, int], Tuple[float, float]] = {}
+    pos_to_center_dn: Dict[Tuple[int, int], Tuple[float, float]] = {}
+    idx = 0
+    for r in range(start_row, end_row + 1):
         for c in range(start_col, end_col + 1):
-            # 计算朝上三角形中心
-            cx_up = offset[0] + c * a + (r % 2) * (a / 2)
-            cy_up = offset[1] + r * h
-            tri = equilateral_triangle_vertices((cx_up, cy_up), a, theta)
+            pos_to_center_up[(r, c)] = (float(cx_up[r - start_row, c - start_col]),
+                                        float(cy_up[r - start_row, c - start_col]))
+            pos_to_center_dn[(r, c)] = (float(centers_dn[idx, 0]),
+                                        float(centers_dn[idx, 1]))
+            idx += 1
 
-            # 存储数据
-            triangles.append(tri)
-            centers_up.append((cx_up, cy_up))
-            pos_to_center_up[(r, c)] = (cx_up, cy_up)
-
-            # 计算朝下三角形中心（与朝上三角形共享底边）
-            cx_dn = cx_up
-            cy_dn = cy_up - h * 2 / 3  # 重心位置
-            centers_dn.append((cx_dn, cy_dn))
-            pos_to_center_dn[(r, c)] = (cx_dn, cy_dn)
-
-    return triangles, centers_up, centers_dn, pos_to_center_up, pos_to_center_dn
+    return triangles, centers, centers_dn, pos_to_center_up, pos_to_center_dn
 
 
 def pos_to_xy(row_range: Tuple[int, int],
@@ -250,15 +288,50 @@ def xy_to_pos(row_range: Tuple[int, int],
     return (r, c)
 
 
+def _build_down_triangle_verts(row_range, col_range, a, offset, theta):
+    """构建朝下三角形的顶点数组（向量化版本，修复右侧重叠）
+
+    返回:
+        np.ndarray: (M, 3, 2) — 有效朝下三角形的顶点
+    """
+    from itertools import product
+    start_row, end_row = row_range
+    start_col, end_col = col_range
+    h = a * np.sqrt(3) / 2
+
+    dn_centers = []
+    for r in range(start_row, end_row):
+        for c in range(start_col, end_col + 1):
+            if r % 2 == 0 and c >= end_col:
+                continue  # 偶数行最后一列无朝下三角形
+            if r % 2 == 0:
+                cx = offset[0] + c * a + a / 2
+            else:
+                cx = offset[0] + c * a
+            cy = offset[1] + r * h + h / 3
+            dn_centers.append((cx, cy))
+
+    if not dn_centers:
+        return np.empty((0, 3, 2))
+    return equilateral_triangles_batch(np.array(dn_centers), a, theta + 180)
+
+
 def plot_triangle_grid(row_range: Tuple[int, int],
                       col_range: Tuple[int, int],
                       a: float = 1.0,
                       offset: Tuple[float, float] = (0.0, 0.0),
                       theta: float = 0.0,
                       show_labels: bool = True,
-                      show_points: bool = True) -> Tuple[plt.Figure, plt.Axes]:
+                      show_points: bool = True,
+                      fill_colors_up: Optional[list] = None,
+                      fill_colors_down: Optional[list] = None,
+                      coord_auto_hide_threshold: int = 500,
+                      edgecolor: str = 'black',
+                      linewidth: float = 1.0) -> Tuple[plt.Figure, plt.Axes]:
     """
-    绘制三角形网格并标记中心（修复右侧三角形重叠问题）
+    向量化绘制三角形网格 — 使用 PolyCollection 替代逐格 Polygon
+
+    性能提升：从 O(N) 个独立 Polygon 对象降为 O(1) 个 PolyCollection。
 
     参数:
         row_range: 行号范围 (start_row, end_row)
@@ -268,6 +341,11 @@ def plot_triangle_grid(row_range: Tuple[int, int],
         theta: 旋转角度（度）
         show_labels: 是否显示位置坐标标签
         show_points: 是否显示中心标记点
+        fill_colors_up: 朝上三角形颜色数组（长度 = 朝上三角形数），None 表示不填充
+        fill_colors_down: 朝下三角形颜色数组，None 表示不填充
+        coord_auto_hide_threshold: 网格数超过此阈值时自动隐藏坐标标签
+        edgecolor: 边框颜色
+        linewidth: 边框线宽
 
     返回:
         fig: 图形对象
@@ -277,61 +355,64 @@ def plot_triangle_grid(row_range: Tuple[int, int],
     triangles, centers_up, centers_dn, pos_to_center_up, pos_to_center_dn = \
         build_triangle_lattice(row_range, col_range, a, offset, theta)
 
-    # 创建图形
-    fig, ax = plt.subplots(figsize=(10, 8))
-    h = a * np.sqrt(3) / 2  # 三角形高
-
-    # 绘制朝上三角形
-    for tri in tqdm(triangles):
-        polygon = Polygon(tri, fill=False, edgecolor='black', linewidth=1)
-        ax.add_patch(polygon)
-
-    # 绘制朝下三角形（修复右侧重叠问题）
     start_row, end_row = row_range
     start_col, end_col = col_range
-    for r in tqdm(range(start_row, end_row)):  # 只到 end_row-1，避免越界
-        for c in range(start_col, end_col + 1):
-            if r % 2 == 0:
-                # 偶数行：朝下三角形仅在 c < end_col 时绘制（避免右侧重叠）
-                if c < end_col:
-                    cx_dn = offset[0] + c * a + a / 2
-                    cy_dn = offset[1] + r * h + h / 3
-                    tri = equilateral_triangle_vertices((cx_dn, cy_dn), a, theta + 180)
-                    ax.add_patch(Polygon(tri, fill=False, edgecolor='black', linewidth=1))
-            else:
-                # 奇数行：朝下三角形在所有有效列绘制（不会重叠）
-                cx_dn = offset[0] + c * a
-                cy_dn = offset[1] + r * h + h / 3
-                tri = equilateral_triangle_vertices((cx_dn, cy_dn), a, theta + 180)
-                ax.add_patch(Polygon(tri, fill=False, edgecolor='black', linewidth=1))
+    h = a * np.sqrt(3) / 2
+
+    # 创建图形
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    # 朝下三角形顶点
+    dn_verts = _build_down_triangle_verts(row_range, col_range, a, offset, theta)
+    n_up = len(triangles)
+    n_dn = len(dn_verts)
+
+    # === 朝上三角形 PolyCollection ===
+    fc_up = fill_colors_up if fill_colors_up is not None else 'none'
+    ec_up = edgecolor if fill_colors_up is None else edgecolor
+    up_poly = PolyCollection(triangles, facecolors=fc_up, edgecolors=ec_up,
+                             linewidths=linewidth, closed=True)
+    ax.add_collection(up_poly)
+
+    # === 朝下三角形 PolyCollection ===
+    if n_dn > 0:
+        fc_dn = fill_colors_down if fill_colors_down is not None else 'none'
+        ec_dn = edgecolor if fill_colors_down is None else edgecolor
+        dn_poly = PolyCollection(dn_verts, facecolors=fc_dn, edgecolors=ec_dn,
+                                 linewidths=linewidth, closed=True)
+        ax.add_collection(dn_poly)
 
     # 标记中心和标签
-    if show_points:
-        # 朝上三角形中心（红色）
-        for (r, c), (x, y) in pos_to_center_up.items():
-            ax.scatter(x, y, color='red', s=50, zorder=5)
-            if show_labels:
-                ax.annotate(f'({r},{c})', (x, y), xytext=(5, 5),
-                           textcoords='offset points', fontsize=8)
+    n_total = n_up + n_dn
+    show_coord = show_points
+    if show_coord and n_total > coord_auto_hide_threshold:
+        show_coord = False
 
-        # 朝下三角形中心（橙色）
+    if show_points:
+        for (r, c), (x, y) in pos_to_center_up.items():
+            ax.scatter(x, y, color='red', s=20, zorder=5)
+            if show_labels and show_coord:
+                ax.annotate(f'({r},{c})', (x, y), xytext=(3, 3),
+                           textcoords='offset points', fontsize=6)
+
         for (r, c), (x, y) in pos_to_center_dn.items():
-            # 仅显示有效范围内的朝下三角形（避免右侧重叠的点）
             valid = (r <= end_row) and (
-                (r % 2 == 1) or           # 奇数行全部有效
-                (r % 2 == 0 and c < end_col)  # 偶数行仅 c < end_col 有效
+                (r % 2 == 1) or (r % 2 == 0 and c < end_col)
             )
             if valid:
-                ax.scatter(x, y, color='orange', s=50, zorder=5)
-                if show_labels:
-                    ax.annotate(f'd({r},{c})', (x, y), xytext=(5, 5),
-                               textcoords='offset points', fontsize=8, color='orange')
+                ax.scatter(x, y, color='orange', s=20, zorder=5)
+                if show_labels and show_coord:
+                    ax.annotate(f'd({r},{c})', (x, y), xytext=(3, 3),
+                               textcoords='offset points', fontsize=6, color='orange')
 
     # 设置坐标轴
-    min_x = min(p[0] for tri in triangles for p in tri)
-    max_x = max(p[0] for tri in triangles for p in tri)
-    min_y = min(p[1] for tri in triangles for p in tri)
-    max_y = max(p[1] for tri in triangles for p in tri)
+    if n_up > 0:
+        min_x = triangles[..., 0].min()
+        max_x = triangles[..., 0].max()
+        min_y = triangles[..., 1].min()
+        max_y = triangles[..., 1].max()
+    else:
+        min_x, max_x, min_y, max_y = 0, 1, 0, 1
 
     ax.set_aspect('equal')
     ax.set_xlim(min_x - a, max_x + a)
@@ -342,6 +423,64 @@ def plot_triangle_grid(row_range: Tuple[int, int],
     ax.grid(True, linestyle='--', alpha=0.7)
 
     return fig, ax
+
+
+def color_triangles(ax: plt.Axes, up_centers: np.ndarray, dn_centers: np.ndarray,
+                    a: float, theta: float = 0,
+                    up_colors: Optional[list] = None,
+                    dn_colors: Optional[list] = None,
+                    cmap: str = 'viridis',
+                    vmin: Optional[float] = None,
+                    vmax: Optional[float] = None,
+                    edgecolor: str = 'black',
+                    linewidth: float = 1.0) -> Tuple[PolyCollection, PolyCollection]:
+    """向量化涂色：在已有坐标轴上绘制带颜色的三角形网格
+
+    所有三角形通过 PolyCollection 一次性绘制，支持数值数组自动 cmap 映射。
+
+    参数:
+        ax: matplotlib Axes 对象
+        up_centers: 朝上三角形中心坐标数组 (N_up, 2)
+        dn_centers: 朝下三角形中心坐标数组 (N_dn, 2)
+        a: 三角形边长
+        theta: 旋转角度（度）
+        up_colors: 朝上三角形颜色数组（None 表示不填充）
+        dn_colors: 朝下三角形颜色数组（None 表示不填充）
+        cmap: 数值映射的 colormap 名称（默认 'viridis'）
+        vmin, vmax: 数值映射范围
+        edgecolor: 边框颜色
+        linewidth: 边框线宽
+
+    返回:
+        (up_poly, dn_poly): 两个 PolyCollection 对象，可用于后续更新颜色
+    """
+    up_verts = equilateral_triangles_batch(up_centers, a, theta) if len(up_centers) > 0 else np.empty((0, 3, 2))
+    dn_verts = equilateral_triangles_batch(dn_centers, a, theta + 180) if len(dn_centers) > 0 else np.empty((0, 3, 2))
+
+    def _resolve_colors(colors, n):
+        if colors is None:
+            return 'none'
+        colors = np.asarray(colors)
+        if colors.ndim == 1 and np.issubdtype(colors.dtype, np.number):
+            _vmin = vmin if vmin is not None else colors.min()
+            _vmax = vmax if vmax is not None else colors.max()
+            norm = plt.Normalize(_vmin, _vmax)
+            mapper = plt.cm.ScalarMappable(norm=norm, cmap=cmap)
+            return mapper.to_rgba(colors)
+        return colors
+
+    up_fc = _resolve_colors(up_colors, len(up_verts))
+    dn_fc = _resolve_colors(dn_colors, len(dn_verts))
+
+    up_poly = PolyCollection(up_verts, facecolors=up_fc, edgecolors=edgecolor,
+                             linewidths=linewidth, closed=True)
+    dn_poly = PolyCollection(dn_verts, facecolors=dn_fc, edgecolors=edgecolor,
+                             linewidths=linewidth, closed=True)
+
+    ax.add_collection(up_poly)
+    ax.add_collection(dn_poly)
+
+    return up_poly, dn_poly
 
 
 def find_corner_points(points: Union[List[Tuple[float, float]], np.ndarray]) -> np.ndarray:
