@@ -291,6 +291,53 @@ End With
         self.cst_file.model3d.add_to_history(
             'Change_material:' + model + ' to ' + material, f1)
 
+    def change_material_color(self, name, r, g, b, folder="",
+                              wireframe=False, reflection=False,
+                              allow_outline=True, transparent_outline=False,
+                              transparency=0):
+        """
+        修改已有材料的显示颜色
+
+        参考 CST VBA:
+            With Material
+                .Name "Polycarbonate (lossy)"
+                .Folder ""
+                .Color "0.694118", "0.694118", "0.694118"
+                ...
+                .ChangeColor
+            End With
+
+        :param name: str, 材料名称
+        :param r: float/str, 红色通道 (0~1)
+        :param g: float/str, 绿色通道 (0~1)
+        :param b: float/str, 蓝色通道 (0~1)
+        :param folder: str, 材料所在目录，默认根目录
+        :param wireframe: bool, 是否线框显示
+        :param reflection: bool, 是否反射显示
+        :param allow_outline: bool, 是否允许轮廓
+        :param transparent_outline: bool, 是否透明轮廓
+        :param transparency: int/float/str, 透明度
+        """
+        f1 = f"""
+        With Material
+            .Name "{name}"
+            .Folder "{folder}"
+            .Color "{r}", "{g}", "{b}"
+            .Wireframe "{str(bool(wireframe))}"
+            .Reflection "{str(bool(reflection))}"
+            .Allowoutline "{str(bool(allow_outline))}"
+            .Transparentoutline "{str(bool(transparent_outline))}"
+            .Transparency "{transparency}"
+            .ChangeColor
+        End With
+        """
+        self.cst_file.model3d.add_to_history(
+            f"Change material color: {name}", f1)
+
+    def change_material_colour(self, *args, **kwargs):
+        """change_material_color() 的英式拼写别名。"""
+        self.change_material_color(*args, **kwargs)
+
     # ================================================================
     # 材料库管理: 从 CST 材料库 .mtd 文件加载材料
     # ================================================================

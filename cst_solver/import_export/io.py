@@ -14,6 +14,50 @@ class IOMixin:
     提供各类 CAD 格式的导入和结果导出功能
     """
 
+    def import_subproject(self, filename, subproject_name, scale_factor='0.001',
+                          version='15.0', portname_map='',
+                          import_to_active_coordinate_system='True',
+                          curves='True', wires='True',
+                          solid_wires_as_solids='False',
+                          import_sources='False',
+                          import_sensitivity_information='False'):
+        """
+        导入子 CST 工程到当前工程中
+
+        对应 CST VBA 的 StartSubProject / EndSubProject 工作流。
+
+        :param filename: str, 子项目导入文件名，例如 *.sab
+        :param subproject_name: str, 子 CST 工程路径 (.cst)
+        :param scale_factor: str, 子项目缩放因子，默认 '0.001'
+        :param version: str, CST 导入版本号，默认 '15.0'
+        :param portname_map: str, 端口映射表，默认空字符串
+        :param import_to_active_coordinate_system: str, 是否导入到当前坐标系
+        :param curves: str, 是否导入曲线
+        :param wires: str, 是否导入线框
+        :param solid_wires_as_solids: str, 是否将实体线框作为实体导入
+        :param import_sources: str, 是否导入源
+        :param import_sensitivity_information: str, 是否导入灵敏度信息
+        """
+        f1 = f"""StartSubProject 
+        With SAT
+     .Reset
+     .FileName "{filename}"
+     .SubProjectName3D "{subproject_name}"
+     .SubProjectScaleFactor "{scale_factor}"
+     .Version "{version}"
+     .PortnameMap "{portname_map}"
+     .ImportToActiveCoordinateSystem "{import_to_active_coordinate_system}"
+     .Curves "{curves}"
+     .Wires "{wires}"
+     .SolidWiresAsSolids "{solid_wires_as_solids}"
+     .ImportSources "{import_sources}"
+     .Set "ImportSensitivityInformation", "{import_sensitivity_information}"
+     .Read
+End With
+EndSubProject
+"""
+        self.cst_file.model3d.add_to_history("import external project: " + subproject_name, f1)
+
     def sat_import(self, filename, tpn='True'):
         """
         导入 SAT 格式文件

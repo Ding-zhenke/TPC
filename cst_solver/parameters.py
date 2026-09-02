@@ -14,19 +14,42 @@ class ParametersMixin:
     提供参数存储、表达式设置、频率范围配置等功能
     """
 
-    def para(self, name, value, log_flag=0):
+    def para(self, name, value, log_flag=0, expression=''):
         """
         在 CST 工程中创建/修改单个全局仿真参数
 
         :param name: str, 参数名称
         :param value: float/str, 参数赋值
         :param log_flag: int, 刷新标识 0-不刷新历史 1-全量刷新工程历史使参数立即生效
+        :param expression: str, 参数说明文本（常用于备注），默认空字符串
         """
         self.cst_file.model3d.StoreParameter(f"{name}", value)
+        if expression:
+            self._set_parameter_description(name, expression)
         if log_flag == 1:
             self.cst_file.model3d.full_history_rebuild()
 
-    def set_parameter(self, name, value, log_flag=0):
+    def _set_parameter_description(self, name, description):
+        """
+        设置参数说明文本。
+
+        不同 CST Python 接口版本对该能力暴露不一致，这里优先尝试
+        直接 API，失败时回退到 VBA 历史命令。
+        """
+        try:
+            self.cst_file.model3d.SetParameterDescription(
+                f"{name}", f"{description}")
+            return
+        except Exception:
+            pass
+
+        cmd = f'''
+        Parameter.SetDescription "{name}", "{description}"
+        '''
+        self.cst_file.model3d.add_to_history(
+            f"Parameter description: {name}", cmd)
+
+    def set_parameter(self, name, value, log_flag=0, expression=''):
         """
         创建/修改单个参数（蛇形命名）
         等同于 para()
@@ -34,8 +57,9 @@ class ParametersMixin:
         :param name: str, 参数名称
         :param value: float/str, 参数值
         :param log_flag: int, 0-不刷新 1-全量刷新历史
+        :param expression: str, 参数表达式说明，默认空字符串
         """
-        self.para(name, value, log_flag)
+        self.para(name, value, log_flag, expression)
 
     def paras(self, name, value, log_flag=0):
         """
@@ -63,7 +87,8 @@ class ParametersMixin:
         :param name: str, 表达式参数名称
         :param value: str, 表达式内容，如 'a*2+1', 'sqrt(b)'
         """
-        self.cst_file.model3d.RestoreParameterExpression(f"{name}", f"{value}")
+        # 对于大多数 CST 版本，StoreParameter 直接传表达式字符串即可。
+        self.cst_file.model3d.StoreParameter(f"{name}", f"{value}")
 
     def set_expression(self, name, value):
         """

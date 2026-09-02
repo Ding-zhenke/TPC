@@ -1,17 +1,17 @@
 # cst_solver 待实现功能清单
 
-> 最后更新: 2026-06-02
-> 当前覆盖: **207 个方法** / **22 个 Mixin 类别**
+> 最后更新: 2026-07-02
+> 当前覆盖: **209 个方法** / **22 个 Mixin 类别**
 
 ---
 
 ## ✅ 已实现功能总览
 
-### 包结构与模块 (207 方法 / 22 类别)
+### 包结构与模块 (208 方法 / 23 类别)
 
 ```
 cst_solver/
-├── __init__.py              # setup 主类（207 方法，22 Mixin）
+├── __init__.py              # setup 主类（208 方法，23 Mixin）
 ├── config / config_template # 配置系统（.gitignore）
 ├── project.py / parameters  # 项目管理 + 参数（20 方法）
 ├── units.py                 # 单位设置（2 方法）
@@ -72,7 +72,7 @@ scripts/
 
 ### 📂 导入导出
 
-- [x] **CAD 导入** — SAT / DXF / STEP / IGES / STL (`io.py`)
+- [x] **CAD 导入** — SAT / DXF / STEP / IGES / STL / 子项目导入 (`io.py`)
 
 ### 📊 后处理
 
@@ -91,7 +91,7 @@ scripts/
 
 - [x] **文档生成** — `scripts/gen_docs.py` (自动扫描 docstring → HTML)
 - [x] **配置系统** — `config_template.py` / `config.py` (`.gitignore`)
-- [x] **HTML API 文档** — `docs/cst_solver_api.html` (207 方法, 22 类别)
+- [x] **HTML API 文档** — `docs/cst_solver_api.html` (208 方法, 23 类别)
 - [x] **项目概览** — `docs/PROJECT_OVERVIEW.md`
 - [x] **SKILL 文件** — `.github/copilot-instructions/SKILL.md`
 - [x] **向后兼容** — `cst_solver.py` 兼容入口 + 旧函数名别名
@@ -187,7 +187,7 @@ scripts/
 ## 📊 覆盖总览
 
 ```
-已覆盖 (22 类 / 207 方法):  ████████████████░░░░   ~60%
+已覆盖 (23 类 / 208 方法):  ████████████████░░░░   ~60%
 部分覆盖:                    █████░░░░░░░░░░░░░░░   ~25%
 未覆盖:                      ░░░░░░░░░░░░░░░░░░░░   ~15%
 ```
@@ -213,5 +213,5 @@ scripts/
 
 ```bash
 python scripts/gen_docs.py
-# 输出: docs/cst_solver_api.html (207 方法, 22 类别)
+# 输出: docs/cst_solver_api.html (208 方法, 23 类别)
 ```

@@ -74,20 +74,36 @@ End With
         :param log_flag: int, 0-仅返回 1-写入历史
         :return: str, CST 指令文本
         """
-        f1 = f"""With Transform 
-     .Reset 
-     .Name "{component}:{name}" 
-     .Vector "{vector[0]}", "{vector[1]}", "{vector[2]}" 
-     .UsePickedPoints "False" 
-     .InvertPickedPoints "False" 
-     .MultipleObjects "{copy}" 
-     .GroupObjects "{unite}" 
-     .Repetitions "{repetitions}" 
-     .MultipleSelection "False" 
-     .AutoDestination "True" 
-     .Transform "Shape", "Translate" 
-End With
-"""
+        if component =='':
+            f1 = f"""With Transform 
+        .Reset 
+        .Name "{name}" 
+        .Vector "{vector[0]}", "{vector[1]}", "{vector[2]}" 
+        .UsePickedPoints "False" 
+        .InvertPickedPoints "False" 
+        .MultipleObjects "{copy}" 
+        .GroupObjects "{unite}" 
+        .Repetitions "{repetitions}" 
+        .MultipleSelection "False" 
+        .AutoDestination "True" 
+        .Transform "Shape", "Translate" 
+    End With
+    """
+        else:    
+            f1 = f"""With Transform 
+        .Reset 
+        .Name "{component}:{name}" 
+        .Vector "{vector[0]}", "{vector[1]}", "{vector[2]}" 
+        .UsePickedPoints "False" 
+        .InvertPickedPoints "False" 
+        .MultipleObjects "{copy}" 
+        .GroupObjects "{unite}" 
+        .Repetitions "{repetitions}" 
+        .MultipleSelection "False" 
+        .AutoDestination "True" 
+        .Transform "Shape", "Translate" 
+    End With
+    """
         if log_flag == 1:
             self.cst_file.model3d.add_to_history(
                 " translate " + name + f'{vector} {repetitions}', f1)

@@ -1,14 +1,13 @@
 # cst_solver 项目概览
 
 > 用于 AI 快速理解本项目结构和功能的导读文档。
-> 最后更新: 2026-06-01
-
+最后更新: 2026-07-02
 ---
 
 ## 一、项目目标
 
 本项目的核心目标是通过 **Python 脚本自动控制 CST Studio Suite** 进行电磁仿真，包括：
-
+│   ├── __init__.py                # setup 主类（208 方法，23 Mixin）
 1. **自动化建模** — 在 CST 中创建几何结构（长方体、圆柱、多边形等）
 2. **自动化仿真** — 设置材料、端口、边界、求解器、运行仿真
 3. **结果后处理** — 读取 S 参数、场数据、远场方向图
@@ -34,7 +33,7 @@ TPC/
 │   │   ├── curves_ops.py          # 曲线操作：Extrude, Loft, Sweep...
 │   │   ├── booleans.py            # 布尔运算：Add, Subtract, Intersect...
 │   │   ├── transforms.py          # 变换：Translate, Rotate, Mirror...
-│   │   ├── picks.py               # 选取：Pick edge/face/vertex...
+│   │   └── io.py                  # 导入导出：SAT, DXF, STEP, IGES, STL, 子项目导入
 │   │   └── wcs.py                 # 工作坐标系（★ 新增）
 │   ├── material/
 │   │   └── materials.py           # 材料与组件
@@ -46,7 +45,6 @@ TPC/
 │   │   └── solver.py              # 求解器：Solver, FDSolver, SolverParameter...
 │   ├── mesh/
 │   │   └── mesh.py                # 网格：Mesh, MeshAdaption3D, MeshSettings...
-│   ├── import_export/
 │   │   └── io.py                  # 导入导出：SAT, DXF, STEP, IGES, STL
 │   └── postprocessing/
 │       ├── proc.py                # 后处理：QFactor, CombineResults, SAR
@@ -56,7 +54,7 @@ TPC/
 ├── scripts/
 │   └── gen_docs.py               # HTML 文档自动生成脚本
 ├── docs/
-│   ├── cst_solver_api.html        # API 文档（196 方法，22 类别）
+│   ├── cst_solver_api.html        # API 文档（208 方法，23 类别）
 │   ├── PROJECT_OVERVIEW.md        # ← 本文件
 │   └── TODO_LIST.md               # 待实现功能清单
 ├── 遗传算法/
@@ -68,16 +66,15 @@ TPC/
 ├── hexlib.py                      # 六边形网格库
 ├── tri_lib.py                     # 三角形网格库
 ├── metalen.py                     # 材料公式工具
-├── optimizer.py                   # GA 优化辅助
+| 导入导出 | 9 | `import_sat`, `import_step`, `import_dxf`, `import_subproject` |
 ├── read.py                        # S2P 数据解析
 ├── setup.py                       # 路径配置（启动时导入）
 ├── test.ipynb                     # 测试/示例笔记本
 ├── cst_solver.py                  # 旧版兼容入口（推荐用 from cst_solver import setup）
-├── .gitignore                     # Git 忽略规则
 └── README.md                      # 项目说明
-```
+| `docs/cst_solver_api.html` | 完整 API 文档（208 方法，脚本生成） |
 
----
+# 输出: docs/cst_solver_api.html (208 方法, 23 类别)
 
 ## 三、核心架构：Mixin 多继承
 
@@ -123,7 +120,7 @@ CST_PYTHON_LIB = r"C:\SOFTWARE\CST Studio Suite 2026\AMD64\python_cst_libraries"
 
 ---
 
-## 五、方法分类速查（196 方法，22 类别）
+## 五、方法分类速查（208 方法，23 类别）
 
 | 类别 | 方法数 | 主要函数 |
 |------|--------|----------|

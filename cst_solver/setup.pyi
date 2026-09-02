@@ -38,8 +38,10 @@ class _UnitsMixin:
 # 参数管理 (ParametersMixin)
 # ============================================================
 class _ParametersMixin:
-    def para(self, name: str, value: Union[float, str], log_flag: int = 0) -> None: ...
-    def set_parameter(self, name: str, value: Union[float, str], log_flag: int = 0) -> None: ...
+    def para(self, name: str, value: Union[float, str], log_flag: int = 0,
+             expression: str = '') -> None: ...
+    def set_parameter(self, name: str, value: Union[float, str], log_flag: int = 0,
+                      expression: str = '') -> None: ...
     def paras(self, name: Union[List[str], Dict[str, Any]], value: Optional[list] = None,
               log_flag: int = 0) -> None: ...
     def set_parameters(self, name: Union[List[str], Dict[str, Any]], value: Optional[list] = None,
@@ -463,6 +465,14 @@ class _MeshMixin:
 # 导入导出 (IOMixin)
 # ============================================================
 class _IOMixin:
+    def import_subproject(self, filename: str, subproject_name: str,
+                          scale_factor: str = '0.001', version: str = '15.0',
+                          portname_map: str = '',
+                          import_to_active_coordinate_system: str = 'True',
+                          curves: str = 'True', wires: str = 'True',
+                          solid_wires_as_solids: str = 'False',
+                          import_sources: str = 'False',
+                          import_sensitivity_information: str = 'False') -> None: ...
     def sat_import(self, filename: str, tpn: str = 'True') -> None: ...
     def import_sat(self, filename: str, tpn: str = 'True') -> None: ...
     def dxf_import(self, filename: str, add: str = 'True',
