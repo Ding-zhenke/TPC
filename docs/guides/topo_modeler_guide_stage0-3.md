@@ -636,25 +636,24 @@ self.path = b.build()
 
 ### 5.1 环境准备
 
-
+在仓库根目录安装一次即可，**不需要** `sys.path.append`：
 
 ```
-import sys
-
-sys.path.append(r'D:\成电博士生涯\自动建模算法尝试\TPC')
+pip install -e .
 ```
 
 Python 环境：使用 Anaconda Python（`D:\Anaconda\python.exe`），需有 numpy/matplotlib。
+CST 安装路径只需配置一次：复制 `cst_solver/config_template.py` 为
+`cst_solver/config.py` 并修改 `CST_INSTALL_PATH`。
+
+> 本文档早期版本在这里教 `sys.path.append(r'D:\...\TPC')`。该做法已废弃：
+> 它把绝对路径写死在每个 notebook 里，换机器/换目录即失效。
 
 ### 5.2 最简用法（模板层，推荐）
 
 
 
 ```
-import sys
-
-sys.path.append(r'D:\成电博士生涯\自动建模算法尝试\TPC')
-
 from templates import StraightWaveguide, UnitAntenna
 
 \# 直波导

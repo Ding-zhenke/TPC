@@ -148,6 +148,25 @@ git push origin main
 
 规范见 §8。
 
+> **如果 `git push` 报 `Connection was reset` / 连接超时**：部分网络会针对性阻断
+> `github.com:443`（而 `api.github.com` 仍可达）。先确认：
+>
+> ```powershell
+> Test-NetConnection github.com -Port 443 -InformationLevel Quiet        # False
+> Test-NetConnection api.github.com -Port 443 -InformationLevel Quiet    # True
+> ```
+>
+> 若确为这种情况，用备用通道推送（逐个原样重建提交，并校验 SHA 后才推进 ref）：
+>
+> ```bash
+> python scripts/push_via_api.py            # 推送 origin/main..HEAD
+> python scripts/push_via_api.py --verify   # 只校验远端与本地是否一致
+> ```
+>
+> 脚本用 `git credential` 里已存的令牌，不落盘、不打印；远端 ref 只在全部提交
+> 成功后推进，且用 `force: false`，不会覆盖他人提交。网络恢复后仍应优先用
+> 标准 `git push`。
+
 ---
 
 ## 4. 各包的验收清单

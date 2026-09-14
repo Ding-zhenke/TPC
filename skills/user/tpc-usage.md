@@ -13,25 +13,37 @@ applyTo: "**/*.py"
 2. **要接口签名时优先读 `cst_solver/setup.pyi`** —— 类型存根含全部方法签名，一屏读完。
 3. 用 `grep`/`Select-String` 定位函数名，只读函数定义行 + docstring，不要整文件读。
 4. 需要低成本总览时用 AST 只取名字（不读实现）：打印每个 `.py` 的文档首行 + `FunctionDef/ClassDef` 名。
-5. 子包自带 SKILL.md，细节读它们：`./mesh_grid/tri_grid/SKILL.md`、`./mesh_grid/hex_grid/SKILL.md`。
+5. 子包细节读使用者技能文档：`./tri-grid.md`、`./hex-grid.md`、`./topo-modeler.md`。
 
-## 1. 包结构（4 层）
+## 1. 包结构（5 层）
 
 ```
-D:\成电博士生涯\自动建模算法尝试\TPC\    ← 需 sys.path.append 本目录
-├── cst_solver/       CST VBA 封装（Mixin 聚合，入口 setup；库开发见 .github/skills/cst-solver-dev/）
+TPC/                              ← 已 pip install -e .，无需 sys.path.append
+├── cst_solver/       CST VBA 封装（Mixin 聚合，入口 setup；库开发见 ../developer/cst-solver-dev.md）
 ├── mesh_grid/        纯算法：tri_grid（三角晶格/路径 DSL）、hex_grid（六边形/DXF）
 ├── topo_modeler/     建模引擎：TopoModeler + builders/ 各部件构建器
-└── templates/        端到端模板（⚠ 当前有签名 bug，见 §6）
+├── templates/        端到端模板（StraightWaveguide / UnitAntenna）
+└── tpc_toolkit/      独立工具（s2p 解析 / 遗传算法 / 等效介质），不依赖 CST
+```
+
+**安装一次即可**（在仓库根目录执行）：
+
+```bash
+pip install -e .
 ```
 
 ```python
-import sys; sys.path.append(r'D:\成电博士生涯\自动建模算法尝试\TPC')
 from cst_solver import setup                                  # CST 工程控制
 from mesh_grid.tri_grid import TopoPath                       # 路径 DSL + 晶格
 from topo_modeler.builders import (build_vpc_regions, build_feed,
                                    build_waveguide, add_port_for_antenna)
 ```
+
+> ⚠️ **不要再写 `sys.path.append(r'D:\...\TPC')`。** 那是 pip 安装方式引入前的
+> 临时做法，换机器/换目录就会失效（旧 notebook 里 84 处都是这么写的）。
+> 唯一需要配置的是 CST 安装路径：把 `cst_solver/config_template.py` 复制成
+> `cst_solver/config.py` 并改 `CST_INSTALL_PATH`；`cst` 模块由 CST 自带，
+> 无法从 PyPI 安装。
 
 ## 2. 按需查阅地图（**照此表读文件，别通读**）
 
@@ -167,8 +179,7 @@ cst_log('完整重建后')
 ## 7. 最小可用配方（实测写法）
 
 ```python
-import sys, numpy as np
-sys.path.append(r'D:\成电博士生涯\自动建模算法尝试\TPC')
+import numpy as np                               # 前提：已 pip install -e .
 from cst_solver import setup
 from mesh_grid.tri_grid import TopoPath
 from topo_modeler.builders import build_feed, build_waveguide, add_port_for_antenna
