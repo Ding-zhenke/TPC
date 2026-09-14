@@ -27,7 +27,7 @@ def build_ab_elliptical_feed(app, name='feed1', material='Silicon (lossy)'):
     AB 型三角渐变 + 椭圆过渡探针（上半部分不对称渐变）。
 
     复现旧代码 cell 12 的几何：
-      polyline(9顶点) -> extrude(h) -> 椭圆圆柱 -> 矩形切割 -> substract
+      polyline(9顶点) -> extrude(h) -> 椭圆圆柱 -> 矩形切割 -> subtract
       -> translate -> add -> translate(Z居中)
 
     依赖的 CST 参数（需提前定义）：
@@ -65,7 +65,7 @@ def build_ab_elliptical_feed(app, name='feed1', material='Silicon (lossy)'):
     # 3. 矩形切割（切掉椭圆右半，保留左半）
     app.square('0', 'lf2', '-wf1/2', 'wf1/2', '0', 'h',
                 name=cut_name, material=material)
-    app.substract(epc_name, cut_name, 'component1')
+    app.subtract(epc_name, cut_name, 'component1')
 
     # 4. 椭圆平移到波导接口位置
     app.translate(epc_name, ['-(lf1)', 'e2/2', '0'], copy=False, unite=False, log_flag=1)
@@ -88,7 +88,7 @@ def build_ba_tapered_feed(app, name='feed2', material='Silicon (lossy)',
     BA 型对称渐变 + 椭圆过渡探针（上下对称）。
 
     复现旧代码 Ant3_epc cell 14 的几何：
-      polyline(10顶点) -> extrude(h) -> 椭圆圆柱 -> 矩形切割 -> substract
+      polyline(10顶点) -> extrude(h) -> 椭圆圆柱 -> 矩形切割 -> subtract
       -> translate -> add -> translate(Z居中) -> 可选优化块
 
     依赖的 CST 参数（需提前定义）：
@@ -129,7 +129,7 @@ def build_ba_tapered_feed(app, name='feed2', material='Silicon (lossy)',
     # 3. 矩形切割（切掉椭圆右半）
     app.square('0', 'lf5', '-wf2/2', 'wf2/2', '0', 'h',
                 name=cut_name, material=material)
-    app.substract(epc_name, cut_name, 'component1')
+    app.subtract(epc_name, cut_name, 'component1')
 
     # 4. 椭圆平移到波导接口位置
     app.translate(epc_name, ['-(lf4)', '0', '0'], copy=False, unite=False, log_flag=1)

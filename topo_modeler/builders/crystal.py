@@ -10,19 +10,46 @@
   3. X/Y 方向阵列复制 → 整个 VPC 区域
   4. VPC-A 和 VPC-B 的大/小孔位置互换
 
+.. important::
+    **大孔/小孔的 AB·BA 分配方向（已对照参考工程核实）**
+
+    旧的 AB/BA notebook 里 ``l1`` / ``l2`` 的数值随拓扑相互换，容易看反：
+
+    ===========  =========  =========
+    拓扑相        l1          l2
+    ===========  =========  =========
+    AB           ``0.35*a``  ``0.65*a``
+    BA           ``0.65*a``  ``0.35*a``
+    ===========  =========  =========
+
+    参考工程 ``AB_feed/Model/3D/ModelHistory.json`` 的历史树逐条记录了每个孔的
+    实际尺寸参数（用于核实本模块是否与参考几何一致）::
+
+        Triangle: tri_up_A -> l1      Triangle: tri_dn_A -> l2
+        Triangle: tri_up_B -> l2      Triangle: tri_dn_B -> l1
+
+    即 **VPC-A 朝上孔使用 ``l1``、VPC-B 朝上孔使用 ``l2``**。
+
+    本库把 ``l1`` / ``l2`` 固定为「大孔 / 小孔」语义（``large_hole='l1'``），
+    因此 ``hole_sizes`` 的 AB·BA 分支必须与上表**相反**才能得到同样的几何 ——
+    这是历史遗留的命名错位，不要在未对照参考工程的情况下「顺手改正」。
+
 @author: PC
 """
 
 
 def build_topological_crystal(app, path, topology='AB', lattice='a', height='h',
                                large_hole='l1', small_hole='l2', y_margin='e2',
-                               component='component1', name_prefix='g'):
+                               component='component1', name_prefix='g',
+                               xup=None, yup=None, ydn=None):
     """
     构建拓扑光子晶体三角孔阵列。
 
-    自动从 path.get_array_range() 获取阵列复制范围 (xup, yup, ydn)。
-    topology='AB': VPC-A 用大孔朝上、小孔朝下；VPC-B 用小孔朝上、大孔朝下
-    topology='BA': 互换
+    阵列复制范围默认从 ``path.get_array_range()`` 自动推导；但该推导只按路径长度
+    计算，窄路径 + 宽基板时会覆盖不全，因此允许用 ``xup/yup/ydn`` 显式覆盖。
+
+    ``topology='AB'``: VPC-A 朝上小孔 / 朝下大孔，VPC-B 朝上大孔 / 朝下小孔
+    ``topology='BA'``: 互换
 
     :param app: cst_solver.setup 实例
     :param path: TopoPath 实例
@@ -34,20 +61,34 @@ def build_topological_crystal(app, path, topology='AB', lattice='a', height='h',
     :param y_margin: str, Y方向阵列步长参数（步长 = y_margin*2），默认 'e2'
     :param component: str, 归属组件
     :param name_prefix: str, 名称前缀，默认 'g'
+    :param xup: int/str/None, X 方向阵列次数；None 时用 path.get_array_range()
+    :param yup: int/str/None, Y+ 方向阵列次数；None 时用 path.get_array_range()
+    :param ydn: int/str/None, Y- 方向阵列次数；None 时用 path.get_array_range()
     :return: tuple, (crystal_a_name, crystal_b_name)
     """
-    # 拓扑相决定大孔小孔的分配
-    # AB型: l=['l1','l2'] → VPC-A朝上大孔, VPC-B朝上小孔
-    # BA型: l=['l2','l1'] → VPC-A朝上小孔, VPC-B朝上大孔
+    # 拓扑相决定大孔小孔的分配。
+    #
+    # 注意：这里 AB / BA 的分支顺序与「直觉」相反，是刻意的 ——
+    # 参考 notebook 用 l1 表示 VPC-A 的朝上孔（AB 时 l1=0.35a 是小孔，
+    # BA 时 l1=0.65a 是大孔），本库把 l1 固定为大孔，所以列表必须反过来填。
+    # 详见模块 docstring 的对照表与 AB_feed 工程历史树核对结果。
     if topology == 'AB':
-        hole_sizes = [large_hole, small_hole]  # [朝上孔, 朝下孔] for VPC-A
-    elif topology == 'BA':
+        # VPC-A 朝上孔 = 小孔, 朝下孔 = 大孔
         hole_sizes = [small_hole, large_hole]
+    elif topology == 'BA':
+        # VPC-A 朝上孔 = 大孔, 朝下孔 = 小孔
+        hole_sizes = [large_hole, small_hole]
     else:
         raise ValueError(f"topology 必须是 'AB' 或 'BA'，收到 '{topology}'")
 
-    # 自动获取阵列范围
-    xup, yup, ydn = path.get_array_range()
+    # 阵列范围：显式参数优先，否则按路径自动推导
+    auto_xup, auto_yup, auto_ydn = path.get_array_range()
+    if xup is None:
+        xup = auto_xup
+    if yup is None:
+        yup = auto_yup
+    if ydn is None:
+        ydn = auto_ydn
 
     # 超元胞中心位置（与旧代码完全一致）
     center_up = ['-a/2', 'sqr(3)/2*a-a/sqr(3)', '-h/2']   # 朝上三角形中心
@@ -58,6 +99,7 @@ def build_topological_crystal(app, path, topology='AB', lattice='a', height='h',
     for i, tick in enumerate(['A', 'B']):
         # VPC-A (i=0): 朝上孔=hole_sizes[0], 朝下孔=hole_sizes[1]
         # VPC-B (i=1): 朝上孔=hole_sizes[1], 朝下孔=hole_sizes[0]
+        # 该索引结构与参考 notebook 的 `tri_up_X = l[i]` / `tri_dn_X = l[1-i]` 一一对应
         up_hole = hole_sizes[i]
         dn_hole = hole_sizes[1 - i]
 
@@ -84,7 +126,7 @@ def build_topological_crystal(app, path, topology='AB', lattice='a', height='h',
         # 6. 合并两个小三角形
         app.add(tri_up_name, tri_dn_name, component1=component, component2=component)
         # 7. 从大三角形中减去小三角形（得到三角孔）
-        app.substract(g_name, tri_up_name, component1=component, component2=component)
+        app.subtract(g_name, tri_up_name, component1=component, component2=component)
         # 8. 旋转 120° 复制 2 次 → 6 个孔的超元胞
         app.rotation(g_name, angle=[0, 0, 120], repetition=2,
                      component=component, copy=True, unite=True, log_flag=1)

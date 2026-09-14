@@ -109,14 +109,20 @@ class TopoModeler:
 
     def set_parameters(self, params):
         """
-        批量设置 CST 参数（调用 app.set_parameters）。
+        批量设置 CST 参数。
+
+        cst_solver 的批量接口有两套签名，这里用的是**字典式**：
+        ``app.paras({名称: 值}, None)`` —— ``paras(name, value, log_flag=0)``
+        在 ``name`` 为 dict 时会忽略 ``value``。
+        注意不要写成 ``app.set_parameters(params)``：那是
+        ``set_parameters(name, value, log_flag=0)``，需要一个 dict 会直接抛 TypeError。
 
         :param params: dict, {参数名: 参数值, ...}
         :return: self
         """
         self.params.update(params)
         if self.app is not None:
-            self.app.set_parameters(params)
+            self.app.paras(params, None)
         return self
 
     def set_parameter(self, name, value):
@@ -308,7 +314,7 @@ class TopoModeler:
         阶段 2 基础整合：基板 + VPC 区域 + 晶体阵列。
         阶段 3/4 将扩展探针、波导、透镜的整合。
         """
-        # 基础整合由各 builder 内部完成（add/substract/intersect）
+        # 基础整合由各 builder 内部完成（add/subtract/intersect）
         # 这里预留统一整合接口
         pass
 

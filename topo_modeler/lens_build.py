@@ -44,8 +44,9 @@ def hex_pts(R, ang0):
 #                 —— 孔阵列关于 y=0 严格对称，这样 DXF 大小/导入时间≈减半
 #       ★ 关键 3：DXF 坐标按 lens_dxf_precision 位小数截断（CST 逐条建实体，位数越少越快）
 # ============================================================
-from hexlib import (HexGridVisualizer, create_hex_polygon,   # 六边形网格库（TPC 根目录）
-                    save_to_dxf)
+# 六边形网格库已迁移到 mesh_grid.hex_grid（根目录的 hexlib.py 兼容入口已归档）
+from mesh_grid.hex_grid import (HexGridVisualizer, create_hex_polygon,
+                                save_to_dxf)
 from matplotlib.collections import PolyCollection
 from matplotlib.patches import Ellipse as MplEllipse
 
@@ -176,7 +177,7 @@ plt.tight_layout()
 plt.show()
 
 # ---- ④ 纯几何自查：裁剪后透镜与大六边形**不相交**（与 CST 无关）----
-#   9b-② 在 CST 里是在局部系（近焦点=原点）用「顶点内角 120° 的楔形」substract；
+#   9b-② 在 CST 里是在局部系（近焦点=原点）用「顶点内角 120° 的楔形」subtract；
 #   这里在**全局系**里等价地算一遍（椭圆与楔形都平移到顶点 Rbig 处）再求交。
 from shapely.geometry import Polygon as _ShpPoly
 
@@ -250,7 +251,7 @@ print(f'镜像自查 : 上半 {len(_polys_dxf)} 个 ∪ y镜像  vs  完整 {len
 #             本例把中心直接写成 ['ec_c','0']（与"先画在原点再平移 ec_c"等价），
 #             并且整条尺寸链都挂在晶格常数 a 上：a → ratio → a2 → Nx,Ny → ec_a,ec_b → ec_c
 #       ③ 剪掉与大六边形**重叠**的部分：顶点处六边形内角 120°，
-#          其内部就是张开 120°（120°→240°）的楔形 ⇒ 用这个楔形去 substract
+#          其内部就是张开 120°（120°→240°）的楔形 ⇒ 用这个楔形去 subtract
 #          （重叠的不要、不重叠的全留，所以不能用"切掉内半边"的做法）
 #       ④ 平移 Rbig ⇒ 椭圆**近焦点**正好落在大六边形顶点上
 #       ⑤ rotation(repetition=5, copy=True, unite=False) 旋转复制 ⇒ 6 个顶点各 1 个
@@ -301,7 +302,7 @@ app.extrude('curve1:lens_epc', 'lens_epc', 'h', material='Silicon (lossy)', log_
 cst_log('椭圆包络拉伸（ec_a / ec_b / ec_c）')
 
 _t0 = _time.perf_counter()
-app.substract('lens_epc', 'import_1', component2='gridlens')         # 椭圆硅片 − 孔阵列 = GRIN 透镜
+app.subtract('lens_epc', 'import_1', component2='gridlens')         # 椭圆硅片 − 孔阵列 = GRIN 透镜
 _dt_sub = _time.perf_counter() - _t0
 cst_log('椭圆包络 − 孔阵列')
 print(f'⏱ 椭圆 − 孔阵列（布尔减）耗时 = {_dt_sub:.1f} s')
@@ -316,7 +317,7 @@ app.extrude('curve1:lens_hex_cut', 'lens_hex_cut', 'h',
             material='Silicon (lossy)', log_flag=1)
 cst_log('六边形内部楔形（裁剪体）')
 _t0 = _time.perf_counter()
-app.substract('lens_epc', 'lens_hex_cut')                            # 只去掉落在六边形内的那一块
+app.subtract('lens_epc', 'lens_hex_cut')                            # 只去掉落在六边形内的那一块
 _dt_cut = _time.perf_counter() - _t0
 cst_log('剪掉与正六边形重叠的部分')
 print(f'⏱ 楔形裁剪耗时 = {_dt_cut:.1f} s')

@@ -23,7 +23,7 @@ from typing import Optional
 
 
 def add_waveguide_port(app, solid_name, port_number, face_id,
-                       full_deembedding=False, consider_material_inside=False):
+                       orientation='positive', shield=''):
     """
     在指定 solid 的指定面添加波导端口。
 
@@ -33,12 +33,12 @@ def add_waveguide_port(app, solid_name, port_number, face_id,
     :param solid_name: str, 目标 solid 名称（如 'wg1'）
     :param port_number: int, 端口编号（1, 2, ...）
     :param face_id: str, CST 面编号（如 '10', '22'）
-    :param full_deembedding: bool, 是否完全去嵌入
-    :param consider_material_inside: bool, 是否考虑内部材料
+    :param orientation: str, 'positive' 或 'negative'，端口法向朝向
+    :param shield: str, 端口屏蔽类型 'electric'/'magnetic'/''，默认 ''
     :return: int, 端口编号
     """
     app.pick_face(solid_name, face_id)
-    app.add_port(port_number)
+    app.add_port(port_number, orientation=orientation, shield=shield)
     return port_number
 
 
