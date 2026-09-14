@@ -1,76 +1,56 @@
-## CST & Python 联合仿真专家
+# TPC 工作区约定（Copilot 自动加载入口）
 
-你是一个精通 **CST Studio Suite 自动化** 和 **Python 编程** 的专家。你的核心能力是使用本项目的 `cst_solver` 包为电磁仿真提供 Python 接口和自动化解决方案。
+> 本文件是**薄壳**，只做转指。**唯一事实来源是 [`../skills/`](../skills/)**。
+> 修改规则请改 `skills/` 下的文件，不要改这里。
 
-### 项目概况
+---
 
-TPC 项目提供了一个 `cst_solver/` Python 包，将 CST Studio Suite 的 VBA 操作 API 封装为 Pythonic 的 Mixin 多继承类 `setup`。包结构如下：
+## 先读哪个
 
-```
-cst_solver/
-├── __init__.py              # setup 主类（继承 21 个 Mixin，153 个方法）
-├── project.py               # 项目打开/关闭/保存
-├── parameters.py            # 参数/表达式/频率范围
-├── units.py                 # 单位设置（频率/长度/时间）
-├── result.py                # 结果读取（独立于 setup）
-├── config_template.py       # 配置模板（仅需配置 CST_INSTALL_PATH）
-├── config.py                # 本地配置（gitignored，路径联动推导）
-├── modeling/                # 建模模块
-│   ├── primitives.py        # 基本体（Brick, Cylinder, Sphere...）
-│   ├── curves.py            # 曲线（Polygon, Arc, Circle...）
-│   ├── curves_ops.py        # 曲线操作（Extrude, Loft, Sweep...）
-│   ├── booleans.py          # 布尔运算（Add, Subtract, Intersect...）
-│   ├── transforms.py        # 变换（Translate, Rotate, Mirror...）
-│   └── picks.py             # 选取（Pick edge/face/vertex...）
-├── material/materials.py    # 材料与组件
-├── simulation/
-│   ├── ports.py             # 端口（Port, DiscretePort, FloquetPort...）
-│   ├── sources.py           # 激励源（PlaneWave, Coil, FieldSource...）
-│   ├── monitors.py          # 监视器（Monitor, Probe）
-│   ├── boundary.py          # 边界条件（Boundary, Background, LayerStacking）
-│   └── solver.py            # 求解器（Solver, FDSolver, IESolver...）
-├── mesh/mesh.py             # 网格设置（Mesh, MeshAdaption3D）
-├── import_export/io.py      # SAT/DXF/STEP/IGES/STL 导入导出
-└── postprocessing/          # 后处理
-    ├── proc.py              # QFactor, CombineResults, SAR, PostProcess1D
-    ├── farfield.py          # 远场分析
-    └── result_export.py     # 结果导出
-```
+| 你的任务 | 读 |
+|---|---|
+| 用 TPC 建模型、跑仿真、读结果（**使用者视角**，不改库） | [`skills/user/tpc-usage.md`](../skills/user/tpc-usage.md) |
+| 改 `cst_solver` / `mesh_grid` / `topo_modeler` / `templates` / `tpc_toolkit` 的源码（**开发者视角**） | [`skills/developer/WORKFLOW.md`](../skills/developer/WORKFLOW.md) ← 先读这个 |
+| 给 `cst_solver` 加 VBA 封装 / 修封装层缺陷 | [`skills/developer/cst-solver-dev.md`](../skills/developer/cst-solver-dev.md) |
+| 了解包结构 | [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) |
 
-### 关键约定
+---
 
-1. **命名规范**: 所有方法使用 snake_case（Python 风格），旧 VBA 风格名保留为别名
-2. **向后兼容**: 旧函数名（如 `square`, `cylinder`, `polyline`）均保留
-3. **结果读取**: `result` 类独立于 `setup`，通过 `from cst_solver.result import result` 导入
-4. **配置系统**: CST 路径配置在 `cst_solver/config.py`（已加入 .gitignore）
+## 硬约定（踩过的坑，违反必出问题）
 
-### 你的职责
+1. **z 平面**：所有多边形给 **CCW 绕向**（有向面积 > 0）+ 内部 `translate -h/2`。
+   `ExtrudeCurve` 沿多边形**法向**拉伸，绕向决定方向：**CCW → +z，CW → −z**。
+   绕向错了，实体之间在 z 上差一个 `h`，布尔求交得**空集且不报错**。
+2. **布尔语义**：`Intersect "A","B"` → 结果留 **A**、B 被消耗；
+   `Add/Subtract "A","B"` → 结果在 A、**B 被删除**；`Insert` 保留 B。
+3. **CST 不抛异常**：库不保证把 CST 报错转成 Python 异常。
+   验收必须读 `app.cst_file.get_messages()`（读后即清空），并跑 `Rebuild()`。
+4. **`add_to_history` 是唯一执行通道**；`log_flag=0` 时只拼字符串不下发 ——
+   这是把「画线+拉伸+旋转+平移」合成**一条**历史的手法。
+5. **相对路径**按当前工作目录解析，模板 `tmp.cst` 必须放 notebook 同目录。
+6. `cst_file.modeler` 已废弃 → 用 `cst_file.model3d`。
 
-1. **回答 CST 自动化问题**: 帮助用户理解如何使用 `cst_solver` 包实现特定 CST 操作
-2. **编写 Python 接口代码**: 为新的 VBA 函数创建 Python 封装（参考现有 Mixin 模式）
-3. **调试和优化**: 诊断 CST 自动化脚本问题，优化性能
-4. **文档生成**: 使用 `scripts/gen_docs.py` 重新生成 API 文档
-5. **代码审查**: 确保新代码符合 Mixin 模式、snake_case 命名和 docstring 规范
+---
 
-### 使用参考
+## 开发铁律
 
-```python
-# 基础用法
-from cst_solver import setup, result
-app = setup("project.cst")
-app.create_brick(0, 10, 0, 10, 0, 2, "substrate", material="Quartz (lossy)")
-app.set_frequency_range(1, 10)
-app.add_port(1)
-app.boundary(xmax="expanded open")
-app.run()
-res = result("project.cst")
-s11 = res.read_s_parameter("S1,1")
-app.close()
-```
+1. **一次只改一个包**，并为这个包单独写一条 commit（详细 commit message，禁止 `"update"`）。
+2. **改代码必须同步文档**：公开 API → `setup.pyi` + 重跑文档生成器；包结构 → `docs/ARCHITECTURE.md` + `docs/packages/*.md`。
+3. **拼写错误必须修，但不许静默破坏兼容**：加正确名 + 旧名作别名，再登记弃用。
+4. **阶段判定**：先看 [`docs/next_plan/`](../docs/next_plan/)。
+   属于已完成阶段（0–3）的问题 → 直接改代码；属于未开始阶段（4+）→ **只完善计划，不写实现**。
+5. **不要用 `sys.path.append`**：本仓库通过 `pip install -e .` 安装。
 
-### 注意事项
+---
 
-- 新增 VBA 接口时，先在 `C:\SOFTWARE\CST Studio Suite 2026\Online Help\mergedProjects\VBA_3D\` 中查找参考文档
-- 每个方法必须包含完整的 docstring（参数、返回值、说明）
-- 新方法需同时创建 snake_case 名和旧名别名
-- 永远不要直接修改 `cst_solver/config.py` 的逻辑（它是针对每台机器的本地配置）
+## 仓库包一览
+
+| 包 | 职责 | 需要 CST |
+|---|---|---|
+| `cst_solver/` | CST VBA → Python 封装（23 个 Mixin 聚合成 `setup`） | ✅ |
+| `mesh_grid/` | 三角晶格 / 六边形晶格算法（含 `TopoPath` 路径 DSL） | ❌ |
+| `topo_modeler/` | 建模引擎：`TopoModeler` + `builders/` 各部件构建器 | ✅ |
+| `templates/` | 端到端器件模板 | ✅ |
+| `tpc_toolkit/` | S 参数解析、遗传算法、等效介质公式 | ❌ |
+
+细节见 [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)。
