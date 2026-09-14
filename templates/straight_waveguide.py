@@ -63,9 +63,23 @@ class StraightWaveguide:
                  lattice_constant=0.2425, height=0.25,
                  large_hole_ratio=0.65, small_hole_ratio=0.35,
                  feed_type='ab_elliptical',
+                 x0=4, wf1=0.2, lf1=0.2, lf2=3.0, lf3=0.2,
+                 wg_a=0.7312, wg_b=0.3756, wg_t=0.2,
                  freq_range=(300, 380), monitors=('E',),
                  template_cst='tmp.cst', output_path=None):
+        """
+        :param x0: float, 探针起点（晶格数），参考模型 AB_feed.ipynb 为 4
+        :param wf1: float, 探针宽度（mm），参考为 0.2
+        :param lf1: float, 探针长度 1（mm），参考为 0.2
+        :param lf2: float, 椭圆过渡半轴（mm），参考为 3.0
+        :param lf3: float, 探针长度 3（mm），参考为 0.2
+        :param wg_a: float, 空心波导内腔 z 向高度（mm），参考为 0.7312
+        :param wg_b: float, 空心波导内腔 y 向宽度（mm），参考为 0.3756
+        :param wg_t: float, 波导壁厚（mm），参考为 0.2
 
+        注：feed / waveguide 的默认值取自参考模型 ``AB_feed.ipynb`` 的 CST 参数，
+        以保证默认参数下几何与参考工程一致（差异 < 0.1%）。
+        """
         if topology not in ('AB', 'BA'):
             raise ValueError(f"topology 必须是 'AB' 或 'BA'，收到 '{topology}'")
 
@@ -81,6 +95,16 @@ class StraightWaveguide:
         self.monitors = monitors
         self.template_cst = template_cst
         self.output_path = output_path
+
+        # feed / waveguide 参数（默认值见 __init__ docstring）
+        self.x0 = x0
+        self.wf1 = wf1
+        self.lf1 = lf1
+        self.lf2 = lf2
+        self.lf3 = lf3
+        self.wg_a = wg_a
+        self.wg_b = wg_b
+        self.wg_t = wg_t
 
         # 三角晶格几何参数
         self.e1 = self.a / 2
@@ -132,17 +156,17 @@ class StraightWaveguide:
         app.para('yup', self.yup)
         app.para('ydn', self.ydn)
 
-        # feed 参数（AB 型椭圆探针，与旧代码一致）
-        app.para('x0', 1)
-        app.para('wf1', 0.5)
-        app.para('lf1', 0.5)
-        app.para('lf2', 0.3)
-        app.para('lf3', 5.0)
+        # feed 参数（AB 型椭圆探针，默认值与参考模型 AB_feed.ipynb 一致）
+        app.para('x0', self.x0)
+        app.para('wf1', self.wf1)
+        app.para('lf1', self.lf1)
+        app.para('lf2', self.lf2)
+        app.para('lf3', self.lf3)
 
-        # waveguide 参数（铜波导尺寸）
-        app.para('wg_a', 0.5)
-        app.para('wg_b', 0.25)
-        app.para('wg_t', 0.02)
+        # waveguide 参数（铜波导尺寸，默认值与参考模型一致）
+        app.para('wg_a', self.wg_a)
+        app.para('wg_b', self.wg_b)
+        app.para('wg_t', self.wg_t)
 
     # ---- 预览 ----
 
@@ -169,7 +193,9 @@ class StraightWaveguide:
         build_substrate(app, self.path, name='substrate')
 
         # 3. VPC 区域（A + B）
-        build_vpc_regions(app, self.path, topology=self.topology)
+        #    注意：AB/BA 的大孔小孔分配由 build_topological_crystal 负责，
+        #    build_vpc_regions 只按路径上/下半区生成区域，不接受 topology 参数。
+        vpca_name, vpcb_name = build_vpc_regions(app, self.path)
 
         # 4. 光子晶体阵列
         build_topological_crystal(app, self.path, topology=self.topology,
@@ -181,8 +207,8 @@ class StraightWaveguide:
         # 6. 空心矩形波导
         wg_name = build_waveguide(app, name='wg1')
 
-        # 7. mirror feed + waveguide 到右端（中心点 x1*a/2，法向量 x）
-        mirror_center = [f'p2x/2', '0', '0']
+        # 7. mirror feed + waveguide 到右端（中心点 p2x/2，法向量 x）
+        mirror_center = ['p2x/2', '0', '0']
         app.mirror(feed_name, mirror_center, ['1', '0', '0'], copy=True, unite=True)
         app.mirror(wg_name, mirror_center, ['1', '0', '0'], copy=True, unite=True)
 
@@ -190,8 +216,8 @@ class StraightWaveguide:
         add_ports_for_straight_waveguide(app, waveguide_name=wg_name)
 
         # 9. 整合：vpca + feed + vpcb
-        app.add('vpca', feed_name)
-        app.add('vpca', 'vpcb')
+        app.add(vpca_name, feed_name)
+        app.add(vpca_name, vpcb_name)
 
         # 10. 求解器配置
         configure_solver(app, freq_range=self.freq_range, monitors=self.monitors)
@@ -216,7 +242,9 @@ class StraightWaveguide:
         """运行仿真。"""
         if not self._built:
             self.build_all()
-        self.app.start_solver()
+        # 库的求解入口是 setup.run()（下发 Solver 历史并启动仿真）。
+        # 旧写法 self.app.start_solver() 在全库中并不存在，会抛 AttributeError。
+        self.app.run()
         return self
 
     def __repr__(self):

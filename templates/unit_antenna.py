@@ -69,9 +69,16 @@ class UnitAntenna:
                  large_hole_ratio=0.65, small_hole_ratio=0.35,
                  feed_type='ba_tapered',
                  radiator=None, radiator_radius=0.3,
+                 wg_a=0.7312, wg_b=0.3756, wg_t=0.2,
                  freq_range=(300, 380), monitors=('E', 'Farfield'),
                  template_cst='tmp.cst', output_path=None):
-
+        """
+        :param radiator: str/None, 辐射体类型（None 或 'cylinder'）
+        :param radiator_radius: float, 圆柱辐射体半径（mm）
+        :param wg_a: float, 空心波导内腔 z 向高度（mm），参考模型为 0.7312
+        :param wg_b: float, 空心波导内腔 y 向宽度（mm），参考模型为 0.3756
+        :param wg_t: float, 波导壁厚（mm），参考模型为 0.2
+        """
         if topology not in ('AB', 'BA'):
             raise ValueError(f"topology 必须是 'AB' 或 'BA'，收到 '{topology}'")
         if bend_angle != 0 and bend_angle % 60 != 0:
@@ -92,6 +99,11 @@ class UnitAntenna:
         self.monitors = monitors
         self.template_cst = template_cst
         self.output_path = output_path
+
+        # 空心波导参数（默认值取自参考模型，保证默认参数下几何一致）
+        self.wg_a = wg_a
+        self.wg_b = wg_b
+        self.wg_t = wg_t
 
         # 三角晶格几何参数
         self.e1 = self.a / 2
@@ -143,16 +155,16 @@ class UnitAntenna:
         app.para('yup', self.yup)
         app.para('ydn', self.ydn)
 
-        # BA 型 feed 参数（与旧代码 Ant3_epc 一致）
-        app.para('x01', 1)
-        app.para('wf2', 0.5)
-        app.para('lf4', 0.5)
-        app.para('lf5', 0.3)
+        # BA 型 feed 参数（默认值与参考模型 Ant1_D_BA_120D_circle_DF.ipynb 一致）
+        app.para('x01', 0)
+        app.para('wf2', 0.2)
+        app.para('lf4', 0.2)
+        app.para('lf5', 3.0)
 
         # waveguide 参数
-        app.para('wg_a', 0.5)
-        app.para('wg_b', 0.25)
-        app.para('wg_t', 0.02)
+        app.para('wg_a', self.wg_a)
+        app.para('wg_b', self.wg_b)
+        app.para('wg_t', self.wg_t)
 
     # ---- 预览 ----
 
@@ -178,7 +190,9 @@ class UnitAntenna:
         build_substrate(app, self.path, name='substrate')
 
         # 3. VPC 区域
-        build_vpc_regions(app, self.path, topology=self.topology)
+        #    注意：AB/BA 的大孔小孔分配由 build_topological_crystal 负责，
+        #    build_vpc_regions 只按路径上/下半区生成区域，不接受 topology 参数。
+        vpca_name, vpcb_name = build_vpc_regions(app, self.path)
 
         # 4. 光子晶体阵列
         build_topological_crystal(app, self.path, topology=self.topology,
@@ -198,14 +212,14 @@ class UnitAntenna:
                 app, name='radiator', radius=self.radiator_radius,
                 position=[str(end_xy[0]), str(end_xy[1]), '-h/2'],
             )
-            app.add('vpca', cyl_name)
+            app.add(vpca_name, cyl_name)
 
         # 8. 端口（仅 1 个入口）
         add_port_for_antenna(app, waveguide_name=wg_name)
 
         # 9. 整合
-        app.add('vpca', feed_name)
-        app.add('vpca', 'vpcb')
+        app.add(vpca_name, feed_name)
+        app.add(vpca_name, vpcb_name)
 
         # 10. 求解器（含 Farfield）
         configure_solver(app, freq_range=self.freq_range, monitors=self.monitors)
@@ -230,7 +244,8 @@ class UnitAntenna:
         """运行仿真。"""
         if not self._built:
             self.build_all()
-        self.app.start_solver()
+        # 库的求解入口是 setup.run()；旧写法 self.app.start_solver() 在全库中不存在。
+        self.app.run()
         return self
 
     def __repr__(self):
