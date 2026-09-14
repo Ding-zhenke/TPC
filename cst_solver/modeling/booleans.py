@@ -37,27 +37,35 @@ class SolidOpsMixin:
         """
         self.add(name1, name2, component1, component2)
 
-    def substract(self, name1, name2, component1='component1',
-                  component2='component1'):
+    def subtract(self, name1, name2, component1='component1',
+                 component2='component1'):
         """
         布尔运算-相减：从实体1中减去实体2的部分
-        保留原函数名以兼容旧代码
 
         :param name1: str, 被减实体名称
         :param name2: str, 裁剪实体名称
+        :param component1: str, 实体1归属组件
+        :param component2: str, 实体2归属组件
         """
         f1 = f"""
         Solid.Subtract "{component1}:{name1}", "{component2}:{name2}"
         """
-        self.cst_file.model3d.add_to_history(name1 + " substract " + name2, f1)
+        self.cst_file.model3d.add_to_history(name1 + " subtract " + name2, f1)
 
     def boolean_subtract(self, name1, name2, component1='component1',
                          component2='component1'):
         """
         布尔相减（蛇形命名）
-        等同于 substract()
+        等同于 subtract()
         """
-        self.substract(name1, name2, component1, component2)
+        self.subtract(name1, name2, component1, component2)
+
+    # ---------------------------------------------------------------
+    # 兼容别名：历史拼写错误（substract → subtract）
+    # 早期版本把 subtract 拼成了 substract，旧脚本大量使用该名字。
+    # 现已统一为 subtract()，substract() 保留为等价别名，请勿在新代码中使用。
+    # ---------------------------------------------------------------
+    substract = subtract
 
     def insert(self, name1, name2, component1='component1',
                component2='component1'):

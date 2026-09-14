@@ -230,10 +230,10 @@ End With"""
         """
         self.field_export(tree_item, save_path, mode, step)
 
-    def patten_export(self, tree_item, save_path,
-                      plottype='3d',
-                      plotmode='realized gain',
-                      step=-1):
+    def pattern_export(self, tree_item, save_path,
+                       plottype='3d',
+                       plotmode='realized gain',
+                       step=-1):
         """
         导出远场方向图数据
 
@@ -258,9 +258,15 @@ End With"""
                        plottype='3d', plotmode='realized gain', step=-1):
         """
         导出方向图（蛇形命名）
-        等同于 patten_export()
+        等同于 pattern_export()
         """
-        self.patten_export(tree_item, save_path, plottype, plotmode, step)
+        self.pattern_export(tree_item, save_path, plottype, plotmode, step)
+
+    # ---------------------------------------------------------------
+    # 兼容别名：历史拼写错误（patten_export → pattern_export）
+    # 旧脚本使用 patten_export()，保留为等价别名，请勿在新代码中使用。
+    # ---------------------------------------------------------------
+    patten_export = pattern_export
 
     def export_data(self, tree_item, save_path):
         """

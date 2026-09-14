@@ -221,10 +221,9 @@ End With
         """
         self.cst_file.model3d.add_to_history(f"Material: {name}", f1)
 
-    def new_componet(self, name):
+    def new_component(self, name):
         """
         在 CST 工程中创建新的组件分组
-        保留原函数名以兼容旧代码
 
         :param name: str, 新建组件名称
         """
@@ -232,14 +231,20 @@ End With
         '  new component: %s
         Component.New "%s" 
         """ % (name, name)
-        self.cst_file.model3d.add_to_history("Freq_range ", f1)
+        self.cst_file.model3d.add_to_history("New Component: " + name, f1)
 
     def create_component(self, name):
         """
         创建新组件（蛇形命名）
-        等同于 new_componet()
+        等同于 new_component()
         """
-        self.new_componet(name)
+        self.new_component(name)
+
+    # ---------------------------------------------------------------
+    # 兼容别名：历史拼写错误（new_componet → new_component）
+    # 旧脚本使用 new_componet()，保留为等价别名，请勿在新代码中使用。
+    # ---------------------------------------------------------------
+    new_componet = new_component
 
     def rename(self, old, new, type='Solid'):
         """

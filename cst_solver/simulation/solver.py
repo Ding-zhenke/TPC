@@ -296,8 +296,8 @@ End With"""
             - MaxNumberOfIterations: int
             - RelativeResidual: float
             - FrequencySamples: int
-            - AccurarcyHex: float (六面体精度)
-            - AccurarcyTet: float (四面体精度)
+            - AccuracyHex: float (六面体精度)
+            - AccuracyTet: float (四面体精度)
 
         示例:
             >>> app.set_solver_parameter(MaxNumberOfIterations=50,

@@ -63,7 +63,8 @@ End With
                     .replace('.AutoDestination "True"',
                              f'.AutoDestination "{auto_destination}"'))
         if log_flag == 1:
-            self.cst_file.model3d.add_to_history(" roation " + name, f1)
+            # 历史标签：旧版误拼为 " roation "，已修正为 " rotation "
+            self.cst_file.model3d.add_to_history(" rotation " + name, f1)
         return f1
 
     def rotate(self, name, angle, center=None, repetition=1,

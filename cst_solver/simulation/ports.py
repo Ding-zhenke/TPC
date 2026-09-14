@@ -8,6 +8,32 @@ CST 端口设置 Mixin 模块
 """
 
 
+def _resolve_legacy_invert_direction(invert_direction, legacy_kwargs, func_name):
+    """
+    解析 `invert_direction`，并兼容旧拼写关键字 `invertdrection`。
+
+    早期版本把 `invert_direction` 误拼为 `invertdrection`，调用方可能仍在用旧拼写。
+    本函数把旧关键字映射到新参数上；若同时传入两者则报错；其余未知关键字同样报错。
+
+    :param invert_direction: bool, 新拼写的参数值
+    :param legacy_kwargs: dict, 收集到的多余关键字参数
+    :param func_name: str, 调用方函数名（用于错误信息）
+    :return: bool, 最终生效的反转方向开关
+    :raises TypeError: 同时传入新旧拼写，或传入了未知关键字
+    """
+    legacy = legacy_kwargs.pop('invertdrection', None)
+    if legacy is not None:
+        if invert_direction is not False:
+            raise TypeError(
+                f"{func_name}() 同时收到了 invert_direction 和已废弃的 invertdrection，"
+                "请只使用 invert_direction")
+        invert_direction = legacy
+    if legacy_kwargs:
+        unknown = ', '.join(sorted(legacy_kwargs))
+        raise TypeError(f"{func_name}() 收到未知关键字参数: {unknown}")
+    return invert_direction
+
+
 class PortMixin:
     """
     CST 端口设置 Mixin
@@ -59,7 +85,8 @@ class PortMixin:
         """
         self.add_port(id_val, orientation, shield)
 
-    def discrete_port(self, r0, id_val, fold='', invertdrection=False):
+    def discrete_port(self, r0, id_val, fold='', invert_direction=False,
+                      **legacy_kwargs):
         """
         创建离散端口（集总端口），用于射频器件的端接激励
         保留原函数名以兼容旧代码
@@ -67,8 +94,12 @@ class PortMixin:
         :param r0: float/str, 端口特征阻抗（如 50 欧姆）
         :param id_val: int/str, 端口编号
         :param fold: str, 端口归属文件夹
-        :param invertdrection: bool, 是否反转激励方向
+        :param invert_direction: bool, 是否反转激励方向
+        :param legacy_kwargs: 仅用于兼容旧拼写关键字 `invertdrection`（已废弃）
+        :raises TypeError: 传入了未知关键字参数
         """
+        invert_direction = _resolve_legacy_invert_direction(
+            invert_direction, legacy_kwargs, 'discrete_port')
         f1 = f"""With DiscreteFacePort 
      .Reset 
      .PortNumber "{id_val}" 
@@ -81,7 +112,7 @@ class PortMixin:
      .Monitor "True"
      .CenterEdge "True"
      .LocalCoordinates "False"
-     .InvertDirection "{invertdrection}"
+     .InvertDirection "{invert_direction}"
      .UseProjection "False"
      .ReverseProjection "False"
      .FaceType "Linear"
@@ -90,12 +121,13 @@ End With"""
         self.cst_file.model3d.add_to_history(
             "Define Discrete Port: " + str(id_val), f1)
 
-    def create_discrete_face_port(self, r0, id_val, fold='', invertdrection=False):
+    def create_discrete_face_port(self, r0, id_val, fold='', invert_direction=False,
+                                  **legacy_kwargs):
         """
         创建离散面端口（蛇形命名）
         等同于 discrete_port()
         """
-        self.discrete_port(r0, id_val, fold, invertdrection)
+        self.discrete_port(r0, id_val, fold, invert_direction, **legacy_kwargs)
 
     def create_discrete_port(self, id_val, p1, p2, impedance=50,
                              label='', folder=''):
