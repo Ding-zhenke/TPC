@@ -3,14 +3,13 @@
 CST Solver API 文档自动生成器
 ==============================
 扫描 cst_solver/ 包中所有 Mixin 类的方法和 docstring，
-自动生成结构化 HTML 文档到 docs/cst_solver_api.html
+自动生成结构化 HTML 文档到 docs/guides/api/cst_solver_api.html
 
 用法:
-    python -m cst_solver.scripts.gen_docs
-    或 cd cst_solver && python scripts/gen_docs.py
+    python scripts/gen_cst_solver_docs.py
 
 输出:
-    cst_solver/docs/cst_solver_api.html
+    docs/guides/api/cst_solver_api.html
 
 @author: PC
 """
@@ -22,10 +21,10 @@ import inspect
 import textwrap
 from pathlib import Path
 
-# 项目根目录：gen_docs.py 位于 cst_solver/scripts/，其父的父 = 项目根
+# 项目根目录：本脚本位于 <root>/scripts/，其父目录 = 项目根
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CST_SOLVER_DIR = PROJECT_ROOT  # 脚本已在 cst_solver/ 内
-OUTPUT_DIR = PROJECT_ROOT / "docs"
+CST_SOLVER_DIR = PROJECT_ROOT / "cst_solver"
+OUTPUT_DIR = PROJECT_ROOT / "docs" / "guides" / "api"
 OUTPUT_FILE = OUTPUT_DIR / "cst_solver_api.html"
 
 # 确保可以导入 cst_solver
@@ -94,7 +93,8 @@ ALIAS_MAP = {
     "ellipse": "create_ellipse",
     "extrude": "extrude_curve",
     "add": "boolean_add",
-    "substract": "boolean_subtract",
+    "subtract": "boolean_subtract",
+    "substract": "boolean_subtract",  # 旧拼写，已废弃但保留为别名
     "insert": "boolean_insert",
     "intersect": "boolean_intersect",
     "blend": "blend_edge",
@@ -104,7 +104,8 @@ ALIAS_MAP = {
     "expression": "set_expression",
     "freq_limit": "set_frequency_range",
     "new_material": "create_material",
-    "new_componet": "create_component",
+    "new_component": "create_component",
+    "new_componet": "create_component",  # 旧拼写，已废弃但保留为别名
     "add_port": "create_waveguide_port",
     "discrete_port": "create_discrete_face_port",
     "define_monitor": "create_field_monitor",
@@ -114,7 +115,8 @@ ALIAS_MAP = {
     "sat_import": "import_sat",
     "dxf_import": "import_dxf",
     "field_export": "export_field",
-    "patten_export": "export_pattern",
+    "pattern_export": "export_pattern",
+    "patten_export": "export_pattern",  # 旧拼写，已废弃但保留为别名
     "export_data": "export_to_ascii",
     "rotation_face": "rotate_face",
     "exclude_simulation": "exclude_from_simulation",

@@ -307,7 +307,7 @@ ca, cb = build\_topological\_crystal(app, path, topology='AB',
 
 2. `add × 4`（合并同区域的三角孔）
 
-3. `substract × 2`（从基板中扣除孔）
+3. `subtract × 2`（从基板中扣除孔）
 
 4. `rotation × 2`（120° 旋转复制 2 次 → 6 个孔）
 
@@ -442,7 +442,7 @@ build\_feed(app, feed\_type='cylinder', name='rad1', radius=0.3,
 
 **AB 型内部调用序列**：
 
-`polyline(9顶点)` → `extrude(h)` → `create_elliptical_cylinder` → `square(切割右半)` → `substract` → `translate(椭圆定位)` → `add(主体+椭圆)` → `translate(Z居中)`
+`polyline(9顶点)` → `extrude(h)` → `create_elliptical_cylinder` → `square(切割右半)` → `subtract` → `translate(椭圆定位)` → `add(主体+椭圆)` → `translate(Z居中)`
 
 ### 4.2 WaveguideBuilder — 空心矩形波导构建器
 
@@ -859,7 +859,7 @@ path.auto\_define\_cst\_params(app)
 | 手写 VPC 区域（20 + 行）                | `build_vpc_regions(app, path)`（1 行）          | 自动生成 + 裁剪  |
 | 手写光子晶体阵列（40 + 行）                 | `build_topological_crystal(app, path)`（1 行）  | 超元胞逻辑封装    |
 | 手写 feed1/feed2（25 + 行）           | `build_feed(app, feed_type=...)`（1 行）        | 3 种类型统一    |
-| 手写 wg1/wg1\_1+substract（8 行）     | `build_waveguide(app)`（1 行）                  | 自动计算壁厚     |
+| 手写 wg1/wg1\_1+subtract（8 行）     | `build_waveguide(app)`（1 行）                  | 自动计算壁厚     |
 | 手写 pick\_face+add\_port（4 行）     | `add_ports_for_straight_waveguide(app)`（1 行） | 自动推断端口数    |
 | 手写求解器 VBA（40 + 行）                | `configure_solver(app)`（1 行）                 | 调用 TPC 库方法 |
 | 完整 notebook（200 + 行）             | `StraightWaveguide(...).build_all()`（1 行）    | 端到端封装      |

@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
-"""网格向量化绘制性能测试"""
-import time
-import numpy as np
+"""网格向量化绘制性能基准（不是单元测试，故放在 scripts/ 而非 tests/）"""
+import os
 import sys
-sys.path.insert(0, r'd:\成电博士生涯\自动建模算法尝试\TPC')
+import time
+
+import numpy as np
+
+# 仓库根目录（本脚本位于 <root>/scripts/）
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ===== 六边形网格测试 =====
 from mesh_grid.hex_grid import HexLib, HexGridVisualizer

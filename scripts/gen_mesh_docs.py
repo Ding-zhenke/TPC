@@ -5,11 +5,11 @@ mesh_grid API 文档生成器
 从源代码的 docstring 中提取文档，生成 HTML 格式的 API 文档。
 
 用法:
-    python mesh_grid/scripts/gen_mesh_docs.py
+    python scripts/gen_mesh_docs.py
 
 输出:
-    mesh_grid/docs/hex_grid_api.html
-    mesh_grid/docs/tri_grid_api.html
+    docs/guides/api/hex_grid_api.html
+    docs/guides/api/tri_grid_api.html
 
 @author: PC
 """
@@ -19,9 +19,9 @@ import inspect
 import importlib
 import html
 
-# 确保项目根目录在路径中
+# 确保项目根目录在路径中（本脚本位于 <root>/scripts/）
 _script_dir = os.path.dirname(os.path.abspath(__file__))
-_project_root = os.path.abspath(os.path.join(_script_dir, "..", ".."))
+_project_root = os.path.abspath(os.path.join(_script_dir, ".."))
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
@@ -176,7 +176,7 @@ def render_html(title, module_doc, items, css=""):
 
 
 def main():
-    docs_dir = os.path.join(_project_root, "mesh_grid", "docs")
+    docs_dir = os.path.join(_project_root, "docs", "guides", "api")
     os.makedirs(docs_dir, exist_ok=True)
 
     # 生成 hex_grid API 文档
