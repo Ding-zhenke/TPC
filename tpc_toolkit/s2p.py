@@ -46,7 +46,7 @@ def read_s2p_groups(filepath):
     
     return data, np.array(param_strings)
 # 使用示例
-# data_arr, diff_params = read_cst_s2p_groups('AB-s21.txt')
+# data_arr, diff_params = read_s2p_groups('AB-s21.txt')
 # print(f"数据形状: {data_arr.shape}")  # (n_freq, n_blocks)
 # print("不同的参数组合:")
 # for i, params in enumerate(diff_params):

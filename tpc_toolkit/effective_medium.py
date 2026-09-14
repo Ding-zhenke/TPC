@@ -1,19 +1,49 @@
+# -*- coding: utf-8 -*-
+"""
+等效介质与六边形晶格几何工具
+============================
+纯解析工具，**不依赖 CST**，可在任意装有 numpy / matplotlib 的环境中导入。
+
+包含：
+  - 透镜相位计算
+  - 正六边形面积（由边长或晶格常数给出）
+  - 两种介电材料的等效介电常数（体积加权平均）
+  - 硅基空气孔结构的 Maxwell-Garnett 型等效介电常数
+  - 介电常数 → 折射率
+
+.. note::
+    原先本模块在顶层 ``from scipy import signal`` / ``from tqdm import tqdm``
+    以及从 ``mesh_grid.hex_grid`` 导入一批符号，但这些符号**一个都没被用到**。
+    由于 ``tpc_toolkit/__init__.py`` 会导入本模块，这些死导入把 scipy、tqdm、
+    ezdxf、shapely 变成了硬依赖（``import tpc_toolkit`` 直接 ImportError），
+    与「scipy/geometry 是可选依赖」的打包声明矛盾。现已全部移除。
+
+@author: PC
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import signal
-from tqdm import tqdm
+
 # === 在这里设置中文字体 ===
-plt.rcParams['font.sans-serif'] = ['SimHei'] # macOS 用 'Heiti TC'，Linux 可以尝试 'WenQuanYi Micro Hei'
-plt.rcParams['axes.unicode_minus'] = False     # 解决负号 '-' 显示为方块的问题
-
-from mesh_grid.hex_grid import HexLib, HexGridVisualizer, create_hex_polygon, save_to_dxf, read_and_display_dxf_matplotlib
+plt.rcParams['font.sans-serif'] = ['SimHei']  # macOS 用 'Heiti TC'，Linux 可尝试 'WenQuanYi Micro Hei'
+plt.rcParams['axes.unicode_minus'] = False    # 解决负号 '-' 显示为方块的问题
 
 
-def cal_phi(r,fp,lambda1):
-    #该点的相位
-    phi = (2*np.pi/lambda1)*(np.sqrt(r**2+fp**2)-fp)
-    phi = np.mod(phi, 2*np.pi)  # 将相位限制在0到2π之间
-    phi= np.rad2deg(phi)  # 转换为角度
+def cal_phi(r, fp, lambda1):
+    """
+    计算透镜上某点相对焦点的相位。
+
+    相位按 ``phi = 2π/λ · (√(r²+fp²) − fp)`` 计算，再取模 2π 并转成角度。
+
+    :param r: float or ndarray, 该点到光轴的径向距离（与 lambda1、fp 同单位）
+    :param fp: float, 焦距
+    :param lambda1: float, 工作波长
+    :return: float or ndarray, 相位（度），取值 [0, 360)
+    """
+    # 该点的相位
+    phi = (2 * np.pi / lambda1) * (np.sqrt(r ** 2 + fp ** 2) - fp)
+    phi = np.mod(phi, 2 * np.pi)  # 将相位限制在0到2π之间
+    phi = np.rad2deg(phi)  # 转换为角度
     return phi
 
 
