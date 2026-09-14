@@ -327,7 +327,8 @@ def plot_triangle_grid(row_range: Tuple[int, int],
                       fill_colors_down: Optional[list] = None,
                       coord_auto_hide_threshold: int = 500,
                       edgecolor: str = 'black',
-                      linewidth: float = 1.0) -> Tuple[plt.Figure, plt.Axes]:
+                      linewidth: float = 1.0,
+                      ax: Optional[plt.Axes] = None) -> Tuple[plt.Figure, plt.Axes]:
     """
     向量化绘制三角形网格 — 使用 PolyCollection 替代逐格 Polygon
 
@@ -346,6 +347,7 @@ def plot_triangle_grid(row_range: Tuple[int, int],
         coord_auto_hide_threshold: 网格数超过此阈值时自动隐藏坐标标签
         edgecolor: 边框颜色
         linewidth: 边框线宽
+        ax: 已有坐标轴对象；None 时新建 figure（供 TopoPath.preview 等叠加绘制）
 
     返回:
         fig: 图形对象
@@ -359,8 +361,11 @@ def plot_triangle_grid(row_range: Tuple[int, int],
     start_col, end_col = col_range
     h = a * np.sqrt(3) / 2
 
-    # 创建图形
-    fig, ax = plt.subplots(figsize=(10, 8))
+    # 创建（或复用）图形
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(10, 8))
+    else:
+        fig = ax.figure
 
     # 朝下三角形顶点
     dn_verts = _build_down_triangle_verts(row_range, col_range, a, offset, theta)

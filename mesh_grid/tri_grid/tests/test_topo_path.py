@@ -214,13 +214,21 @@ def test_substrate_polygon_vertices():
     assert len(sub2) == expected2, \
         f"120°天线基板顶点数错误: 期望 {expected2}, 实际 {len(sub2)}"
 
-    # VPC 区域多边形
+    # VPC 区域多边形：两条边界链各含全部路径点，故顶点数 = 2*N + 1
     vpc_upper = p2.build_vpc_area_polygon(side='upper')
     vpc_lower = p2.build_vpc_area_polygon(side='lower')
-    assert len(vpc_upper) == len(p2) + 3, \
-        f"VPC上半区顶点数错误: 期望 {len(p2)+3}, 实际 {len(vpc_upper)}"
-    assert len(vpc_lower) == len(p2) + 3, \
-        f"VPC下半区顶点数错误: 期望 {len(p2)+3}, 实际 {len(vpc_lower)}"
+    expected_vpc = 2 * len(p2) + 1
+    assert len(vpc_upper) == expected_vpc, \
+        f"VPC上半区顶点数错误: 期望 {expected_vpc}, 实际 {len(vpc_upper)}"
+    assert len(vpc_lower) == expected_vpc, \
+        f"VPC下半区顶点数错误: 期望 {expected_vpc}, 实际 {len(vpc_lower)}"
+
+    # side 取值非法应报错
+    try:
+        p2.build_vpc_area_polygon(side='middle')
+        assert False, "side='middle' 应报错"
+    except ValueError as e:
+        assert 'upper' in str(e), f"错误信息应提示合法取值: {e}"
 
     print(f"[OK] 测试9: 基板多边形顶点数正确（直波导{len(sub1)}, 天线{len(sub2)}）")
     print(f"       VPC区域顶点数: upper={len(vpc_upper)}, lower={len(vpc_lower)}")
@@ -470,6 +478,78 @@ def test_symbolic_without_param_values():
 
 
 # ============================================================
+# 测试 16：多边形顶点绕向必须为逆时针（CCW）
+# ============================================================
+def _signed_area_numeric(pts, param_values):
+    """把 CST 表达式顶点列表数值化并计算有向面积（>0 表示 CCW）。
+
+    仅支持本测试用到的形式：'<num>' 或 '<param><op><num>' 与 '常量*参数'，
+    以及 'pNx'/'pNy' 这类直接以参数名出现的项。
+    """
+    import re
+
+    def ev(token):
+        expr = str(token)
+        # 纯参数名
+        if expr in param_values:
+            return float(param_values[expr])
+        # 形如 '18+1'、'0-1'、'-1'
+        if re.fullmatch(r'-?\d+(\.\d+)?([+-]\d+(\.\d+)?)?', expr):
+            return eval(expr)  # noqa: S307 - 仅测试内部使用，输入受控
+        # 形如 'p2y+e2' / 'p2y-e2'
+        m = re.fullmatch(r'(\w+)([+-])(\w+)', expr)
+        if m:
+            left = param_values.get(m.group(1), re.fullmatch(r'-?\d+(\.\d+)?', m.group(1)) and float(m.group(1)))
+            right = param_values.get(m.group(3), re.fullmatch(r'-?\d+(\.\d+)?', m.group(3)) and float(m.group(3)))
+            return left + float(right) if m.group(2) == '+' else left - float(right)
+        raise AssertionError(f"测试无法解析的表达式: {expr!r}")
+
+    coords = [(ev(p[0]), ev(p[1])) for p in pts]
+    area = 0.0
+    for i in range(len(coords) - 1):
+        x1, y1 = coords[i]
+        x2, y2 = coords[i + 1]
+        area += x1 * y2 - x2 * y1
+    return area / 2.0
+
+
+def test_polygon_winding_is_ccw():
+    """
+    基板与 VPC 区域多边形必须都是逆时针（CCW，有向面积 > 0）。
+
+    背景：CST 的 ExtrudeCurve 沿多边形法向拉伸，绕向决定拉伸方向（CCW→+z，CW→−z）。
+    若为 CW，实体在 z 上会与其它部件差一个 h，布尔求交得空集且不报错。
+    这是一个曾经真实存在的缺陷，故用测试钉住。
+    """
+    a = A
+    p1 = TopoPath.builder(a, name='p').start(0, -1).move(19, 'c').build()
+    p2 = (TopoPath.builder(a, name='p')
+          .start(0, -1).move(19, 'c').turn(120).move(14, 'along').build())
+
+    for label, path in (('直波导', p1), ('120°天线', p2)):
+        # 由 CST 表达式反推数值参数： p<i>x / p<i>y
+        pv = {'a': a, 'e2': a * (3 ** 0.5) / 2}
+        for i, (r, c) in enumerate(path.lattice):
+            px, py = path.lattice_to_cst_expr(r, c)
+            pv[f'p{i + 1}x'] = eval(px.replace('sqr(3)', str(3 ** 0.5)).replace('*a', f'*{a}'))  # noqa: S307
+            pv[f'p{i + 1}y'] = eval(py.replace('sqr(3)', str(3 ** 0.5)).replace('*a', f'*{a}'))  # noqa: S307
+
+        for name, pts in (
+            ('build_substrate_polygon', path.build_substrate_polygon()),
+            ("build_vpc_area_polygon('upper')", path.build_vpc_area_polygon(side='upper')),
+            ("build_vpc_area_polygon('lower')", path.build_vpc_area_polygon(side='lower')),
+        ):
+            area = _signed_area_numeric(pts, pv)
+            assert area > 0, (
+                f"{label} {name} 顶点绕向为顺时针（有向面积 {area:.6g} < 0），"
+                "会导致 ExtrudeCurve 沿 −z 拉伸、与其它部件差一个 h"
+            )
+            print(f"  [OK] {label} {name}: 有向面积 {area:.6g} > 0 (CCW)")
+
+    print("[OK] 测试16: 所有区域多边形顶点绕向均为逆时针（CCW）")
+
+
+# ============================================================
 # 主入口：直接运行时执行所有测试
 # ============================================================
 if __name__ == '__main__':
@@ -491,6 +571,7 @@ if __name__ == '__main__':
     test_symbolic_120_antenna()
     test_symbolic_vs_old_code()
     test_symbolic_without_param_values()
+    test_polygon_winding_is_ccw()
     print("=" * 60)
-    print("全部 15 项测试通过！")
+    print("全部 16 项测试通过！")
     print("=" * 60)

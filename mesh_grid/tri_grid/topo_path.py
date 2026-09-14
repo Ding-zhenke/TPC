@@ -499,38 +499,70 @@ class TopoPath:
     # ---- 区域多边形（使用符号坐标，生成参数化表达式） ----
 
     def build_substrate_polygon(self, y_margin='e2', prefix=None):
-        """自动生成基板的 polyline 顶点（路径上下各扩展 y_margin 的带状区域）。"""
+        """
+        自动生成基板的 polyline 顶点（路径上下各扩展 y_margin 的带状区域）。
+
+        **顶点绕向固定为逆时针（CCW）**，这是本库的硬约定：
+        CST 的 ``ExtrudeCurve`` 沿多边形**法向**拉伸，而法向由顶点绕向决定 ——
+        CCW（有向面积 > 0）拉伸到 **+z**，CW 拉伸到 **−z**。
+        调用方统一「CCW + 内部 ``translate -h/2``」把实体在 z 方向居中；
+        绕向反了会让实体与其它部件在 z 上差一个 ``h``，
+        布尔求交得到空集却**不会报错**。
+
+        顶点顺序：**下侧偏移链正向** → **上侧偏移链反向** → 回到起点。
+        两条偏移链都包含**每一个**路径点，因此对拐弯路径也能得到确定绕向的带状多边形
+        （只取两端偏移点的稀疏写法，其绕向会随路径拐弯方向翻转，不能保证 CCW）。
+
+        :param y_margin: str, 路径上下扩展量（CST 参数名或表达式），默认 'e2'
+        :param prefix: str/None, CST 参数名前缀，None 时用 ``self.name``
+        :return: list, 闭合的顶点列表（首尾相同）
+        """
         pfx = prefix or self.name
         n = len(self.path_lattice)
         pts = []
         for i in range(n):
             px, py = self.get_cst_point(i, pfx)
-            pts.append([px, f'{py}+{y_margin}'])
+            pts.append([px, f'{py}-{y_margin}'])
         for i in range(n - 1, -1, -1):
             px, py = self.get_cst_point(i, pfx)
-            pts.append([px, f'{py}-{y_margin}'])
+            pts.append([px, f'{py}+{y_margin}'])
         pts.append(pts[0])
         return pts
 
     def build_vpc_area_polygon(self, side='upper', y_margin='e2', prefix=None):
-        """自动生成 VPC-A/B 区域的裁剪多边形。side='upper' 或 'lower'。"""
+        """
+        自动生成 VPC-A/B 区域的裁剪多边形。``side='upper'`` 或 ``'lower'``。
+
+        与 :meth:`build_substrate_polygon` 相同，**顶点绕向固定为逆时针（CCW）**，
+        且两条边界链都包含每一个路径点（拐弯路径下绕向才确定）。
+
+        - ``'upper'``：**路径链正向** → **上侧偏移链反向**（路径是下边界）
+        - ``'lower'``：**下侧偏移链正向** → **路径链反向**（路径是上边界）
+
+        :param side: str, 'upper'（基板路径以上）或 'lower'（路径以下）
+        :param y_margin: str, 扩展量，默认 'e2'
+        :param prefix: str/None, CST 参数名前缀，None 时用 ``self.name``
+        :return: list, 闭合的顶点列表（首尾相同）
+        :raises ValueError: ``side`` 不是 'upper' / 'lower'
+        """
+        if side not in ('upper', 'lower'):
+            raise ValueError(f"side 必须是 'upper' 或 'lower'，收到 '{side}'")
+
         pfx = prefix or self.name
         n = len(self.path_lattice)
         pts = []
         if side == 'upper':
             for i in range(n):
                 pts.append(list(self.get_cst_point(i, pfx)))
-            px_last, py_last = self.get_cst_point(n - 1, pfx)
-            pts.append([px_last, f'{py_last}+{y_margin}'])
-            px_first, py_first = self.get_cst_point(0, pfx)
-            pts.append([px_first, f'{py_first}+{y_margin}'])
+            for i in range(n - 1, -1, -1):
+                px, py = self.get_cst_point(i, pfx)
+                pts.append([px, f'{py}+{y_margin}'])
         else:
             for i in range(n):
+                px, py = self.get_cst_point(i, pfx)
+                pts.append([px, f'{py}-{y_margin}'])
+            for i in range(n - 1, -1, -1):
                 pts.append(list(self.get_cst_point(i, pfx)))
-            px_last, py_last = self.get_cst_point(n - 1, pfx)
-            pts.append([px_last, f'{py_last}-{y_margin}'])
-            px_first, py_first = self.get_cst_point(0, pfx)
-            pts.append([px_first, f'{py_first}-{y_margin}'])
         pts.append(pts[0])
         return pts
 
