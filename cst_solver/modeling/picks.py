@@ -83,7 +83,58 @@ class PickMixin:
         """
         self.cst_file.model3d.add_to_history("Set edge ", f1)
 
+    # 注意：面旋转/面拉伸不在这里 —— 它们本来就在 cst_solver/__init__.py 的
+    # FaceOpsMixin 里：rotation_face(name, angle, ...) / rotate_face(...) /
+    # extrude_face(name, height, material='PEC', ...)，不要在本文件再定义一份，
+    # 否则会按 MRO 遮蔽原版实现。
+
     def pick_clear(self):
         """清除当前所有选取状态"""
         self.cst_file.model3d.add_to_history("Pick clear",
                                              'Pick.ClearAllPicks\n')
+
+    # ---- 按坐标点拾取（绕开面编号问题）----
+
+    def pick_face_at(self, name, x, y, z, component='component1'):
+        """
+        按**坐标点**拾取实体表面。
+
+        CST 的面编号（'10'、'9'、'22' …）与实体几何/生成顺序强相关，
+        扭转、布尔、阵列之后编号会变，跨模型不可复用。给定一个落在目标面上的点
+        就能稳定拾取，不必知道编号。
+
+        :param name: str, 实体名称
+        :param x, y, z: float/str, 位于目标表面上的点（可为 CST 表达式）
+        :param component: str, 归属组件
+        """
+        f1 = f"""Pick.PickFaceFromPoint "{component}:{name}", "{x}", "{y}", "{z}"
+        """
+        self.cst_file.model3d.add_to_history(
+            f'Pick face at ({x}, {y}, {z}): {name}', f1)
+
+    def pick_face_auto(self, name, points=None, candidates=(), component='component1'):
+        """
+        稳健拾取表面：先按**坐标点**逐个试，再退回按**面编号**逐个试。
+
+        以 ``cst_file.get_messages()`` 是否报错判断是否成功
+        （CST 对不存在的面/点会给出消息；该方法读取后即清空消息）。
+
+        :param name: str, 实体名称
+        :param points: list, 候选点 [[x, y, z], ...]（坐标为 float 或 CST 表达式）
+        :param candidates: list, 候选面编号 ['9', '22', ...]
+        :param component: str, 归属组件
+        :return: 成功返回 ('point', (x, y, z)) 或 ('id', fid)；全部失败返回 None
+        """
+        for p in (points or ()):
+            px, py = p[0], p[1]
+            pz = p[2] if len(p) > 2 else 0     # 允许只给 (x, y)，z 默认 0
+            self.pick_face_at(name, px, py, pz, component=component)
+            if not self.cst_file.get_messages():
+                return ('point', (px, py, pz))
+            self.pick_clear()                 # 失败的点可能留下无效选取，先清掉
+        for fid in (candidates or ()):
+            self.pick_face(name, fid, component=component)
+            if not self.cst_file.get_messages():
+                return ('id', fid)
+            self.pick_clear()
+        return None

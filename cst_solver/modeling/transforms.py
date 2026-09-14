@@ -15,10 +15,20 @@ class TransformMixin:
     """
 
     def rotation(self, name, angle, center=None, repetition=1,
-                 component='component1', copy=False, unite=False, log_flag=1):
+                 component='component1', copy=False, unite=False, log_flag=1,
+                 object='Shape', auto_destination='True'):
         """
-        对三维实体执行旋转变换
+        对三维实体 / **端口** 执行旋转变换
         保留原函数名以兼容旧代码
+
+        ★ 端口必须显式给 object='Port'：
+          · `.Transform "Shape", "Rotate"` 只作用于实体，端口不会跟着走；
+          · 端口名不带组件前缀（写 `Name "Port 2"`，不是 `"component1:Port 2"`）；
+          · 转端口时 .AutoDestination 一般要给 'False'。
+          （与 mirror() 的 object='Shape'|'Port' 用法对称）
+
+        :param object: str, 'Shape' 旋转实体（默认）| 'Port' 旋转端口对象本身
+        :param auto_destination: str, 'True'（默认，与旧行为一致）| 'False'（端口用）
 
         :param name: str, 待旋转实体名称
         :param angle: list, 旋转角度 [X°, Y°, Z°]
@@ -46,6 +56,12 @@ class TransformMixin:
      .Transform "Shape", "Rotate" 
 End With
 """
+        if object == 'Port':
+            # 端口：去掉组件前缀 + 把目标换成 "Port" + 覆盖 AutoDestination
+            f1 = (f1.replace(f'{component}:{name}', name)
+                    .replace('"Shape", "Rotate"', '"Port", "Rotate"')
+                    .replace('.AutoDestination "True"',
+                             f'.AutoDestination "{auto_destination}"'))
         if log_flag == 1:
             self.cst_file.model3d.add_to_history(" roation " + name, f1)
         return f1
@@ -58,6 +74,35 @@ End With
         """
         return self.rotation(name, angle, center, repetition, component,
                              copy, unite, log_flag)
+
+    def rotate_port(self, name, angle, center=None, copy=False,
+                    component='component1', log_flag=1):
+        """
+        **旋转『端口』对象本身**（等价于 `rotation(name, angle, object='Port',
+        auto_destination='False')`）。
+
+        为什么必须单独转：`rotation()` 下发的是 `.Transform "Shape", "Rotate"`，
+        只作用于实体 —— 实体转了，端口还留在原地（曾出现 6 个端口全堆在 0° 的情况）。
+
+        `copy=True` 时是**复制并旋转**：原端口保留、副本落到对称位置
+        —— 一次操作就能把对称臂上的端口补齐（例如转 180° 补齐对径臂的 2 个端口）。
+
+        用法：
+            >>> app.rotate_port(4, [0, 0, 180])                 # 端口 4 转 180°
+            >>> app.rotate_port('Port 2', [0, 0, 180], copy=True)  # 端口 2 复制并转 180° ⇒ 新增一个端口
+
+        :param name: str/int, 端口名（'Port 2'）或端口号（2）
+        :param angle: list, 旋转角度 [X°, Y°, Z°]
+        :param center: list, 旋转中心 [X, Y, Z]，默认原点 [0,0,0]
+        :param copy: bool, True-复制（原端口保留） False-只旋转
+        :param component: str, 归属组件（仅用于拼 name，端口实际不带组件前缀）
+        :param log_flag: int, 0-仅返回 1-写入历史
+        :return: str, CST 指令文本
+        """
+        _port = f'Port {name}' if isinstance(name, (int, float)) else str(name)
+        return self.rotation(_port, angle, center=center, copy=copy,
+                             component=component, log_flag=log_flag,
+                             object='Port', auto_destination='False')
 
     def translate(self, name, vector, component='component1',
                   repetitions=1, copy=False, unite=False, log_flag=1):

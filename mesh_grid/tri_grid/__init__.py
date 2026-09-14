@@ -12,6 +12,7 @@ mesh_grid.tri_grid — 三角形网格算法库
               is_above_segment, select_above, select_below,
               point_in_polygon, select_inside
     路径规划: shortest_path
+    拓扑路径: TopoPath, TopoPathBuilder（统一坐标 + 声明式 DSL）
     工具: line_cal, test_triangle_grid
 
 快速开始:
@@ -44,6 +45,11 @@ from mesh_grid.tri_grid.core import (
     test_triangle_grid,
 )
 
+from mesh_grid.tri_grid.topo_path import (
+    TopoPath,
+    TopoPathBuilder,
+)
+
 __all__ = [
     "find_different_points",
     "equilateral_triangle_vertices",
@@ -64,4 +70,6 @@ __all__ = [
     "select_inside",
     "line_cal",
     "test_triangle_grid",
+    "TopoPath",
+    "TopoPathBuilder",
 ]
