@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tpc-cst"
+version = "2.0.0"
+description = "TPC —— 拓扑光子晶体 CST Studio Suite 自动化建模库（CST VBA 封装 + 晶格算法 + 建模引擎 + 端到端模板）"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Ding-zhenke" }]
+keywords = [
+    "CST",
+    "electromagnetics",
+    "topological-photonic-crystal",
+    "terahertz",
+    "automation",
+    "hexagonal-lattice",
+    "triangular-lattice",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Electronic Design Automation (EDA)",
+]
+
+# 运行时依赖：只包含“任何环境下都需要”的库。
+# 注意：CST 的 `cst` 模块由 CST Studio Suite 自带，无法从 PyPI 安装，
+#       因此不列为依赖；cst_solver 在导入时会自行把 CST 的
+#       python_cst_libraries 加入 sys.path。详见 docs/packages/cst_solver.md
+dependencies = [
+    "numpy>=1.21",
+    "matplotlib>=3.5",
+    "tqdm>=4.60",
+]
+
+[project.optional-dependencies]
+# 六边形网格 DXF 导出、GRIN 透镜几何运算（mesh_grid.hex_grid、topo_modeler.lens_build）
+geometry = [
+    "shapely>=2.0",
+    "ezdxf>=1.0",
+]
+# 透镜 KD-tree 加速与信号处理（tpc_toolkit.effective_medium、topo_modeler.lens_build）
+science = [
+    "scipy>=1.7",
+]
+# 全部可选能力
+all = [
+    "shapely>=2.0",
+    "ezdxf>=1.0",
+    "scipy>=1.7",
+]
+# 开发/维护
+dev = [
+    "pytest>=7.0",
+    "build>=1.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/Ding-zhenke/TPC"
+Repository = "https://github.com/Ding-zhenke/TPC"
+Documentation = "https://github.com/Ding-zhenke/TPC/blob/main/docs/README.md"
+
+# ============================================================
+# 只打包真正的 Python 包；archive/ scripts/ docs/ examples/
+# tests/ assets/ 一律不进入发行版
+# ============================================================
+[tool.setuptools.packages.find]
+include = [
+    "cst_solver*",
+    "mesh_grid*",
+    "topo_modeler*",
+    "templates*",
+    "tpc_toolkit*",
+]
+exclude = [
+    "mesh_grid.tri_grid.tests*",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+cst_solver = ["py.typed", "*.pyi", "simulation/*.pyi"]
+
+# ============================================================
+# 测试
+# ============================================================
+[tool.pytest.ini_options]
+testpaths = ["tests", "mesh_grid/tri_grid/tests"]
+python_files = ["test_*.py"]
+addopts = "-q"
