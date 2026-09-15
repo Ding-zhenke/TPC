@@ -110,8 +110,10 @@ def _db(value):
 
 def _sample_at(data, freq):
     """从 (n,2) 数组里取最接近 freq 的点。"""
-    best = min(data, key=lambda row: abs(float(row[0]) - freq))
-    return float(best[0]), _db(best[1])
+    # 注意：CST 的 xdata 是 complex 类型（310+0j），需取 .real 才不触发
+    # ComplexWarning: Casting complex values to real discards the imaginary part
+    best = min(data, key=lambda row: abs(complex(row[0]).real - freq))
+    return complex(best[0]).real, _db(best[1])
 
 
 def main(argv=None):
