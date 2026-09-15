@@ -195,8 +195,15 @@ from templates import StraightWaveguide
    `ExtrudeCurve` 沿**多边形法向**拉伸，法向由顶点绕向决定：
    **CCW → +z，CW → −z**。绕向错了，实体之间会在 z 上差一个 `h`，
    布尔求交得到**空集且不报错**。
-2. **布尔语义**：`Intersect "A","B"` → 结果留 **A**，B 被消耗；
-   `Add/Subtract "A","B"` → 结果在 A，**B 被删除**；`Insert` 保留 B 供继续引用。
+2. **布尔语义**（CST 官方帮助原文核对过，2026-09-15）：
+   - `Intersect "A","B"` → 交集，**结果留 A**，B 被消耗；
+   - `Add "A","B"` → 并集，结果在 A，**B 被删除**；
+   - `Subtract "A","B"` → **差集 `A − B`**，结果在 A，**B 被删除**；
+   - `Insert "A","B"` → **差集 `A − B`，但不删除 B**
+     （官方原文：*"Performs an subtraction between the solids solid1 and solid2
+     (solid1 - solid2) but does not delete solid2"*）。
+     ⚠️ 常见误记为「并集」—— 某第三方整理的 VBA 参考就是这么写错的，
+     曾导致对照参考工程时误判 VPC-B 的形状。
 3. **阵列范围**：光子晶体阵列的 `xup / yup / ydn` 必须覆盖**整个基板**，不能只按路径推断。
 4. **错误不可见**：库**不保证**把 CST 报错抛成 Python 异常，
    验收必须读 `app.cst_file.get_messages()`（读后即清空）。
