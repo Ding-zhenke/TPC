@@ -76,20 +76,22 @@ def _configure_solver_advanced(app, steady_state, parallel_threads, gpus):
     """
     配置求解器高级参数（稳态精度、并行、GPU）。
 
-    通过 VBA 历史命令设置，与旧 notebook 中的手写 VBA 保持一致。
-    """
-    # 稳态精度
-    vba = f"""With Solver
-    .SteadyStateLimit "{steady_state}"
-End With"""
-    app.cst_file.model3d.add_to_history("Solver Steady State", vba)
+    全部通过 ``cst_solver`` 的封装下发，不在本文件手写 VBA
+    （见 WORKFLOW 第 2 节：builder 里手写 VBA 是明确的反例）。
 
-    # 并行计算配置
-    vba_parallel = f"""With Solver
-    .ParallelizationThreads "{parallel_threads}"
-    .GPUAcceleration "{gpus}"
-End With"""
-    app.cst_file.model3d.add_to_history("Solver Parallel", vba_parallel)
+    历史实现曾直接拼 ``.ParallelizationThreads`` / ``.GPUAcceleration``，
+    这两个属性在真实 CST 2026 上并不存在
+    （``no such property or method``），正确的属性是
+    ``Solver.MaximumNumberOfThreads`` / ``Solver.HardwareAcceleration``。
+
+    :param app: cst_solver.setup 实例
+    :param steady_state: int, 稳态精度（dB）
+    :param parallel_threads: int, 并行线程数
+    :param gpus: int, GPU 数量
+    """
+    app.set_steady_state_limit(steady_state)
+    app.set_parallel_threads(parallel_threads)
+    app.set_gpu_acceleration(gpus)
 
 
 def _get_monitor_frequencies(fmin, fmax, monitors):
