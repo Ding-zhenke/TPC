@@ -19,6 +19,15 @@ from topo_modeler.builders.feed import (
     build_cylinder_feed,
 )
 from topo_modeler.builders.waveguide import build_waveguide
+from topo_modeler.builders.lens import (
+    GrinLensSpec,
+    GrinLensHoles,
+    LensGeometryError,
+    build_grin_lens_holes,
+    build_grin_lens,
+    grin_lens_spec_from_cst_params,
+    D_OUT_MODES,
+)
 from topo_modeler.builders.port import (
     add_waveguide_port,
     add_ports_for_straight_waveguide,
@@ -43,6 +52,14 @@ __all__ = [
     "build_cylinder_feed",
     # 波导 builder（阶段3）
     "build_waveguide",
+    # 透镜 builder（阶段6）
+    "GrinLensSpec",
+    "GrinLensHoles",
+    "LensGeometryError",
+    "grin_lens_spec_from_cst_params",
+    "build_grin_lens_holes",
+    "build_grin_lens",
+    "D_OUT_MODES",
     # 端口 builders（阶段3）
     "add_waveguide_port",
     "add_ports_for_straight_waveguide",

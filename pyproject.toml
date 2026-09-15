@@ -89,6 +89,6 @@ cst_solver = ["py.typed", "*.pyi", "simulation/*.pyi"]
 # 测试
 # ============================================================
 [tool.pytest.ini_options]
-testpaths = ["tests", "mesh_grid/tri_grid/tests", "cst_solver/tests"]
+testpaths = ["tests", "mesh_grid/tri_grid/tests", "cst_solver/tests", "topo_modeler/tests"]
 python_files = ["test_*.py"]
 addopts = "-q"

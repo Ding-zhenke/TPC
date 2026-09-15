@@ -19,6 +19,9 @@ from topo_modeler.builders import (
     build_topological_crystal,
     build_feed as _build_feed_func,
     build_waveguide as _build_waveguide_func,
+    build_grin_lens as _build_grin_lens_func,
+    build_grin_lens_holes,
+    grin_lens_spec_from_cst_params,
     add_ports_for_straight_waveguide,
     add_port_for_antenna,
     configure_solver,
@@ -289,16 +292,58 @@ class TopoModeler:
         self._mark_geometry()
         return cst_name
 
-    def build_lens(self, lens_type='grin', method='hexagon', **params):
+    def build_lens(self, spec=None, dxf_path=None, name='lens_epc',
+                   component='gridlens', material='Silicon (lossy)',
+                   height='h', **lens_kwargs):
         """
-        构建 GRIN 透镜。
+        构建 GRIN 椭圆透镜（阶段 6）。
 
-        注意：本方案阶段编号下属于**阶段 6（复杂模板层）**，当前未实现。
-        （旧文档里写作「阶段 4」—— 编号对照见 `docs/next_plan/README.md` §3）
+        几何由 `topo_modeler.builders.lens` 负责（**纯 numpy/shapely，不依赖 CST**），
+        本方法只做三件事：算几何 → 落 DXF → 调 CST 步骤。
 
-        :raises NotImplementedError: 阶段 6 未实现
+        🔴 **开工前必须知道**：CST 的 DXF 导入是"每条多段线建一个实体"，
+        耗时随孔数**超线性**增长（参考配置 2215 条 ≈ 184 s）。
+        抬高 ``ratio``（格距 ×k ⇒ 孔数 ÷k²）是唯一有效的提速手段。
+
+        :param spec: GrinLensSpec 可选, 透镜参数；不给则用 ``lens_kwargs`` 现拼
+            （可传 ``a / ratio / nx / ny / r1_0 / r2_0 / r_big``，也接受旧脚本的
+            ``lens_ratio / lens_Nx / R_big / nsm`` 等别名）
+        :param dxf_path: str 可选, 孔阵列 DXF 的输出路径；不给则放在当前目录的
+            ``grin_lens_hexring.dxf``
+        :param name: str, 透镜实体名
+        :param component: str, 孔阵列归属组件（= DXF 图层名）
+        :param material: str, 材料
+        :param height: str, 厚度参数名（CST 表达式）
+        :param lens_kwargs: 透传给 :func:`grin_lens_spec_from_cst_params` 的参数
+        :return: dict，含 ``name`` / ``dxf_path`` / ``spec`` / ``holes`` / 几何摘要
+        :raises RuntimeError: 无 CST 环境
         """
-        raise NotImplementedError("build_lens 将在阶段 6（复杂模板层）实现")
+        if self.app is None:
+            raise RuntimeError(
+                "CST 初始化失败，无法建透镜。透镜几何本身不依赖 CST —— "
+                "只想算几何 / 出 DXF 时请直接用 "
+                "topo_modeler.builders.lens.build_grin_lens_holes()")
+        if spec is None:
+            if not lens_kwargs:
+                raise ValueError(
+                    "build_lens 需要 spec，或给出足够拼出 spec 的参数"
+                    "（a / ratio / nx / ny / r1_0 / r2_0 / r_big）")
+            spec = grin_lens_spec_from_cst_params(**lens_kwargs)
+
+        holes = build_grin_lens_holes(spec)
+        if dxf_path is None:
+            dxf_path = os.path.abspath('grin_lens_hexring.dxf')
+        holes.export_dxf(dxf_path, layer_name=component)
+
+        out = _build_grin_lens_func(self.app, holes, spec, name=name,
+                                    component=component, material=material,
+                                    height=height, dxf_path=dxf_path)
+        self._built_parts['lens'] = name
+        self._mark_geometry()
+        out['spec'] = spec
+        out['holes'] = holes
+        out['describe'] = holes.describe()
+        return out
 
     def add_ports(self, auto=True, waveguide_name=None, **params):
         """
