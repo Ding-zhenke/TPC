@@ -13,11 +13,13 @@
 | **入口** | `TopoModeler`、`NameManager`（包级导出）；底层入口 `topo_modeler.builders.*` |
 | **依赖** | `cst_solver`（CST 会话：`setup`）、`mesh_grid.tri_grid.TopoPath`（几何与坐标） |
 | **被谁依赖** | `templates/`（`StraightWaveguide`、`UnitAntenna`） |
-| **源码位置** | `topo_modeler/`：`modeler.py`、`name_manager.py`、`builders/`（7 个构建器）、`lens_build.py`、`lens_build_standalone.py` |
-| **当前阶段** | 阶段 0–3 已完成（坐标层 / 基础引擎 / 模板层）。阶段 4（GRIN 透镜）、阶段 5（结果读取）**未实现**，阶段 6（多端口）未开始 |
+| **源码位置** | `topo_modeler/`：`modeler.py`、`name_manager.py`、`builders/`（8 个构建器）、`lens_build.py`、`lens_build_standalone.py`、`tests/` |
+| **当前阶段** | 阶段 0–3 已完成（坐标层 / 基础引擎 / 模板层）；**阶段 5（库加固）离线部分完成**；**阶段 6 的透镜几何层已完成并离线验收通过**（`builders/lens.py` + `TopoModeler.build_lens()`）；`GRINLensAntenna` 模板与端到端真机验证未做 |
 
-**公开 API 规模**（AST 统计）：`TopoModeler` 20 个公开方法，`NameManager` 8 个公开方法，
-另有 `builders/` 与两个透镜脚本中的 **17 个模块级函数**（其中 `builders/` 14 个）。
+**公开 API 规模**（AST 统计，2026-09-15）：`TopoModeler` 21 个公开方法，`NameManager` 8 个公开方法，
+另有 `builders/` 与两个透镜脚本中的模块级函数（`builders/` 见第 3 节的表）。
+`tests/test_lens.py`（36 项）是透镜构建器的**等价性护栏**：把原脚本
+`lens_build.py` 原样跑一遍，与库函数逐点/逐条比对。
 
 ---
 
@@ -74,9 +76,11 @@ topo_modeler/                    建模引擎层（本包）
 │   ├── crystal.py               光子晶体三角孔阵列（超元胞，核心）
 │   ├── feed.py                  馈源 3 型：ab_elliptical / ba_tapered / cylinder
 │   ├── waveguide.py             空心矩形波导：外方体 − 内方体
+│   ├── lens.py                  GRIN 椭圆透镜：纯几何 + DXF + CST 步骤（阶段 6）
 │   ├── port.py                  波导端口：面编号 / 直波导 2 端口 / 天线 1 端口
 │   └── solver.py                时域求解器 + 监视器 + 高级参数
-├── lens_build.py                GRIN 透镜建模脚本（阶段 4，进行中：notebook 用 exec 复用）
+├── tests/test_lens.py           透镜构建器回归：与原脚本 lens_build.py 逐点/逐条等价
+├── lens_build.py                GRIN 透镜建模**脚本**（notebook 用 exec 复用；库侧已收编为 builders/lens.py）
 └── lens_build_standalone.py     GRIN 透镜工程的独立驱动脚本（实验沙盒，供 subprocess 启动）
 ```
 
@@ -110,17 +114,19 @@ tpc_toolkit/  独立工具层：不依赖 CST，也不被本包依赖
 | 文件 | 主要符号 | 职责 | 公开方法/函数数 |
 |---|---|---|---|
 | `__init__.py` | `TopoModeler`、`NameManager` | 包级导出（`__all__` 仅两项） | 0（纯 re-export） |
-| `modeler.py` | `TopoModeler` | 智能推断（模型类型 / 拓扑相 / 监视器 / 端口数）+ 流水线编排 + 端到端 / 保存 / 运行 / 预览 | 20 |
+| `modeler.py` | `TopoModeler` | 智能推断（模型类型 / 拓扑相 / 监视器 / 端口数）+ 流水线编排 + 端到端 / 保存 / 运行 / 关闭 / 预览 / 验收 | 21 |
 | `name_manager.py` | `NameManager` | CST 实体命名唯一化、别名、按部件取名 | 8 |
-| `builders/__init__.py` | 14 个导出符号 | 统一导出全部构建器，供 `from topo_modeler.builders import …` | 0（纯 re-export） |
+| `builders/__init__.py` | 21 个导出符号 | 统一导出全部构建器，供 `from topo_modeler.builders import …` | 0（纯 re-export） |
 | `builders/substrate.py` | `build_substrate` | 沿路径生成带状基板并 z 居中 | 1 |
 | `builders/vpc_region.py` | `build_vpc_regions`、`intersect_vpc_with_substrate` | 生成 VPC-A（上半区）/ VPC-B（下半区）并可与基板求交 | 2 |
 | `builders/crystal.py` | `build_topological_crystal`、`intersect_crystal_with_vpc` | 三角孔超元胞阵列（最核心的重复代码：25 行 → 1 个函数），并可与 VPC 求交 | 2 |
 | `builders/feed.py` | `build_feed`、`build_ab_elliptical_feed`、`build_ba_tapered_feed`、`build_cylinder_feed` | 3 种馈源几何（统一入口 + 3 个具体实现） | 4 |
 | `builders/waveguide.py` | `build_waveguide` | 空心矩形波导（外方体 − 内方体） | 1 |
+| `builders/lens.py` | `GrinLensSpec`、`GrinLensHoles`、`LensGeometryError`、`grin_lens_spec_from_cst_params`、`build_grin_lens_holes`、`build_grin_lens` | **GRIN 椭圆透镜**（阶段 6）：纯几何层（孔心 / 孔半径 / 孔多边形 / DXF / 三道自查，**不依赖 CST**）+ CST 建模层（导入 → 镜像 → 椭圆减孔 → 楔形裁剪 → 平移 → 旋转×6） | 6 |
 | `builders/port.py` | `add_waveguide_port`、`add_ports_for_straight_waveguide`、`add_port_for_antenna` | 在指定面上添加波导端口（当前面编号硬编码，见第 8 节） | 3 |
-| `builders/solver.py` | `configure_solver`（另有私有 `_configure_solver_advanced`、`_get_monitor_frequencies`、`_create_farfield_monitor`） | 频率范围 + 时域求解器 + 监视器 + 高级参数 | 1 |
-| `lens_build.py` | `hex_pts`（另有私有 `_poly_xy`） | GRIN 椭圆透镜：孔阵列生成 → DXF → 导入 CST → 镜像 → 椭圆−孔 → 楔形裁剪 → 旋转×6（**阶段 4 进行中**） | 1 |
+| `builders/solver.py` | `configure_solver`（另有私有 `_configure_solver_advanced`、`_get_monitor_frequencies`） | 频率范围 + 时域求解器 + 监视器 + 高级参数 | 1 |
+| `tests/test_lens.py` | 36 项用例 | 透镜构建器回归：把 `lens_build.py` **原样跑一遍**，与库函数逐点（孔心/孔半径/椭圆参数）+ 逐条（CST 调用序列）比对 | — |
+| `lens_build.py` | `hex_pts`（另有私有 `_poly_xy`） | GRIN 椭圆透镜的**原始脚本**：孔阵列生成 → DXF → 导入 CST → 镜像 → 椭圆−孔 → 楔形裁剪 → 旋转×6。**逻辑已收编进 `builders/lens.py`**，本文件保留供 notebook `exec` 复用 | 1 |
 | `lens_build_standalone.py` | `log`、`cst_log` | 独立驱动脚本：复制模板 → 登参数 → `exec lens_build.py` → 导出 `.sab` → 保存（实验沙盒，**不可 `import`**） | 2 |
 
 > 两个透镜文件的「函数」是**脚本级辅助函数**，不是库 API：`lens_build.py` 依赖调用方命名空间里的
@@ -156,7 +162,7 @@ tpc_toolkit/  独立工具层：不依赖 CST，也不被本包依赖
 > 由于拓扑相只在「尚未设置」时自动推断，**先 `set_topology` 再 `set_path`** 或**先 `set_path` 再 `set_topology`** 都可以，
 > 后者会覆盖推断值。
 
-### 4.2 方法表（20 个公开方法）
+### 4.2 方法表（21 个公开方法）
 
 配置类：
 
@@ -176,7 +182,7 @@ tpc_toolkit/  独立工具层：不依赖 CST，也不被本包依赖
 | `build_crystal` | `build_crystal(topology=None, lattice='a', height='h', large_hole='l1', small_hole='l2', y_margin='e2')` | 光子晶体阵列；`topology=None` 时用 `self.topology`（再退到 `'AB'`） | `(str, str)` |
 | `build_feed` | `build_feed(feed_type=None, name=None, **params)` | 馈源；`feed_type=None` 时按 `model_type` 推断 | `str` |
 | `build_waveguide` | `build_waveguide(name='wg1', material='Copper (annealed)', **params)` | 空心矩形波导 | `str` |
-| `build_lens` | `build_lens(lens_type='grin', method='hexagon', **params)` | **未实现**：抛 `NotImplementedError("build_lens 将在阶段 4 实现")` | — |
+| `build_lens` | `build_lens(spec=None, dxf_path=None, name='lens_epc', component='gridlens', material='Silicon (lossy)', height='h', **lens_kwargs)` | **GRIN 椭圆透镜**（阶段 6）：算几何 → 落 DXF → 调 CST 步骤；记入 `_built_parts['lens']`。`spec=None` 时用 `lens_kwargs` 现拼（接受 `lens_ratio` / `lens_Nx` / `R_big` 等旧名） | `dict` |
 | `add_ports` | `add_ports(auto=True, waveguide_name=None, **params)` | 端口；`waveguide_name=None` 时取 `_built_parts['waveguide']`，再退到 `'wg1'` | `list`（端口号） |
 | `configure_solver` | `configure_solver(freq_range=(300, 380), monitors=None, **kwargs)` | 求解器；`monitors=None` 时自动推断 | `None` |
 | `integrate` | `integrate()` | **保留接口**：基础整合已由各 builder 内部完成，当前函数体为 `pass` | `None` |
@@ -187,14 +193,17 @@ tpc_toolkit/  独立工具层：不依赖 CST，也不被本包依赖
 |---|---|---|---|
 | `build_all` | `build_all(freq_range=(300, 380), include_feed=True, include_waveguide=True, include_ports=True, **kwargs)` | 顺序执行：基板 → VPC → 晶体 → 馈源 → 波导 → 端口 → 求解器 → `integrate()` | `self` |
 | `save` | `save(path)` | `app.save(path)` 并记录 `self._cst_path` | `self` |
-| `run` | `run()` | `app.run()` | `self` |
+| `run` | `run()` | `app.run()`；守卫层会在提交前拦「参数改过但历史没重建」（陷阱 T2） | `self` |
+| `validate` | `validate()` | 转发 `app.validate_model()`（读 `get_messages()` + `Rebuild()`）；无 CST 时返回说明性的 error 字典 | `dict` |
+| `close` | `close()` | `app.close()`（**先 save 再 close**，陷阱 T15）；支持 `with TopoModeler(...) as m:` | `self` |
 | `preview` | `preview(ax=None, show_grid=True)` | 委托 `path.preview(...)`（matplotlib，不需要 CST） | `(fig, ax)` |
-| `read_results` | `read_results()` | **未实现**：抛 `NotImplementedError`（阶段 5，`ResultReader`） | — |
-| `plot_results` | `plot_results()` | **未实现**：抛 `NotImplementedError`（阶段 5） | — |
+| `read_results` | `read_results()` | **未实现**：抛 `NotImplementedError`（阶段 7，`ResultReader`） | — |
+| `plot_results` | `plot_results()` | **未实现**：抛 `NotImplementedError`（阶段 7） | — |
 | `get_built_parts` | `get_built_parts()` | 返回已构建部件名典的**副本** | `dict` |
 
 非公开成员（仅供理解内部行为）：`__init__(template_cst='tmp.cst')`、`_init_cst()`、
-`_infer_model_type()`、`_infer_topology()`、`_infer_monitors()`、`_infer_ports()`、`_check_path()`、`__repr__()`。
+`_infer_model_type()`、`_infer_topology()`、`_infer_monitors()`、`_infer_ports()`、
+`_check_path()`、`_mark_geometry()`、`__repr__()`。
 
 **`build_all()` 的关键字透传分组**（每个都对应一个 builder 的参数）：
 
@@ -913,8 +922,8 @@ app.save(r'D:\out\manual.cst')
 | (f) `templates/*.py` 的 `run()` | 调用 `self.app.start_solver()`，而该方法在全库中**不存在** | `run()` 必抛 `AttributeError`（`build_all()` 正常） | ✅ 已修：改用 `self.app.run()` |
 | (g) `templates/*.py` 的 `__init__` | 经 `TopoModeler.set_parameters()` 调 `app.set_parameters(params)`，而真实签名是 `set_parameters(name, value, log_flag=0)` | **构造时就抛 `TypeError`**，比 (d)(e) 更早触发 | ✅ 已修：`TopoModeler.set_parameters()` 改用字典式批量接口 `app.paras(params, None)` |
 | `builders/port.py::add_ports_for_straight_waveguide` / `add_port_for_antenna` | CST 面编号 `'10'` / `'22'` 从旧 notebook **硬编码**提取 | 面编号与实体几何强相关：一旦波导尺寸/朝向/构建顺序变化，端口可能落在**错误的面上** | ⏳ 未修（阶段 3 已知限制）：应改为按法向量自动查找，把 `face_id` 降级为可选覆盖项 |
-| `TopoModeler.build_lens` / `builders/`（GRIN 透镜） | **阶段 4 未实现**：`build_lens()` 直接抛 `NotImplementedError`；透镜逻辑仅存在于 `lens_build.py` / `lens_build_standalone.py` 两个脚本里 | 含 GRIN 透镜的器件**暂不能用模板/Modeler 建** | ⏳ 待阶段 4 把 `lens_build.py` 的几何下沉为 `builders/lens.py` 的无状态函数后再接入 |
-| `TopoModeler.read_results` / `plot_results` | **阶段 5 未实现**：两者都抛 `NotImplementedError` | 仿真结果（S 参数 / 远场 / E 场）无法通过本包读取 | ⏳ 待阶段 5 实现独立的 `ResultReader` |
+| `TopoModeler.build_lens` / `builders/lens.py`（GRIN 透镜） | ~~**阶段 4 未实现**~~ | ~~含 GRIN 透镜的器件暂不能建~~ | ✅ **已修**（2026-09-15）：透镜几何下沉为 `builders/lens.py` 的无状态层（`GrinLensSpec` / `GrinLensHoles` / `build_grin_lens_holes`），`build_lens()` 已接线。**与原脚本 `lens_build.py` 逐点/逐条等价**（`topo_modeler/tests/test_lens.py`，36 项）。⚠️ 仍缺：`method='dxf'` 入口、`GRINLensAntenna` 模板、CST 端到端真机验证 |
+| `TopoModeler.read_results` / `plot_results` | **阶段 7 未实现**：两者都抛 `NotImplementedError` | 仿真结果（S 参数 / 远场 / E 场）无法通过本包读取 | ⏳ 待阶段 7 实现独立的 `ResultReader`（阶段 5 已把底层读取/导出 API 做进 `cst_solver.Result`） |
 | `add_waveguide_port` 的 `full_deembedding` / `consider_material_inside`；`configure_solver` 的 `calculation_type` | 形参曾存在但函数体**未使用** | 调用方以为开关生效，实际被忽略 | ✅ 已修：两个空转形参已删除（改为 `orientation` / `shield` 并真正转发给 `add_port`）；`calculation_type` 已按 `TD-S`/`FD-S`/`EIGENMODE`/`IE-S`/`ASYMPTOTIC` 分派到对应 `cst_solver` 方法，非法值直接 `ValueError` |
 
 **注意 (a)(b) 的绕向修复引入了两处可见变化**：
@@ -992,4 +1001,5 @@ app.save(r'D:\out\manual.cst')
 
 ---
 
-*文档基于当前源码实测编写（`TopoModeler` 20 个公开方法、`NameManager` 8 个公开方法、`builders/` 与透镜脚本共 17 个模块级函数）。*
+*文档基于当前源码实测编写（`TopoModeler` 21 个公开方法、`NameManager` 8 个公开方法；
+`builders/` 8 个构建器；`tests/test_lens.py` 36 项回归）。*
