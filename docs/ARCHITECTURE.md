@@ -202,6 +202,15 @@ from templates import StraightWaveguide
    验收必须读 `app.cst_file.get_messages()`（读后即清空）。
 5. **相对路径**按**当前工作目录**解析，模板 `tmp.cst` 必须放在 notebook 同目录。
 6. `cst_file.modeler` 已废弃 → 用 `cst_file.model3d`。
+7. **面/棱边编号不可移植**：`pick_face` / `pick_edge` 的编号（`'10'`、`'22'` …）是 CST 内部编号，
+   与实体几何、生成顺序强相关，扭转/布尔/阵列之后会变，跨模型不可复用
+   （典型受害者：`topo_modeler/builders/port.py` 里硬编码的端口面号）。
+   优先按**坐标**绕开编号 —— `pick_face_at()` / `pick_edge_at()`；
+   需要编号时用 `get_face_id_from_point()` 由坐标**反查**；
+   校验拾取是否真的生效用 `get_picked_count()`，不要只看有无报错；
+   轴对齐的矩形端口面可直接用 `create_waveguide_port_free()` 给范围，完全不产生拾取动作。
+   > 注意：CST **没有**面法向/面中心/面面积的查询 API（`Solid.GetArea` 返回的是**实体**表面积），
+   > 所以"按法向自动找面"必须由参数化几何**正算出一个点**再反查，不能靠遍历已有面匹配法向量。
 
 ---
 

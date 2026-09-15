@@ -30,10 +30,10 @@ VBA 命令通过 `self.cst_file.model3d.add_to_history("<日志名>", f1)` 下�
 | `modeling/curves_ops.py` | `CurveOpsMixin` | ExtrudeCurve/Loft/Sweep/Blend/Chamfer/Cover/Trim |
 | `modeling/booleans.py` | `SolidOpsMixin` | Add/Subtract/Insert/Intersect/Imprint/Blend |
 | `modeling/transforms.py` | `TransformMixin` | Translate/Rotate/Mirror/Scale |
-| `modeling/picks.py` | `PickMixin` | Pick edge/face/vertex/endpoint |
+| `modeling/picks.py` | `PickMixin` | Pick edge/face/vertex/endpoint、按坐标拾取、按坐标反查编号 |
 | `modeling/wcs.py` | `WCSMixin` | 工作坐标系 |
 | `material/materials.py` | `MaterialMixin` | 材料、组件、重命名 |
-| `simulation/ports.py` | `PortMixin` | Port/DiscretePort/Floquet/Cable |
+| `simulation/ports.py` | `PortMixin` | Port（含 Free 坐标范围）/DiscretePort/Floquet/Cable |
 | `simulation/sources.py` | `SourceMixin` | PlaneWave/Coil/Current/Field/Farfield 源、时域信号 |
 | `simulation/monitors.py` | `MonitorMixin` | Monitor/Probe/2D 监视器 |
 | `simulation/boundary.py` | `BoundaryMixin` | Boundary/Background/LayerStacking |
@@ -57,7 +57,7 @@ VBA 命令通过 `self.cst_file.model3d.add_to_history("<日志名>", f1)` 下�
    - 完整 docstring：`参数 / 返回值 / 说明`，参数类型写 `float/str`（CST 表达式是字符串）
    - 需要写历史时用 `log_flag=1` 开关（`log_flag=0` 只返回 VBA 文本，方便把多条命令拼成**一次**历史）
 4. **同步 `setup.pyi` 存根**（加签名）
-5. **重新生成文档**：`python scripts/gen_docs.py`
+5. **重新生成文档**：`python scripts/gen_cst_solver_docs.py`
 6. **冒烟测试**（见下）
 
 ## 硬约定（都是踩过的坑）
@@ -70,6 +70,13 @@ VBA 命令通过 `self.cst_file.model3d.add_to_history("<日志名>", f1)` 下�
 - 相对路径按**当前工作目录**解析（模板 `tmp.cst` 必须放 notebook 同目录）
 - `cst_file.modeler` 已废弃 → 用 `cst_file.model3d`
 - `param` 类改动后需 `log_flag=1`（内部 `full_history_rebuild()`）才生效
+- **面/棱边编号不可移植**：`pick_face` / `pick_edge` 的编号（`'10'`、`'22'` …）是 CST 内部编号，与实体几何、生成顺序强相关，扭转/布尔/阵列之后会变
+  - 绕开编号：按**坐标**拾取 → `pick_face_at()` / `pick_edge_at()` / `pick_point_at()`
+  - 需要编号：由坐标**反查** → `get_face_id_from_point()` / `get_edge_id_from_point()`
+  - 校验拾取是否真生效：`get_picked_count('face')`，别只看有没有报错
+  - **不依赖拾取**：轴对齐矩形端口面用 `create_waveguide_port_free()` 给 `Xrange/Yrange/Zrange`（`Coordinates "Free"`）
+  - CST **没有**面法向/面中心/面面积的查询 API（`Solid.GetArea` 返回的是**实体**表面积），
+    所以"按法向自动找面"只能由参数化几何**正算出一个点**再反查，不能遍历已有面匹配法向量
 
 ## 待修清单（修完请同步删掉 `../../SKILL.md` §6 对应行）
 
