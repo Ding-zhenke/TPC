@@ -285,6 +285,42 @@ class StraightWaveguide:
         self.app.run()
         return self
 
+    def validate(self):
+        """
+        结构化验收：读 CST 消息 + 跑 ``Rebuild()``。
+
+        :return: dict, 见 ``cst_solver.validation.ValidationMixin.validate_model``
+        """
+        if not self._built:
+            self.build_all()
+        return self.app.validate_model()
+
+    def close(self):
+        """
+        关闭 CST 工程与设计环境，释放资源（阶段 5.7.1）。
+
+        ⚠️ **先 save() 再 close()**。关掉之后 ``save()`` 不会写出任何东西，
+        守卫层（``cst_solver._guards`` 陷阱 T15）会直接报错；有未保存改动时
+        ``close()`` 会给一条 warning。
+
+        :return: self
+        """
+        self.modeler.close()
+        return self
+
+    def __enter__(self):
+        """支持 with 语句，保证工程一定被关闭。"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """退出时关闭工程。"""
+        try:
+            self.close()
+        except Exception:
+            if exc_type is None:
+                raise
+        return False
+
     def __repr__(self):
         return (f"StraightWaveguide(topology='{self.topology}', length={self.length}, "
                 f"a={self.a}, h={self.h}, built={self._built})")
