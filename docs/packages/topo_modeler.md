@@ -13,11 +13,12 @@
 | **入口** | `TopoModeler`、`NameManager`（包级导出）；底层入口 `topo_modeler.builders.*` |
 | **依赖** | `cst_solver`（CST 会话：`setup`）、`mesh_grid.tri_grid.TopoPath`（几何与坐标） |
 | **被谁依赖** | `topo_templates/`（`StraightWaveguide`、`UnitAntenna`） |
-| **源码位置** | `topo_modeler/`：`modeler.py`、`name_manager.py`、`builders/`（8 个构建器）、`lens_build.py`、`lens_build_standalone.py`、`tests/` |
-| **当前阶段** | 阶段 0–3 已完成（坐标层 / 基础引擎 / 模板层）；**阶段 5（库加固）离线部分完成**；**阶段 6 的透镜几何层已完成并离线验收通过**（`builders/lens.py` + `TopoModeler.build_lens()`）；`GRINLensAntenna` 模板与端到端真机验证未做 |
+| **源码位置** | `topo_modeler/`：`modeler.py`、`name_manager.py`、`builders/`（8 个构建器）、阶段 7 工具层（`config.py` / `result_reader.py` / `report.py` / `audit.py`）、`lens_build.py`、`lens_build_standalone.py`、`tests/` |
+| **当前阶段** | 阶段 0–3 已完成；**阶段 5（库加固）离线部分完成**；**阶段 6 几何层完成**（`builders/lens.py`）；**阶段 7 的「看得见 / 留得下」两半完成**（配置 ▸ 结果读取 ▸ 自包含 HTML 报告 ▸ 审计落盘）。仍缺：`GRINLensAntenna` 模板、阶段 7 的 `scanner` / `batch` / `optimizer`、端到端真机验证 |
 
-**公开 API 规模**（AST 统计，2026-09-15）：`TopoModeler` 21 个公开方法，`NameManager` 8 个公开方法，
+**公开 API 规模**（AST 统计，2026-09-16）：`TopoModeler` 22 个公开方法，`NameManager` 8 个公开方法，
 另有 `builders/` 与两个透镜脚本中的模块级函数（`builders/` 见第 3 节的表）。
+阶段 7 工具层见 §11。
 `tests/test_lens.py`（36 项）是透镜构建器的**等价性护栏**：把原脚本
 `lens_build.py` 原样跑一遍，与库函数逐点/逐条比对。
 
@@ -80,6 +81,10 @@ topo_modeler/                    建模引擎层（本包）
 │   ├── port.py                  波导端口：面编号 / 直波导 2 端口 / 天线 1 端口
 │   └── solver.py                时域求解器 + 监视器 + 高级参数
 ├── tests/test_lens.py           透镜构建器回归：与原脚本 lens_build.py 逐点/逐条等价
+├── config.py                    阶段7：YAML 配置驱动 + 可执行取值域（不碰 CST）
+├── result_reader.py             阶段7：ResultReader（cst_solver.Result 的批量+出图外壳）
+├── report.py                    阶段7：自包含 HTML 报告引擎（零 CDN / 零 JS）
+├── audit.py                     阶段7：审计落盘（tool_calls.jsonl / production_chain.md）
 ├── lens_build.py                GRIN 透镜建模**脚本**（notebook 用 exec 复用；库侧已收编为 builders/lens.py）
 └── lens_build_standalone.py     GRIN 透镜工程的独立驱动脚本（实验沙盒，供 subprocess 启动）
 ```
@@ -195,10 +200,10 @@ tpc_toolkit/  独立工具层：不依赖 CST，也不被本包依赖
 | `save` | `save(path)` | `app.save(path)` 并记录 `self._cst_path` | `self` |
 | `run` | `run()` | `app.run()`；守卫层会在提交前拦「参数改过但历史没重建」（陷阱 T2） | `self` |
 | `validate` | `validate()` | 转发 `app.validate_model()`（读 `get_messages()` + `Rebuild()`）；无 CST 时返回说明性的 error 字典 | `dict` |
+| `read_results` | `read_results(path=None, names=None, run_id=0)` | **阶段 7**：返回 `ResultReader`（离线读，不需要设计环境） | `ResultReader` |
+| `plot_results` | `plot_results(path='results_report.html', title=None, note='', highlight=None, meta=None, audit=None, **kwargs)` | **阶段 7**：出自包含 HTML 报告（内联 SVG，零 CDN/JS），可附审计小节 | `str`（HTML 路径） |
 | `close` | `close()` | `app.close()`（**先 save 再 close**，陷阱 T15）；支持 `with TopoModeler(...) as m:` | `self` |
 | `preview` | `preview(ax=None, show_grid=True)` | 委托 `path.preview(...)`（matplotlib，不需要 CST） | `(fig, ax)` |
-| `read_results` | `read_results()` | **未实现**：抛 `NotImplementedError`（阶段 7，`ResultReader`） | — |
-| `plot_results` | `plot_results()` | **未实现**：抛 `NotImplementedError`（阶段 7） | — |
 | `get_built_parts` | `get_built_parts()` | 返回已构建部件名典的**副本** | `dict` |
 
 非公开成员（仅供理解内部行为）：`__init__(template_cst='tmp.cst')`、`_init_cst()`、
@@ -1001,5 +1006,44 @@ app.save(r'D:\out\manual.cst')
 
 ---
 
-*文档基于当前源码实测编写（`TopoModeler` 21 个公开方法、`NameManager` 8 个公开方法；
-`builders/` 8 个构建器；`tests/test_lens.py` 36 项回归）。*
+## 11. 阶段 7 工具层（配置 / 结果 / 报告 / 审计）
+
+四个模块都放在本包（按 06 §七 的目录结构），**都能在没有 CST 的环境里 import** ——
+只有真的去读 .cst / 建实例时才用得上 CST。
+
+| 模块 | 主要符号 | 职责 |
+|---|---|---|
+| `config.py` | `load_config`、`validate_config`、`template_from_config`、`modeler_from_config`、`example_config`、`dump_config`、`FIELD_SPECS`、`field_help` | **YAML 配置驱动**：把取值域做成**可执行**的（非法取值、未知字段、量纲越界、跨类型字段都在建实例**之前**报错）。接受的字段从模板构造签名自动推导 |
+| `result_reader.py` | `ResultReader` | `cst_solver.Result` 的**批量化 + 出图**外壳；频率强转 float、S 值保持 complex；含 `peak_position()` / `peak_shift()`（把「谐振峰偏差 < 1 GHz」变成 API） |
+| `report.py` | `HtmlReport`、`svg_line_chart`、`svg_heatmap`、`svg_polar`、`svg_timeline` | **自包含 HTML 报告**：零 CDN、零 JS，全部内联 SVG |
+| `audit.py` | `AuditLog`、`record_call`、`default_audit_dir` | **审计落盘**：`tool_calls.jsonl` + `production_chain.md` + 参数存档（不覆盖） |
+
+**四条硬约定**：
+
+1. **报告自包含** —— 生成的 HTML 里不得出现任何 `http(s)://`、`<script>`、`<link>`；
+   有测试逐条守着。这样断网能开、十年后能开、能直接进 git / 邮件。
+2. **审计不拖垮主流程** —— 默认 `strict=False`：写盘失败只记 `AuditLog.last_error`；
+   `strict=True` 才抛。
+3. **参数存档不覆盖** —— 文件名带微秒 + 冲突兜底（`-2`/`-3`…）。
+4. **报告的零 JS 是刻意的** —— 计划里的「3D 远场 WebGL」**明确不做**（必须内联 JS，
+   且无法离线验收）；远场改用二维极坐标（`add_polar`，自动标出主瓣峰值方向）。
+
+**典型链条**（阶段 5 → 阶段 7 打通）::
+
+    # 建模 → 跑 → 关工程（离线读结果，不占许可）
+    with audit.stage('build_all'):
+        template.build_all()
+    template.save(output_path).run().close()
+    modeler.plot_results('report.html', audit=audit)
+
+    # 或者分段来
+    from topo_modeler import config
+    cfg = config.validate_config('wg_AB.yaml')            # 建实例之前就校验
+    rr = ResultReader(r'D:\out\wg_AB.cst')
+    rr.export_csv('s_params.csv')                          # 阶段 5 的导出
+    report_from_s_parameters_csv('s_params.csv').write('r.html')
+
+---
+
+*文档基于当前源码实测编写（`TopoModeler` 22 个公开方法、`NameManager` 8 个公开方法；
+`builders/` 8 个构建器；阶段 7 工具层 4 个模块；`tests/` 共 115 项回归）。*
