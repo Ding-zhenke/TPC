@@ -3,7 +3,7 @@
 > [`WORKFLOW.md`](./WORKFLOW.md) 为准；`cst_solver` 的维护细节见
 > [`cst-solver-dev.md`](./cst-solver-dev.md)。
 > 本文件成文较早，其中的包结构树只覆盖 `cst_solver/`，且方法数
-> （文中「153 / 150+ 个方法」）已过时 —— 当前为 23 个 Mixin / 221 个公开方法。
+> （文中「153 / 150+ 个方法」）已过时 —— 当前为 24 个 Mixin / 223 个公开方法（AST 实测）。
 
 ## CST & Python 联合仿真专家
 

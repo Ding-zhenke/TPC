@@ -1,17 +1,21 @@
 # cst_solver —— CST 会话封装层
 
-`cst_solver/` 是 TPC 的**最底层包**：CST Studio Suite 的自动化接口本质上是「拼一段 VBA 宏字符串 → 下发到工程的历史树」，本包把这套宏 API 收敛成 **23 个 Mixin 类**，再用多继承聚合成**一个** `setup` 类，于是 200 多个 CST 原语操作（画体、布尔、端口、边界、求解器、网格、导出）都能通过同一个 Python 对象调用；此外还独立提供一个 `result` 类，用于只读地读取**已算完**工程的导航树结果。它与 `mesh_grid` 互相不依赖，是 `topo_modeler` / `templates` 的下层依赖。
+`cst_solver/` 是 TPC 的**最底层包**：CST Studio Suite 的自动化接口本质上是「拼一段 VBA 宏字符串 → 下发到工程的历史树」，本包把这套宏 API 收敛成 **24 个 Mixin 类**，再用多继承聚合成**一个** `setup` 类，于是 200 多个 CST 原语操作（画体、布尔、端口、边界、求解器、网格、导出）都能通过同一个 Python 对象调用；此外还独立提供一个 `result` 类，用于只读地读取**已算完**工程的导航树结果，以及一个**运行时守卫层**（`_guards.py`），把「读文档才知道」的约束变成「写错就提示」。它与 `mesh_grid` 互相不依赖，是 `topo_modeler` / `templates` 的下层依赖。
 
 | 项 | 内容 |
 |---|---|
-| **职责** | 把 CST 的 VBA 宏 API 封装成 Pythonic 的 `setup` 对象；另提供只读的 `result` 结果读取器 |
+| **职责** | 把 CST 的 VBA 宏 API 封装成 Pythonic 的 `setup` 对象；另提供只读的 `result` 结果读取器与运行时守卫层 |
 | **需要 CST** | ✅ **必须**。`cst_solver/__init__.py` 在导入时直接 `import cst` / `import cst.interface` / `import cst.results`，未安装 CST Studio Suite 的机器上 `import cst_solver` 必然失败 |
 | **入口** | `from cst_solver import setup, result`（`setup` = 聚合类，`result` = 结果读取类） |
 | **依赖** | 第三方 `numpy`（`_result_core.py` 用到）；`cst` 由 CST 自带、无法从 PyPI 安装，故不列入 `pyproject.toml`；不依赖任何其它 TPC 包 |
 | **被谁依赖** | `topo_modeler/`（如 `topo_modeler/modeler.py`、`topo_modeler/lens_build_standalone.py`）、`templates/`；`tpc_toolkit/` **不**依赖它 |
-| **源码位置** | `cst_solver/`：22 个 Mixin 模块 + `__init__.py`（内联 `FaceOpsMixin` 与 `setup`）+ `_result_core.py`（`Result`）+ `config_template.py` / `_path_tools.py`，类型存根 `setup.pyi`、`simulation/setup.pyi` |
+| **源码位置** | `cst_solver/`：23 个 Mixin 模块 + `__init__.py`（内联 `FaceOpsMixin` 与 `setup`）+ `_result_core.py`（`Result`）+ `_guards.py`（守卫层）+ `config_template.py` / `_path_tools.py`，类型存根 `setup.pyi`、`simulation/setup.pyi` |
 
-> AST 统计（不含归档中的死代码 `_result.py`）：类上公开方法共 **221** 个 = Mixin 方法 **211** 个 + `setup.open` 1 个 + `Result` 9 个。
+> AST 统计（不含归档中的死代码 `_result.py`）：`cst_solver/` 共 **24 个 Mixin 类**，
+> Mixin 类上公开方法 **223** 个；另有 `Result` 13 个、`setup` 自身 1 个（`open`）、
+> 守卫层模块级函数 6 个。
+> 复核命令：`python scripts/_api_stats.py`（注意它把守卫层的 `GuardState` 也算进"类上公开方法"，
+> 因此它给出的总数比上面这个口径大）。
 
 ---
 
@@ -40,7 +44,8 @@ End With
 1. **不用记 VBA 语法**：`app.create_brick(xmin, xmax, ymin, ymax, zmin, zmax, "substrate", material="...")` 一行等价于上面 12 行。
 2. **不用手拼字符串**：所有 `.Reset` / `.Name` / `.Create` / `End With` 由库生成，参数化表达式（CST 里长度/角度其实是**表达式字符串**，如 `"a/2"`、`"h/2"`）直接透传。
 3. **不用维护 CST 库路径**：导入时自动从配置推导 CST 的 `python_cst_libraries` 并加入 `sys.path`。
-4. **复合构件可以合成一条历史**：`log_flag=0` 时方法**只返回 VBA 文本、不下发**，于是「画多边形 → 拉伸 → 旋转 → 平移」能拼成**一条**历史项（`triangle()` / `hexagon()` 就是这么实现的）。
+4. **复合构件可以合成一条历史**：`log_flag=0` 时几何类方法**只返回 VBA 文本、不下发**，于是「画多边形 → 拉伸 → 旋转 → 平移」能拼成**一条**历史项（`triangle()` / `hexagon()` 就是这么实现的）。
+   ⚠️ **`log_flag` 在不同方法里含义不同**（详见 §7.0）：几何类方法（`polyline` / `arc` / `extrude` / `rotation` / `translate` …）的 `log_flag=0` 表示「只返回文本不下发」，默认值是 **1**；而 `para()` / `paras()` 的 `log_flag=0` 表示「**写入参数表但不重建工程历史**」，默认值是 **0**。两者不能互相类推。
 5. **同一对象上什么都能干**：建模、材料、端口、边界、求解器、网格、后处理全在 `setup` 上，不用在多个对象间传递 `cst_file`。
 
 **它明确不保证的东西**：
@@ -53,10 +58,10 @@ End With
 
 ## 2. 架构：Mixin 多继承
 
-**设计**：每个模块只定义一个 `XxxMixin` 类，类里只放**与一个 VBA 主题相关**的方法，全部通过 `self.cst_file` 下发命令 —— 它们不重写 `__init__`、不保存状态。`cst_solver/__init__.py` 末尾用多继承把这 23 个 Mixin 聚合为唯一的 `setup` 类。
+**设计**：每个模块只定义一个 `XxxMixin` 类，类里只放**与一个 VBA 主题相关**的方法，全部通过 `self.cst_file` 下发命令 —— 它们不重写 `__init__`、不保存状态。`cst_solver/__init__.py` 末尾用多继承把这 24 个 Mixin 聚合为唯一的 `setup` 类。
 
 ```python
-# cst_solver/__init__.py:229-253（原样）
+# cst_solver/__init__.py 末尾（原样）
 class setup(
     ProjectMixin,
     UnitsMixin,
@@ -81,6 +86,7 @@ class setup(
     FarfieldMixin,
     PlotMixin,
     ExportMixin,
+    ValidationMixin,
 ):
 ```
 
@@ -99,19 +105,23 @@ class setup(
 
 ## 3. 模块地图
 
-公开方法数为 AST 实测值（不含 `_` 开头的方法）。**22 个 Mixin 各占一个模块文件，第 23 个 `FaceOpsMixin` 内联在 `__init__.py`**；`_result_core.py` 不是 Mixin。
+公开方法数为 AST 实测值（不含 `_` 开头的方法）。**23 个 Mixin 各占一个模块文件，第 24 个 `FaceOpsMixin` 内联在 `__init__.py`**；`_result_core.py`（`Result`）与 `_guards.py`（守卫层，非 Mixin）不参与 `setup`。
+
+> 本节数字由脚本复核：`python scripts/_api_stats.py`。若与源码不符，以 AST 实测为准并顺手更新本表
+> （`cst-solver-dev.md` 的规程要求「改公开 API 必须同步本文件」）。
 
 ### 根目录
 
 | 文件 | Mixin 类 | VBA 主题 | 公开方法数 |
 |---|---|---|---|
-| `project.py` | `ProjectMixin` | 工程 打开/关闭/另存/激活（`open_project`、`new_project`…） | 9 |
+| `project.py` | `ProjectMixin` | 工程 打开/关闭/另存/激活（`open_project`、`new_project`…）+ T10/T15 守卫接线 | 9 |
 | `units.py` | `UnitsMixin` | `Units` 单位；单位查询（`GetLengthUnit` 等） | 2 |
-| `parameters.py` | `ParametersMixin` | 参数 / 表达式参数 / `Solver.FrequencyRange` 频率范围 | 11 |
+| `parameters.py` | `ParametersMixin` | 参数 / 表达式参数 / `Solver.FrequencyRange` 频率范围 + T2/T7'/T13 守卫接线 | 11 |
+| `validation.py` | `ValidationMixin` | **结构化验收**：`get_messages()` + `validate_model()`（读消息 + `Rebuild()`） | 2 |
 | `__init__.py` | `FaceOpsMixin`（内联） | 面旋转、面拉伸、`TraceFromCurve` 走线 | 4 |
-| `_result_core.py` | `Result`（**非 Mixin**，不参与 `setup`） | `cst.results.ProjectFile` 结果读取 | 9 |
+| `_result_core.py` | `Result`（**非 Mixin**，不参与 `setup`） | `cst.results.ProjectFile` 结果读取 + 批量读取 / CSV 导出 | 13 |
 
-**根目录小计：Mixin 方法 26 个。**
+**根目录小计：Mixin 方法 28 个。**
 
 ### `modeling/`
 
@@ -122,10 +132,10 @@ class setup(
 | `curves_ops.py` | `CurveOpsMixin` | `ExtrudeCurve` / `Loft` / `SweepCurve` / `BlendCurve` / `ChamferCurve` / `CoverCurve` / `TrimCurves` | 8 |
 | `booleans.py` | `SolidOpsMixin` | `Solid.Add` / `Subtract` / `Insert` / `Intersect` / `Imprint` / `BlendEdge` | 11 |
 | `transforms.py` | `TransformMixin` | `Transform` 的 `Rotate` / `Translate` / `Mirror` / `Scale` | 6 |
-| `picks.py` | `PickMixin` | `Pick.PickEdgeFromId` / `PickEndpointFromId` / `PickFaceFromId` / `PickVertexFromId` / `PickFaceFromPoint` / `AddEdge` / `ClearAllPicks` | 8 |
+| `picks.py` | `PickMixin` | 按编号/按坐标拾取面、棱、点（`PickFaceFromId` / `PickFaceFromPoint` / `GetFaceIdFromPoint` / `GetNumberOfPicked*`）+ `pick_face_auto` 稳健拾取 | 13 |
 | `wcs.py` | `WCSMixin` | `WCS.Reset` / `RotateWCS` / `MoveWCS` / `AlignWCSWithSelected` / `SetOrigin` / `Store` / `Restore` / `Scale` | 17 |
 
-**`modeling/` 小计：74 个。**
+**`modeling/` 小计：79 个。**
 
 ### `material/`
 
@@ -139,13 +149,13 @@ class setup(
 
 | 文件 | Mixin 类 | VBA 主题 | 公开方法数 |
 |---|---|---|---|
-| `ports.py` | `PortMixin` | `Port` / `DiscreteFacePort` / `DiscretePort` / `LumpedFaceElement` / `FloquetPort` / `CablePort` | 9 |
+| `ports.py` | `PortMixin` | `Port` / `DiscreteFacePort` / `DiscretePort` / `LumpedFaceElement` / `FloquetPort` / `CablePort` | 10 |
 | `sources.py` | `SourceMixin` | `PlaneWave` / `CurrentPort` / `Coil` / `VoltageWire` / `Charge` / `CurrentPath` / `Magnet` / `FieldSource` / `PredefinedField` / `FarfieldSource` / `TimeSignal` | 11 |
 | `monitors.py` | `MonitorMixin` | `Monitor`（场/远场/2D 切面监视器）、`Probe` 探针 | 4 |
 | `boundary.py` | `BoundaryMixin` | `Boundary` / `Background` / `LayerStacking` | 4 |
-| `solver.py` | `SolverMixin` | `Solver`(T) / `FDSolver` / `EigenmodeSolver` / `IESolver` / `AsymptoticSolver` / `ParameterSweep` / `Optimizer` / `SolverParameter`、`run_solver()` / `full_history_rebuild()` | 23 |
+| `solver.py` | `SolverMixin` | `Solver`(T) / `FDSolver` / `EigenmodeSolver` / `IESolver` / `AsymptoticSolver` / `ParameterSweep` / `Optimizer` / `SolverParameter`、`run_solver()` / `full_history_rebuild()` + T2 守卫接线 | 27 |
 
-**`simulation/` 小计：51 个。**
+**`simulation/` 小计：56 个。**
 
 ### `mesh/`
 
@@ -178,10 +188,12 @@ class setup(
 
 | 文件 | 内容 |
 |---|---|
-| `config_template.py` | 配置模板（`CST_INSTALL_PATH` 及两条推导路径） |
+| `config_template.py` | 配置模板（`CST_INSTALL_PATH` 及两条推导路径，另可设 `CST_GUARD_MODE` 覆盖守卫模式） |
 | `_path_tools.py` | `get_paths(cst_install_path)` —— 只做路径推导的纯函数 |
 | `_result_core.py` | `Result` 类 + 旧名别名类 `result(Result)`，包顶层 `result` 由它导出 |
+| `_guards.py` | **运行时守卫层**（纯标准库，不 import CST）：`GuardState` / `GuardFinding` / `CstGuardError` + 全局模式开关。见 §7.0 |
 | `setup.pyi` / `simulation/setup.pyi` | 类型存根（IDE 补全唯一依赖），改公开 API 必须同步 |
+| `tests/test_guards.py` | 守卫层与结构化验收的单测（**假 CST 对象**，43 条），`pytest cst_solver/tests/test_guards.py -v` |
 | `_result.py` | ⚠ **陈旧、从未被任何模块导入的 `_result_core.py` 副本**（307 行 vs 107 行），正在按死代码归档 |
 
 ---
@@ -266,11 +278,11 @@ Result(cst_file)   # :param cst_file: str, CST 工程文件路径（.cst）
 
 内部做两件事：`self.app_result = cst.results.ProjectFile(cst_file, allow_interactive=True)`、`self.result_module = self.app_result.get_3d()`。之后的读取都委托给 `self.result_module`。类 `result(Result)` 只是 `pass`，是向后兼容的旧名。
 
-### 9 个公开方法
+### 13 个公开方法
 
 | 方法（签名） | 返回结构 |
 |---|---|
-| `get_tree_items()` | 直接返回 `self.result_module.get_tree_items()` —— 导航树中所有结果项（先看它，再决定读哪一项） |
+| `get_tree_items(tree_filter=None)` | 直接返回 `self.result_module.get_tree_items(...)` —— 导航树中所有结果项（先看它，再决定读哪一项）。`tree_filter` 可传 `"0D/1D"` / `"colormap"` / `"farfields"` 等做过滤 |
 | `get_available_results()` | 中文别名，等价于 `get_tree_items()` |
 | `get_all_run_ids(max_mesh_passes_only: bool = True)` | `list[int]`；`True` 只列最终结果，`False` 连中间结果一起列 |
 | `get_run_ids(treepath: str, skip_nonparametric: bool = False)` | `list[int]`；`skip_nonparametric=True` 时**排除 `run_id=0`** |
@@ -279,6 +291,10 @@ Result(cst_file)   # :param cst_file: str, CST 工程文件路径（.cst）
 | `read_2d(tree_path, run_id: int = 0)` | `dict`：`{'x','y','z','values'}`（`z` 在对象没有 `get_zdata` 时为 `None`）；前缀 `"2D Results\\"` |
 | `read_s_parameter(s_param: str, run_id: int = 0)` | 便捷方法 = `read_1D(f"S-Parameters\\{s_param}", run_id)`，即 `ndarray (n, 2)` = `[频率, S 参数]` |
 | `read_3d(tree_path, run_id: int = 0)` | `dict`：`{'x','y','z','values'}`；前缀 `"2D/3D Results\\"`；全部尝试失败时抛 `ValueError(f"无法读取 3D 结果: {tree_path}")` |
+| `list_s_parameters(tree_filter='0D/1D')` | `list[str]`：工程里所有可读的 S 参数名，如 `['S1,1', 'S2,1']`（阶段 5.5 新增） |
+| `read_all_s_parameters(run_id=0, names=None)` | `dict{名称: ndarray(n,2)}`：第 0 列是**float** 频率（已剥掉 CST 的复数外壳），第 1 列是复数 S 值。个别条目失败不抛异常，记入 `self.last_errors`（阶段 5.5 新增） |
+| `export_s_parameters_csv(save_path, run_id=0, names=None, in_db=True, delimiter=',')` | `str`：写出的 CSV 绝对路径。每个 S 参数一列、第一列频率；`in_db=True` 写 dB，否则写 `_re`/`_im` 两列。**离线**，不需要设计环境（阶段 5.5 新增） |
+| `export_farfield_csv(save_path, tree_path='Farfields', run_id=0)` | `str`：把远场 2D 云图拉平成 `x, y, value` 长表 CSV。⚠️ **未验证**（本机没有含远场结果的工程可试），见 `stages/05` 的风险登记（阶段 5.5 新增） |
 
 ### `run_id` 是什么
 
@@ -346,7 +362,8 @@ f3 = app.translate("tri1", ["0", "0", "-h/2"], log_flag=0)
 app.cst_file.model3d.add_to_history("Triangle: tri1", f1 + f2 + f3)          # 一次下发 = 一条历史
 ```
 
-不带 `log_flag` 的方法（如 `create_brick`、`add`、`define_monitor`）**总是立即下发**，各自占一条历史 —— 需要合并时用带 `log_flag` 的那几个（`polyline` / `arc` / `extrude` / `rotation` / `translate` / `para` / `paras`）自己拼。库内的 `triangle()`、`hexagon()` 就是这么写的。
+不带 `log_flag` 的方法（如 `create_brick`、`add`、`define_monitor`）**总是立即下发**，各自占一条历史 —— 需要合并时用带 `log_flag` 的**几何类**方法（`polyline` / `arc` / `extrude` / `rotation` / `translate`）自己拼。库内的 `triangle()`、`hexagon()` 就是这么写的。
+⚠️ **不要照搬这个手法去用 `para` / `paras`** —— 它们的 `log_flag` 是另一个意思（「是否重建历史」），不返回 VBA 文本，见 §7.1 的对照表。
 
 ### (c) 用旧名别名（VBA 风格名仍然可用）
 
@@ -399,15 +416,79 @@ print(field['values'].shape, field['x'].shape, field['z'])   # z 可能为 None
 
 以下 6 条是**跨包通用**的铁律（`docs/ARCHITECTURE.md` §6 同款），违反任何一条都会得到「能跑通但结果是错的」——CST 不会报错来提醒你。
 
+### 7.0 运行时守卫层（`cst_solver/_guards.py`，阶段 5 新增）
+
+上面这些铁律原本全是**文档约定**，靠人记住；阶段 4 暴露的 8 处缺陷里 6 处属于这一类。
+守卫层把它们变成**可执行检查**，每条给出错误三件套 `code` / `message` / `next_action`。
+
+```python
+from cst_solver import get_guard_state, set_guard_mode, CstGuardError
+
+set_guard_mode('strict')          # 'off' | 'warn'(默认) | 'strict'
+try:
+    app.run()
+except CstGuardError as e:
+    print(e.finding.code, '->', e.finding.next_action)
+```
+
+| 编号 | 陷阱 | 在哪触发 | 处置 |
+|---|---|---|---|
+| **T2** | 改了**已被几何引用**的参数，却直接 `run()` → 算的是**旧几何** | `run()` 之前 | strict 抛 `CstGuardError`；warn 只警告 |
+| **T7'/T13** | `para(..., log_flag=0)` 写进参数表但**不重建历史** | `para()` / `paras()` 调用点 | 警告，并给出 `log_flag=1` / `update()` 两条修法 |
+| **T3** | 导出远场/2D-3D 结果后再 `save(include_results=True)` | `save()` 之前 | 建议改 `include_results=False` |
+| **T8** | 把 `Abs(E)`（`'efield'`）当**增益证据** | 远场绘图 | 未知模式拦截；`require_gain=True` 时非增益模式拦截 |
+| **T10** | `project_path` 后缀不是 `.cst` / `.prj` | `open_project()` | strict 抛错 |
+| **T15** | `close()` 之后再 `save()`（什么都不会写出） | `save()` / `close()` | 先 `save()` 再 `close()`；未保存就关会给警告 |
+
+**三个必须知道的实现细节**：
+
+1. **`mode='off'` 与引入守卫层之前逐字节一致** —— 不报警、不拦截、**不额外调用任何 CST 接口**。
+   只有 `mode!='off'` 时守卫才会问 CST 两句：`Solid.GetNumberOfShapes()`
+   （判断工程里有没有几何）与 `GetParameter(name)`（判断参数是否是新定义的）。
+   `config.py` 里写 `CST_GUARD_MODE = 'strict'` 可改默认模式。
+2. **只把「改一个已存在的参数」判成脏**，首次写入的参数名不算 —— 因为库的约定是
+   「先定义参数、再用它建几何」，所以一个全新参数不可能被**已有**几何引用。
+   这条判据是阶段 5 实测模板时补的：`topo_modeler/builders/feed.py` 的优化块会在
+   几何已存在之后才 `para('tx1', 0.2)`，按最初的「几何已存在就判脏」会**误报**。
+   （代价：打开已有工程后，本次会话第一次改一个**已存在**的参数，靠 `GetParameter()`
+   兜住；若该接口读不出来，会退化为「按新参数处理」而**漏报**一次。）
+3. 守卫**不替代验收**：它只在 `run()` 前防呆，`validate_model()`（见 §7.2）才是拿到结论的地方。
+
 ### 7.1 `add_to_history` 是唯一执行通道
 
-所有 Mixin 的 VBA 都经 `self.cst_file.model3d.add_to_history("<历史标签>", vba_string)` 下发，没有第二条路径（少数查询类操作会直接调 CST 接口，如 `Units.GetLengthUnit()`、`model3d.GetParameter()`、`model3d.run_solver()`、`model3d.full_history_rebuild()`）。`log_flag=0` 时**只拼字符串不下发** —— 这是 `triangle()` 等复合构件把「画线 + 拉伸 + 旋转 + 平移」合成**一条**历史的手法。历史标签也是可读的排错线索（`"Square: substrate"`、`"Define Port: 1"`…）。
+所有 Mixin 的 VBA 都经 `self.cst_file.model3d.add_to_history("<历史标签>", vba_string)` 下发，没有第二条路径（少数查询类操作会直接调 CST 接口，如 `Units.GetLengthUnit()`、`model3d.GetParameter()`、`model3d.run_solver()`、`model3d.full_history_rebuild()`）。
+
+⚠️ **`log_flag` 有两种含义，不要互相类推**：
+
+| 方法族 | 默认值 | `log_flag=0` 的含义 | `log_flag=1` 的含义 |
+|---|---|---|---|
+| **几何类**：`polyline` / `arc` / `extrude` / `rotation` / `translate` / `mirror` … | **1** | **只返回 VBA 文本，不下发**（`triangle()` / `hexagon()` 用它把多步合成一条历史） | 写入历史并立即生效 |
+| **参数类**：`para()` / `paras()` | **0** | **写入参数表，但不调用 `full_history_rebuild()`** —— 参数存进去了，几何却不会跟着变 | 写入参数表**并**立即重建历史 |
+
+参数类的 `log_flag=0` 正是 T2/T7'/T13 的来源：它**不是**「不下发」，所以从返回值上看不出任何异常，
+只有几何悄悄停留在旧值上。守卫层会在这种改法之后、`run()` 之前提醒你（§7.0）。
+历史标签也是可读的排错线索（`"Square: substrate"`、`"Define Port: 1"`…）。
 
 ### 7.2 库不保证把 CST 报错抛成 Python 异常
 
 - 验收必须读 **`app.cst_file.get_messages()`**：**读后即清空**，所以要即读即存（`msgs = app.cst_file.get_messages()`），别指望事后回看。
 - 更要跑 **`app.cst_file.model3d.Rebuild()`**：阻塞式重放整条历史树，大模型约几秒。历史能不能无错重放，决定了模型是否真的可复现。
 - 典型症状：实体名被上一步布尔消耗掉（`Shape does not exist`）、几何只在重建后才暴露问题。改动后必须「`get_messages()` 为空 + `Rebuild()` 后仍为空」双验收。
+
+**阶段 5 起有 API 支撑，不用再自己抄这三步**：
+
+```python
+out = app.validate_model()          # 读消息 → Rebuild() → 再读消息
+out['status']       # 'success' | 'error'
+out['messages']     # 本次验收到的问题消息（含 Rebuild 阶段）
+out['rebuild_ok']   # Rebuild 本身是否干净
+out['before']       # 调用前积压的历史消息（已清空）
+out['guard']        # 守卫层发现摘要
+```
+
+`validate_model()` **不抛异常**，调用方按 `status` 分流 —— 既能用在断言脚本里，
+也能用在「先跑一遍看看能不能继续」的探测场景。`Rebuild()` 成功时它会顺带清掉
+守卫层的「参数脏」标记（历史已重放 ⇒ 参数与几何重新一致）。
 
 ### 7.3 `ExtrudeCurve` 沿多边形法向拉伸，绕向决定方向
 

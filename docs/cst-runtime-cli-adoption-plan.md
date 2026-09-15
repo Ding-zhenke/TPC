@@ -1,4 +1,4 @@
-# 借鉴 cst-runtime-cli 实施计划清单
+﻿# 借鉴 cst-runtime-cli 实施计划清单
 
 > 创建：2026-09-15 · 状态：**计划，未实施**（批次归属见下）
 > 来源：[bbl21/cst-runtime-cli](https://github.com/bbl21/cst-runtime-cli)（MIT）
@@ -323,7 +323,7 @@ def validate_model(self):
 - [ ] **1.4** **构造反例**：`modeler.set_parameter('g', 25).run()` → 必须报警
 - [ ] **1.5** 若 1.3 通过 → 扩到**方案 B**：`cst_solver` 三处追加（`para`/`update`/`run`）
 - [ ] **1.6** `mode='off'` 时行为与改动前**逐字节一致**（回归基线）
-- [ ] **1.7** 同步 `setup.pyi` + 重跑 `python scripts/gen_docs.py`（铁律 §2）
+- [ ] **1.7** 同步 `setup.pyi` + 重跑 `python scripts/gen_cst_solver_docs.py`（铁律 §2）
 
 > ⚠️ 铁律 §1：改动跨 `cst_solver` 与 `topo_modeler` 两包 → **拆两条 commit**。
 > 预估：4–6 h

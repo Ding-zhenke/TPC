@@ -72,7 +72,7 @@ modeler.save('antenna.cst')
 
 | 包 | 职责 | 需要 CST | 详细说明 |
 |---|---|---|---|
-| [`cst_solver/`](./cst_solver) | CST VBA → Python 封装；23 个 Mixin 聚合成 `setup` 类 | ✅ | [docs/packages/cst_solver.md](./docs/packages/cst_solver.md) |
+| [`cst_solver/`](./cst_solver) | CST VBA → Python 封装；24 个 Mixin 聚合成 `setup` 类 | ✅ | [docs/packages/cst_solver.md](./docs/packages/cst_solver.md) |
 | [`mesh_grid/`](./mesh_grid) | 三角晶格 / 六边形晶格算法、可视化、DXF 导出、`TopoPath` 路径 DSL | ❌ | [docs/packages/mesh_grid.md](./docs/packages/mesh_grid.md) |
 | [`topo_modeler/`](./topo_modeler) | 建模引擎：`TopoModeler` + `builders/` 各部件构建器 | ✅ | [docs/packages/topo_modeler.md](./docs/packages/topo_modeler.md) |
 | [`templates/`](./templates) | 端到端器件模板 | ✅ | [docs/packages/templates.md](./docs/packages/templates.md) |

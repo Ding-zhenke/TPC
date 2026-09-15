@@ -47,7 +47,7 @@
 
 | 包 | 职责 | 需要 CST |
 |---|---|---|
-| `cst_solver/` | CST VBA → Python 封装（23 个 Mixin 聚合成 `setup`） | ✅ |
+| `cst_solver/` | CST VBA → Python 封装（24 个 Mixin 聚合成 `setup`） | ✅ |
 | `mesh_grid/` | 三角晶格 / 六边形晶格算法（含 `TopoPath` 路径 DSL） | ❌ |
 | `topo_modeler/` | 建模引擎：`TopoModeler` + `builders/` 各部件构建器 | ✅ |
 | `templates/` | 端到端器件模板 | ✅ |

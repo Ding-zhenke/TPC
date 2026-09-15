@@ -1,4 +1,4 @@
-# cst_solver 待实现功能清单
+﻿# cst_solver 待实现功能清单
 
 > 最后更新: 2026-07-02
 > 当前覆盖: **209 个方法** / **22 个 Mixin 类别**
@@ -58,7 +58,7 @@ mesh_grid/                   # 网格算法包（2026-06-02 重构）
     └── README.md / SKILL.md
 
 scripts/
-└── gen_docs.py              # API 文档生成器
+└── gen_cst_solver_docs.py   # API 文档生成器
 - [x] **优化器** — **Optimizer (`add_optimizer_goal`, `add_optimizer_parameter`, `start_optimizer`)**
 - [x] **求解器参数** — SolverParameter (`set_solver_parameter`)
 - [x] **排除仿真** — exclude_from_simulation
@@ -89,7 +89,7 @@ scripts/
 
 ### 📝 工具
 
-- [x] **文档生成** — `scripts/gen_docs.py` (自动扫描 docstring → HTML)
+- [x] **文档生成** — `scripts/gen_cst_solver_docs.py` (自动扫描 docstring → HTML)
 - [x] **配置系统** — `config_template.py` / `config.py` (`.gitignore`)
 - [x] **HTML API 文档** — `docs/cst_solver_api.html` (208 方法, 23 类别)
 - [x] **项目概览** — `docs/PROJECT_OVERVIEW.md`
@@ -212,6 +212,6 @@ scripts/
 ## 📝 文档生成
 
 ```bash
-python scripts/gen_docs.py
+python scripts/gen_cst_solver_docs.py
 # 输出: docs/cst_solver_api.html (208 方法, 23 类别)
 ```

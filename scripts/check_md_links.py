@@ -31,8 +31,8 @@ for dirpath, dirnames, filenames in os.walk(ROOT):
 
 print(f"检查了 {checked} 条相对链接")
 if bad:
-    print(f"❌ {len(bad)} 条无法解析：")
+    print(f"[FAIL] {len(bad)} 条无法解析：")
     for f, t in bad:
         print(f"   {f}  ->  {t}")
     sys.exit(1)
-print("✅ 全部相对链接均可解析")
+print("[OK] 全部相对链接均可解析")

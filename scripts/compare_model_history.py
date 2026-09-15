@@ -91,10 +91,10 @@ def compare(dir_a, dir_b):
     differing = []
     for name in shared:
         if _norm(ent_a[name]) == _norm(ent_b[name]):
-            print(f"  ✅ 一致   {name}")
+            print(f"  [一致]   {name}")
         else:
             differing.append(name)
-            print(f"  ❌ 不一致 {name}")
+            print(f"  [不一致] {name}")
 
     for name in differing:
         print(f"\n{'-' * 72}\n### 不一致实体：{name}\n{'-' * 72}")

@@ -58,5 +58,5 @@ for size_name, n in [("小 (5×5)", 5), ("中 (20×20)", 20), ("大 (50×50)", 5
     
     print(f"  [{size_name}] 网格数={len(tris):>6d}  |  生成={t1-t0:.4f}s  |  绘制={t2-t1:.4f}s")
 
-print("\n✅ 测试完成")
+print("\n[OK] 测试完成")
 print("---> 注意：绘制性能提升显著（old: O(N)个Patch → new: O(1)个PolyCollection）")

@@ -13,7 +13,7 @@
 | 被谁依赖 | `templates/`（`straight_waveguide.py`、`unit_antenna.py` 用 `TopoPath` 造路径）、`tpc_toolkit/`（`ga_optimizer.py`、`effective_medium.py` 用 hex_grid 工具）、`topo_modeler/builders/`（`substrate.py` / `vpc_region.py` / `crystal.py` 的 `path` 参数就是 `TopoPath` 实例）、`tests/test_grid_opt.py` |
 | 源码位置 | `mesh_grid/__init__.py`、`mesh_grid/tri_grid/core.py`、`mesh_grid/tri_grid/topo_path.py`、`mesh_grid/hex_grid/core.py`、各自 README |
 | 公开 API 规模 | **23 个模块级函数 + 4 个类 + 60 个公开方法**（`tri_grid` 19 个函数 + `hex_grid` 4 个函数；方法分布：`HexLib` 25、`TopoPath` 19、`HexGridVisualizer` 10、`TopoPathBuilder` 6）。口径 = `python scripts/_api_stats.py`（AST 扫描，跳过 `tests/` 与下划线开头符号） |
-| 测试 | 全仓库唯一的单测套件：`mesh_grid/tri_grid/tests/test_topo_path.py`（16 项），运行 `python -m pytest mesh_grid -q` |
+| 测试 | `mesh_grid/tri_grid/tests/test_topo_path.py`（**18 项**），运行 `python -m pytest mesh_grid -q`。~~全仓库唯一的单测套件~~ —— 阶段 5 起 `cst_solver/tests/test_guards.py`（43 项）也是单测，两者都在 `pyproject.toml` 的 `testpaths` 里 |
 
 > 统计口径补注：`tri_grid` 的 19 个模块级函数中，17 个是 `README.md` / 技能文档里列出的经典函数，另 2 个是后来加入的向量化辅助函数（`equilateral_triangles_batch`、`color_triangles`）。
 > `hex_grid/core.py` 除 4 个模块级函数外，还定义了 6 个模块级 namedtuple 数据结构：`Point`、`Hex`、`OffsetCoord`、`DoubledCoord`、`Orientation`、`Layout`。
@@ -62,7 +62,7 @@ y = r·(a/2·√3)
 | 导出 | 无文件导出；几何以**表达式字符串**形式交给 `topo_modeler` 建 CST 实体 | DXF：`save_to_dxf`（合并导出）、`save_multi_dxf`（多图层分组导出）、`read_and_display_dxf_matplotlib`（读回并显示） |
 | 单位约定 | 长度单位 mm（晶格常数 `a`，工程默认 0.2425 mm） | 几何量级由 `hex_size`（像素/绘制单位）决定，供绘图与 DXF 参考 |
 | 公开 API | 19 个模块级函数 + 2 个类（`TopoPath` 19 方法、`TopoPathBuilder` 6 方法） | 4 个模块级函数 + 2 个类（`HexLib` 25 方法、`HexGridVisualizer` 10 方法） |
-| 测试 | 16 项单测（`tests/test_topo_path.py`） | 无专属单测；`tests/test_grid_opt.py` 是性能基准脚本（模块级代码直接执行，不是 pytest 用例） |
+| 测试 | 18 项单测（`tests/test_topo_path.py`） | 无专属单测（历史上的性能基准脚本 `test_grid_opt.py` 已不存在，2026-09-15 核实） |
 
 ---
 
@@ -130,7 +130,7 @@ y = r·(a/2·√3)
 | 函数签名 | 说明 |
 |---|---|
 | `plot_tri_color(center, a, theta=0, color='black') -> matplotlib.patches.Polygon` | 生成单个带色三角形 Polygon（`linewidth=2`），不落图 |
-| `plot_triangle_grid(row_range, col_range, a=1.0, offset=(0.0, 0.0), theta=0.0, show_labels=True, show_points=True, fill_colors_up=None, fill_colors_down=None, coord_auto_hide_threshold=500, edgecolor='black', linewidth=1.0) -> Tuple[Figure, Axes]` | 向量化画网格：正/倒三角各用**一个** `PolyCollection`（从 O(N) 个 Patch 降为 O(1)），返回 `(fig, ax)`；`fill_colors_up/down` 传颜色数组即填充，`None` 表示不填充；`coord_auto_hide_threshold` 控制标签自动隐藏。**注意：本函数不接受 `ax` 入参** |
+| `plot_triangle_grid(row_range, col_range, a=1.0, offset=(0.0, 0.0), theta=0.0, show_labels=True, show_points=True, fill_colors_up=None, fill_colors_down=None, coord_auto_hide_threshold=500, edgecolor='black', linewidth=1.0, ax=None) -> Tuple[Figure, Axes]` | 向量化画网格：正/倒三角各用**一个** `PolyCollection`（从 O(N) 个 Patch 降为 O(1)），返回 `(fig, ax)`；`fill_colors_up/down` 传颜色数组即填充，`None` 表示不填充；`coord_auto_hide_threshold` 控制标签自动隐藏；**`ax` 传已有坐标轴即可叠加绘制**（`TopoPath.preview` 就是这么用的）。~~本函数不接受 `ax` 入参~~ —— **已修，2026-09-15 实测 `preview(show_grid=True)` 正常返回 `(Figure, Axes)`** |
 | `color_triangles(ax, up_centers, dn_centers, a, theta=0, up_colors=None, dn_colors=None, cmap='viridis', vmin=None, vmax=None, edgecolor='black', linewidth=1.0) -> Tuple[PolyCollection, PolyCollection]` | 在**已有** Axes 上批量涂色并返回两个 PolyCollection（可后续更新面色）；一维数值数组自动经 `cmap` 映射 |
 
 #### 空间分析
@@ -214,7 +214,7 @@ xy_dn = pos_to_xy((0, 3), (0, 4), 1.0, r=2, c=3, triangle_type='down')    # (3.5
 | `lattice` | property → `np.ndarray (N,2) int` | 数值化晶格坐标；同上会抛 `RuntimeError` |
 | `lattice_symbolic` | property → `list[tuple]` | 原始晶格坐标（可能含 `str`），用于生成 CST 表达式 |
 | `has_symbols` | property → `bool` | 是否含符号坐标 |
-| `lattice_to_cst_expr(r, c)` | staticmethod → `(px, py)` | **纯静态换算**，不需要实例：把 `(r,c)`（可含符号）编成 CST 表达式字符串；含 `+`/`-` 的符号表达式自动加括号 |
+| `lattice_to_cst_expr(r, c)` | staticmethod → `(px, py)` | **纯静态换算**，不需要实例：把 `(r,c)`（可含符号）编成 CST 表达式字符串。阶段 5.6 起做规范化：**去零项**（`(0,0)` 不再产出 `'0*a'`）、**合并同类项**（整数坐标按 `(2c+r)*a/2` 精确合并，`(14,4)` → `'11*a'`）、省略系数 1（`'a'` 而非 `'1*a'`）、平方根一律写 `sqr(3)`（**不是** Python 的 `sqrt(3)`）；含 `+`/`-` 的符号表达式自动加括号。**py 保持 `r*a/2*sqr(3)` 的写法**，与符号式及参考工程一致，便于逐条对照 |
 | `auto_define_cst_params(app, prefix=None)` | 方法 | 逐点调用 `app.para(f'{pfx}{i+1}x', px)` / `app.para(f'{pfx}{i+1}y', py)`；`pfx` 默认取 `self.name` |
 | `get_cst_point(idx, prefix=None)` | 方法 | 返回第 `idx` 个点的参数名元组，如 `('path3x', 'path3y')` |
 | `get_cst_polygon(indices, prefix=None)` | 方法 | 返回指定索引点组成的 CST 表达式顶点列表 `[[px, py], ...]` |
@@ -306,8 +306,8 @@ app.para('path3y', 'y1*a/2*sqr(3)')         # 展开即 y1*a*√3/2
 ### 4.5 已知限制与注意事项
 
 1. **符号路径必须给 `param_values` 才能做数值计算。** 没有 `param_values`（或其中的符号解析不出来）时，`path_lattice` 里仍留着字符串，`_path_numeric` 为 `None`，于是 `xy` / `lattice` / `get_bounding_box()` / `get_array_range()` / `segment_directions()` / `segment_angles()` / `preview()` 全部抛 `RuntimeError("符号路径…请提供 param_values")`。**此时唯一可用的仍是 `lattice_symbolic` 与静态的 `lattice_to_cst_expr()`** —— 也就是说「生成 CST 表达式」不需要数值，「画图 / 算边界 / 算阵列」才需要。**特别地：`get_array_range()` 对符号路径同样需要 `param_values`**（单测 15 只显式校验了 `xy` / `lattice` / `get_bounding_box`，但源码对 `get_array_range()` 有同一道 `_path_numeric is None` 检查）。
-2. **`preview()` 的默认参数当前会抛异常。** `preview(show_grid=True)` 内部调用 `plot_triangle_grid(..., ax=ax)`，而 `plot_triangle_grid` 的签名**没有 `ax` 参数**，实测抛 `TypeError: plot_triangle_grid() got an unexpected keyword argument 'ax'`；`try/except` 只捕获 `ImportError`，所以异常会冒出来。**规避方式：`path.preview(show_grid=False)`**（实测正常），或先自己建好 Axes 再手工画。修这个缺陷属于 `mesh_grid` 的开发者任务（见 §8）。
-3. **`lattice_to_cst_expr(0, 0)` 返回 `('0*a', '0')`**，而不是 `('0', '0')`：「`r == 0` 且 `c == 0`」时走的是 `r` 为零的分支 `px = f'{c}*a'`。单测 `test_symbolic_straight_waveguide` 已按 `px1 == '0*a' or px1 == '0'` 兼容两种写法；CST 两种都能算，但如果做字符串比对要注意。
+2. ~~**`preview()` 的默认参数当前会抛异常。**~~ —— **已修**（根因是 `plot_triangle_grid` 当时没有 `ax` 形参，`preview(show_grid=True)` 因此抛 `TypeError: plot_triangle_grid() got an unexpected keyword argument 'ax'`，而 `try/except` 只捕 `ImportError`）。**2026-09-15 实测**：`plot_triangle_grid` 已有 `ax=None` 形参，`TopoPath.preview(show_grid=True)` 正常返回 `(Figure, Axes)`。留意本条的教训 —— 文档里的「当前会抛异常」类断言必须**带实测日期**，否则修好了也没人知道。
+3. ~~**`lattice_to_cst_expr(0, 0)` 返回 `('0*a', '0')`**~~ —— **阶段 5.6 已修**：现在返回 `('0','0')`（去零项）。原写法是「`r == 0` 且 `c == 0`」时走了 `r` 为零的分支 `px = f'{c}*a'`。单测 `test_symbolic_straight_waveguide` 仍按 `px1 == '0*a' or px1 == '0'` 兼容两种写法。
 4. **`segment_angles()` 值域是 `(-180°, 180°]`**：240° 方向返回 `-120.0`、300° 方向返回 `-60.0`。比较角度时必须做 ±180° 归一（单测 1 就是这么做的）。
 5. **符号解析用 `eval`，且 `int()` 截断。** `_resolve_symbol` 先查 `param_values`，再把 `'x1-y1'` 这类表达式用 `eval(value, {'__builtins__': {}}, param_values)` 求值，最后 `int(...)`。所以：`param_values` 传浮点会被**截断**（建议只传整数），表达式只能引用 `param_values` 里的名字，解析失败时会把原字符串当结果返回（进而在访问 `xy` 时报 `RuntimeError`）。
 6. **`.move(0, ...)` / 负步数是静默无操作**（`steps <= 0` 直接 `return self`）；`.turn()` 之后若不 `move()` 就 `build()`，只会得到一条 warning，旋转不会产生新点。
@@ -428,9 +428,12 @@ save_to_dxf(hex_polys, "output.dxf", precision=4)    # 需要 ezdxf + shapely
 
 ## 6. 测试与验收
 
-`mesh_grid/tri_grid/tests/test_topo_path.py` 是**全仓库唯一的单测套件**（16 项，`pyproject.toml` 的 `testpaths` 显式包含该目录，打包时 `mesh_grid.tri_grid.tests*` 被排除）。它是路径 DSL 与坐标公式的**回归护栏**：
+`mesh_grid/tri_grid/tests/test_topo_path.py` 是 `mesh_grid` 的**回归护栏**（18 项，`pyproject.toml` 的 `testpaths` 显式包含该目录，打包时 `mesh_grid.tri_grid.tests*` 被排除）。它是路径 DSL 与坐标公式的**回归护栏**：
 
-> 仓库里另一个 `test_*.py` 命中 `python_files` 的文件是 `tests/test_grid_opt.py`，但它**不是单测**：它是网格绘制性能基准脚本（模块级代码直接跑，没有 `test_*` 函数），且内部调用了 `plot_triangle_grid(..., show_on=False)` —— 当前 `plot_triangle_grid` 签名没有 `show_on` 参数，所以 `python -m pytest -q` 会在**收集阶段**就报错 `TypeError: plot_triangle_grid() got an unexpected keyword argument 'show_on'`（与 §4.5 第 2 条的 `preview()` 是同一类「绘制辅助函数签名漂移」缺陷）。因此本包的正确验收命令是 **`python -m pytest mesh_grid -q`**（实测 16 passed）；修好该脚本或改用它之后再跑仓库级 `python -m pytest -q`。
+> 阶段 5 起 `cst_solver/tests/test_guards.py`（43 项，用假 CST 对象）也是单测，两者都在 `testpaths` 里；
+> 「全仓库唯一」的说法已作废。
+
+> 历史上这里还提过一个 `tests/test_grid_opt.py`（网格绘制性能基准脚本）—— **该文件现已不存在**（`Get-ChildItem -Recurse -Filter test_grid_opt.py` 零命中，2026-09-15 核实），所以「它会在收集阶段报错、挡住仓库级 pytest」这条也不再成立。**`python -m pytest -q` 现在是全绿的**（`testpaths` = `tests` + `mesh_grid/tri_grid/tests` + `cst_solver/tests`）。
 
 | # | 测试函数 | 守住什么 |
 |---|---|---|
@@ -439,7 +442,9 @@ save_to_dxf(hex_polys, "output.dxf", precision=4)    # 需要 ezdxf + shapely
 | 3 | `test_straight_waveguide_path` | 直波导 `.start(0,-1).move(19,'c')` → `[(0,-1), (0,18)]`，且 `is_straight()` / `not has_bend()` |
 | 4 | `test_120degree_antenna_path` | 120° 天线 → `[(0,-1), (0,18), (14,4)]`，且段角度为 `[0°, 120°]` |
 | 5 | `test_cst_expr_0_18` | `lattice_to_cst_expr(0, 18) == ('18*a', '0')`（`r=0` 时 `py` 必须为 `'0'`） |
-| 6 | `test_cst_expr_14_4` | `lattice_to_cst_expr(14, 4) == ('4*a+14*a/2', '14*a/2*sqr(3)')`（项序与 `sqr(3)` 写法） |
+| 6 | `test_cst_expr_14_4` | `lattice_to_cst_expr(14, 4) == ('11*a', '14*a/2*sqr(3)')`（**阶段 5.6 起合并同类项**，原来是 `'4*a+14*a/2'`） |
+| 6b | `test_cst_expr_normalization` | 表达式规范化：`(0,0)`→`('0','0')`、`(0,1)`→`('a','0')`、`(1,0)`→`('a/2','a/2*sqr(3)')`、整值浮点按整数处理、绝不出现 `sqrt` |
+| 6c | `test_cst_expr_symbolic_unchanged` | 符号路径写法**不受规范化影响**：`(0,'x1')`→`('x1*a','0')`、`('y1','x1-y1')`→`('(x1-y1)*a+y1*a/2','y1*a/2*sqr(3)')` |
 | 7 | `test_consistency_with_path_loc_to_xy` | **核心护栏**：`TopoPath.xy` 与 `path_loc_to_xy(path.lattice, a)` 在直波导 / 120° / 240° 三种路径上逐点相等 |
 | 8 | `test_bounding_box_and_array_range` | 边界框包含所有路径点；`get_array_range()` 对 120° 天线返回 `(xup=26, yup=15, ydn=1)`（`r∈[0,14]`、`c∈[-1,18]`） |
 | 9 | `test_substrate_polygon_vertices` | 基板顶点数 = `2N+1`；VPC 区域顶点数同样 = `2N+1`（upper / lower 一样，因为两条边界链都含全部路径点）；`side='middle'` 必须抛含 `'upper'` 的 `ValueError` |
@@ -457,14 +462,14 @@ save_to_dxf(hex_polys, "output.dxf", precision=4)    # 需要 ezdxf + shapely
 # 只跑本包（推荐，也是当前唯一全绿的验收命令）
 python -m pytest mesh_grid -q            # 实测：16 passed
 
-# 跑全仓库：当前会在收集阶段因 tests/test_grid_opt.py 报 TypeError（见上）
+# 跑全仓库（现在全绿；曾因已删除的 tests/test_grid_opt.py 在收集阶段报错）
 python -m pytest -q
 
 # 脚本自带 main，也可直接运行（会 print 每项结果）
 python mesh_grid/tri_grid/tests/test_topo_path.py
 ```
 
-**验收规则**：任何改动只要触碰**坐标公式**（`path_loc_to_xy` / `_lattice_to_xy` / 方向表 `DIRECTIONS` / 方向名别名表）、**路径 DSL**（`TopoPathBuilder` / `TopoPath`）或**区域多边形绕向**，就必须保证这 16 项全绿；新增行为应**追加**测试而不是放宽既有断言。`skills/developer/WORKFLOW.md` §4 的 `mesh_grid/` 验收清单与此一致：新公式与 `path_loc_to_xy` 一致、`__init__.py` 的 `__all__` 已更新、`python -m pytest mesh_grid -q` 通过、重新生成 API HTML。
+**验收规则**：任何改动只要触碰**坐标公式**（`path_loc_to_xy` / `_lattice_to_xy` / 方向表 `DIRECTIONS` / 方向名别名表）、**路径 DSL**（`TopoPathBuilder` / `TopoPath`）、**CST 表达式生成**（`lattice_to_cst_expr`）或**区域多边形绕向**，就必须保证这 18 项全绿；新增行为应**追加**测试而不是放宽既有断言。`skills/developer/WORKFLOW.md` §4 的 `mesh_grid/` 验收清单与此一致：新公式与 `path_loc_to_xy` 一致、`__init__.py` 的 `__all__` 已更新、`python -m pytest mesh_grid -q` 通过、重新生成 API HTML。
 
 ---
 
@@ -495,9 +500,9 @@ python mesh_grid/tri_grid/tests/test_topo_path.py
 3. **确认公式基准**：三角晶格一律与 `path_loc_to_xy` 对齐（§7 约定 1）；六边形晶格一律与 Red Blob Games 的 cube 口径和 `Orientation` 矩阵对齐。
 4. **设计签名**：明确参数名/默认值/返回类型与异常语义；数值与符号双模式的 API 要写清「哪些操作需要 `param_values`」；遵循 `WORKFLOW.md` §4 的 mesh_grid 清单（中文 Google/Numpy 风格 docstring、`# -*- coding: utf-8 -*-` 文件头、4 空格缩进）。
 5. **改代码并导出**：`mesh_grid/tri_grid/core.py` 或 `hex_grid/core.py`（新增晶格/坐标变换），路径 DSL 改 `tri_grid/topo_path.py`；同步子包 `__init__.py` 的 `import` 与 `__all__`（§7 约定 3）。
-6. **补测试**：触碰 `topo_path.py`、坐标公式或区域多边形绕向，必须扩充 `mesh_grid/tri_grid/tests/test_topo_path.py`（保持既有 16 项全绿）；hex_grid 的新能力建议在 `tests/` 下加最小冒烟（注意 `tests/test_grid_opt.py` 目前不是 pytest 用例且会挡住仓库级收集，见 §6）。
+6. **补测试**：触碰 `topo_path.py`、坐标公式或区域多边形绕向，必须扩充 `mesh_grid/tri_grid/tests/test_topo_path.py`（保持既有 18 项全绿）；hex_grid 的新能力建议在 `tests/` 下加最小冒烟（注意 `tests/test_grid_opt.py` 目前不是 pytest 用例且会挡住仓库级收集，见 §6）。
 7. **同步文档**：本文件（`docs/packages/mesh_grid.md`）、必要时 `docs/ARCHITECTURE.md` §3.2/§7；然后 `python scripts/gen_mesh_docs.py` 重新生成 API HTML（§7 约定 4），并检查全仓库是否还有旧路径/旧符号引用（`WORKFLOW.md` §9）。
-8. **验证并提交**：先确保 `python -m pytest mesh_grid -q` 全绿（仓库级 `python -m pytest -q` 目前会被 `tests/test_grid_opt.py` 的收集错误挡住，见 §6）；然后按「一个包一条 commit」提交，示例见 `WORKFLOW.md` §8。
+8. **验证并提交**：先确保 `python -m pytest mesh_grid -q` 全绿（仓库级 `python -m pytest -q` 现在也是全绿的）；然后按「一个包一条 commit」提交，示例见 `WORKFLOW.md` §8。
 
 ---
 

@@ -53,7 +53,7 @@ tpc_toolkit ──▶ mesh_grid（仅可视化/坐标，可选）        ← 独
 ### 3.1 `cst_solver/` —— CST 会话封装层
 
 **它是什么**：CST Studio Suite 的 VBA 接口是「拼一段宏字符串再下发到历史树」。
-本包把这套宏 API 收敛成 **23 个 Mixin 类**，再用多继承聚合成一个 `setup` 类，
+本包把这套宏 API 收敛成 **24 个 Mixin 类**，再用多继承聚合成一个 `setup` 类，
 于是 200+ 个 CST 操作都可以通过同一个 Python 对象调用。
 
 **它解决什么**：不用记 VBA 语法、不用手拼宏字符串、不用维护 `sys.path` 里的 CST 库路径。
@@ -206,10 +206,20 @@ from templates import StraightWaveguide
      曾导致对照参考工程时误判 VPC-B 的形状。
 3. **阵列范围**：光子晶体阵列的 `xup / yup / ydn` 必须覆盖**整个基板**，不能只按路径推断。
 4. **错误不可见**：库**不保证**把 CST 报错抛成 Python 异常，
-   验收必须读 `app.cst_file.get_messages()`（读后即清空）。
-5. **相对路径**按**当前工作目录**解析，模板 `tmp.cst` 必须放在 notebook 同目录。
-6. `cst_file.modeler` 已废弃 → 用 `cst_file.model3d`。
-7. **面/棱边编号不可移植**：`pick_face` / `pick_edge` 的编号（`'10'`、`'22'` …）是 CST 内部编号，
+   验收必须读 `app.cst_file.get_messages()`（读后即清空），并跑 `Rebuild()` 重放历史。
+   阶段 5 起有 API 支撑，不用再自己抄这三步：
+   **`app.validate_model()` → `{status, messages, rebuild_ok, before, guard}`**（不抛异常，按 `status` 分流）。
+5. **参数改了必须重建历史，否则仿真是旧几何**（阶段 5 起有守卫层兜底）。
+   ⚠️ **`log_flag` 在两类方法里含义不同，不要互相类推**：
+   几何类方法（`polyline`/`extrude`/`translate`…，默认 `1`）的 `log_flag=0`＝**只返回 VBA 文本不下发**；
+   `para()`/`paras()`（默认 `0`）的 `log_flag=0`＝**写入参数表但不调用 `full_history_rebuild()`** ——
+   参数确实存进去了，只有几何悄悄停在旧值上，从返回值看不出任何异常。
+   改完参数要么传 `log_flag=1`，要么调用 `app.update()`。
+   守卫层（`cst_solver/_guards.py`）会在 `run()` 前拦截这一条（陷阱 T2），
+   默认 `mode='warn'` 只警告、`'strict'` 抛 `CstGuardError`；`'off'` 与引入前逐字节一致。
+6. **相对路径**按**当前工作目录**解析，模板 `tmp.cst` 必须放在 notebook 同目录。
+7. `cst_file.modeler` 已废弃 → 用 `cst_file.model3d`。
+8. **面/棱边编号不可移植**：`pick_face` / `pick_edge` 的编号（`'10'`、`'22'` …）是 CST 内部编号，
    与实体几何、生成顺序强相关，扭转/布尔/阵列之后会变，跨模型不可复用
    （典型受害者：`topo_modeler/builders/port.py` 里硬编码的端口面号）。
    优先按**坐标**绕开编号 —— `pick_face_at()` / `pick_edge_at()`；

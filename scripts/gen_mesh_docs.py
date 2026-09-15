@@ -203,7 +203,7 @@ def main():
         f.write(html_content)
     print(f"[OK] 已生成: {output_path}")
 
-    print("\n🎉 文档生成完成！")
+    print("[OK] 文档生成完成")
 
 
 if __name__ == "__main__":
