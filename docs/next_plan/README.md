@@ -165,11 +165,67 @@
 | 项 | 现象 | 待办 |
 |---|---|---|
 | `T_solver()` 其余 VBA 属性 | `.Accuracy` 实测报 `no such property or method`；`.CalculateAllModes` / `.DetermineFreq` / `.DetermineFreqFromN` 同样不在官方 `Solver` 对象属性表内 | 按 CST 官方 `Solver` 参考重写该方法。可用的对应项如 `Solver.Method` / `Solver.SteadyStateLimit` / `Solver.FrequencyRange` / `Solver.MeshAdaption` |
-| `builders/solver.py` 手写 VBA | `_configure_solver_advanced()` 与 `_create_farfield_monitor()` 直接拼 VBA 字符串，违反 WORKFLOW 第 2 节（builder 里应调 `cst_solver` 方法）；且 `.ParallelizationThreads` / `.GPUAcceleration` 疑似非真实属性（官方为 `Solver.MaximumNumberOfThreads` / `Solver.HardwareAcceleration`） | 先给 `cst_solver` 补对应封装，再回来改 builder |
+| `builders/solver.py` 手写 VBA | ~~`_configure_solver_advanced()` 直接拼 VBA，违反 WORKFLOW 第 2 节；且 `.ParallelizationThreads` / `.GPUAcceleration` 实测不存在~~ | ✅ 已修：上个提交给 `cst_solver` 补了 `set_steady_state_limit` / `set_parallel_threads` / `set_gpu_acceleration`，builder 改为调用它们 |
+| `_create_farfield_monitor()` | 仍手写 `With Farfield` 块，正确性未核验（默认 `monitors=('E',)` 不走该分支） | 待用时先实测，再决定是否补 `cst_solver` 封装 |
 | `unit_antenna.py:122` | 与缺陷 5 同源（同一套 `path.get_array_range()`），**未验证未修改** | 先确定 UnitAntenna 的参考基准，再决定其阵列范围取值 |
-| 参数级逐项对比 | 因流水线在求解器段中断，尚未产出完整的"生成工程 vs 参考工程"参数对比结论 | 求解器段修完后重跑 |
+| **路径起点差一个晶格周期** | 见 6.1.6 —— 参数级对比暴露的实际几何差异 | 需决策 |
 
-#### 6.1.4 验收动作（可复现）
+#### 6.1.4 求解器段已修复（本轮补齐）
+
+`T_solver()` 与 `_configure_solver_advanced()` 的问题在本轮一并解决。实测方法：
+一个 CST 会话内对每个候选属性单独下发一条 `With Solver` 块，逐条读 `get_messages()`。
+
+| 实测可用 | 实测不可用（报 `10091 no such property or method`） |
+|---|---|
+| `Method` / `SteadyStateLimit` / `MaximumNumberOfThreads` / `UseParallelization` / `HardwareAcceleration` / `MaximumNumberOfGPUs` / `MeshAdaption` / `FrequencySamples` / `FrequencySampleRuleLin` / `CalculateModesOnly` / `SParaSymmetry` / `FullDeembedding` / `StimulationPort` / `PBAFillLimit` | `Accuracy` / `CalculateAllModes` / `DetermineFreq` / `ParallelizationThreads` / `GPUAcceleration` |
+
+改后 `cst_solver` 新增 `set_steady_state_limit()` / `set_parallel_threads()` /
+`set_gpu_acceleration()` 三个封装（此前使用者只能自己拼 VBA，这正是缺陷 4/5 的成因）。
+
+#### 6.1.5 构建结果：已全程通过
+
+```
+BUILD   messages: 空     ← 判据 1
+REBUILD messages: 空     ← 判据 2（历史树无错重放）
+save()          成功
+```
+
+§6.1 原本定的三条硬判据（能跑通 + `get_messages()` 为空 + `Rebuild()` 后仍为空）**全部满足**。
+
+**参数级对比结果**：本库实际定义/使用的 23 个参数中，**21 个与参考工程逐一吻合**
+（`a` `h` `e1` `e2` `xup` `yup` `ydn` `x0` `wf1` `lf1` `lf2` `lf3` `wg_a` `wg_b` `wg_t`
+`fmin` `fmax`，以及 `p*` 路径参数），仅 `l1`/`l2` 因命名反转而数值互换（见 6.1.6）。
+生成工程 81 个参数 / 65 条历史，参考 77 个参数 / 67 条历史 —— 参数数量差 4 个
+正是本库新增的 `p1x/p1y/p2x/p2y`（参考用旧命名 `px1/py1/px2/py2`）。
+
+#### 6.1.6 仍待处理的两项几何差异
+
+**（1）`l1`/`l2` 命名语义与参考相反（几何需按实体核对，不能按名字比）**
+
+参考工程 `AB_feed.cst` 的参数表是 `l1=0.35a`（小孔）、`l2=0.65a`（大孔）；
+本库 `StraightWaveguide` 定义 `l1=large_hole_ratio*a=0.65a`、`l2=0.35a` —— 两者**互换**。
+`builders/crystal.py` 已在逻辑上补偿（docstring 写明参考真值
+`tri_up_A→l1`、`tri_dn_A→l2`、`tri_up_B→l2`、`tri_dn_B→l1`，AB 分支取
+`hole_sizes=[small, large]`），故**几何应一致而参数名相反**。
+逐项对比**不能按名字 naive 比 `l1`/`l2`**，须按实体几何核对。
+
+**（2）🔴 路径起点相差一个晶格周期（需要决策）**
+
+| | 起点 | 终点 |
+|---|---|---|
+| 本库 `p1x` / `p2x` | `-0.2425`（= −a） | `4.365`（= 18a） |
+| 参考 `px1` / `px2` | `0` | `4.365`（= 18a） |
+
+终点一致，但**本库起点早了一个晶格常数**：本库路径是 `c ∈ [-1, 18]`（19 格），
+参考是 `c ∈ [0, 18]`（18 格）。成因是 `StraightWaveguide.__init__` 里
+`start(0, -1)` 与 `.move(length + 1, 'c')` 的组合 —— 该注释只校验了**终点**
+（"终点 c = -1 + (length+1) = length，与旧代码 x1=length 对应"），
+没有校验起点。后果是基板与晶体阵列在 x 方向**比参考长一格**。
+
+需要决定：是本库该改成 `start(0, 0)` + `move(length, 'c')`（与参考对齐），
+还是起始多一格是有意为之（例如为馈源留位）——**改前须确认，因为它会整体平移/改变模型长度**。
+
+#### 6.1.7 验收动作（可复现）
 
 ```python
 from cst_solver import setup
@@ -188,13 +244,9 @@ wg.save()
 
 然后把生成的工程与参考工程逐参数、逐实体比对（重点：`l1`/`l2` 的 AB·BA 分配、`vpc_A/vpc_B` 的半平面、基板与晶体在 z 上是否对齐）。
 
-> **对比时必须注意的一处已知差异**：`l1`/`l2` 的**命名语义与参考相反**。
-> 参考工程 `AB_feed.cst` 的参数表是 `l1=0.35a`（小孔）、`l2=0.65a`（大孔）；
-> 本库的 `StraightWaveguide` 定义 `l1=large_hole_ratio*a=0.65a`、`l2=0.35a`。
-> `builders/crystal.py` 已在逻辑上补偿（docstring 写明参考真值
-> `tri_up_A→l1`、`tri_dn_A→l2`、`tri_up_B→l2`、`tri_dn_B→l1`，
-> AB 分支取 `hole_sizes=[small, large]`），故**几何应一致而参数名相反**。
-> 因此逐项对比不能按名字naive比 `l1`/`l2`，须按实体几何核对。
+> **对比时的两处已知差异**（详见 6.1.6）：`l1`/`l2` 命名语义与参考相反
+> （几何已在 `crystal.py` 补偿，须按实体核对而非按名字比）；
+> 路径起点相差一个晶格周期（本库 `−a` vs 参考 `0`），**待决策**。
 
 ### 6.2 VPC 区域语义与参考 notebook 并不一致
 
