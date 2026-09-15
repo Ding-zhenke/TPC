@@ -934,7 +934,7 @@ def build_category_sections(all_methods):
 
         anchor = f"cat-{idx}"
         sidebar_html += (
-            f'<a href="#{anchor}" onclick="document.getElementById(\'search\').value=\'\';filterMethods()">'
+            f'<a href="#{anchor}" onclick="document.getElementById(\'search\').value=\'\';filterMethods();setTimeout(()=>{{document.querySelector(\'#{anchor}\')?.scrollIntoView({{behavior:\'smooth\',block:\'start\'}});window.scrollBy(0,-80);}},50)">'
             f'<i class="fas fa-{icon}"></i>{cat}</a>\n'
         )
 

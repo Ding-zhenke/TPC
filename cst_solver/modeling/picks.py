@@ -112,6 +112,109 @@ class PickMixin:
         self.cst_file.model3d.add_to_history(
             f'Pick face at ({x}, {y}, {z}): {name}', f1)
 
+    def pick_edge_at(self, name, x, y, z, component='component1'):
+        """
+        按**坐标点**拾取实体棱边。
+
+        与 ``pick_face_at`` 同理：棱边编号与几何/生成顺序强相关，
+        给一个落在目标棱边上的点即可稳定拾取，不必知道编号。
+
+        :param name: str, 实体名称
+        :param x, y, z: float/str, 位于目标棱边上的点（可为 CST 表达式）
+        :param component: str, 归属组件
+        """
+        f1 = f"""Pick.PickEdgeFromPoint "{component}:{name}", "{x}", "{y}", "{z}"
+        """
+        self.cst_file.model3d.add_to_history(
+            f'Pick edge at ({x}, {y}, {z}): {name}', f1)
+
+    def pick_point_at(self, x, y, z):
+        """
+        按坐标选取一个点。
+
+        :param x, y, z: float/str, 点坐标（可为 CST 表达式）
+        """
+        f1 = f"""Pick.PickPointFromCoordinates "{x}", "{y}", "{z}"
+        """
+        self.cst_file.model3d.add_to_history(
+            f'Pick point ({x}, {y}, {z})', f1)
+
+    # ---- 读取选取 ID（按坐标反查，不改变选取状态）----
+
+    def _pick_object(self):
+        """
+        获取 CST 的 Pick 子对象。
+
+        :return: CST Pick COM 对象
+        :raises RuntimeError: 当前 CST Python 接口未暴露 ``model3d.Pick``
+        """
+        try:
+            return self.cst_file.model3d.Pick
+        except AttributeError as exc:
+            raise RuntimeError(
+                "当前 CST Python 接口未暴露 model3d.Pick，无法读取选取 ID。"
+                "可改用 pick_face_at() / pick_edge_at() 直接按坐标拾取，"
+                "无需先知道编号。"
+            ) from exc
+
+    def get_face_id_from_point(self, name, x, y, z, component='component1'):
+        """
+        读取实体在指定坐标处的**面编号**（只查询，不改变选取状态）。
+
+        对面编号的用途：CST 的 ``Solid.ChamferEdge`` 等少数接口只接受
+        faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编号。
+
+        :param name: str, 实体名称
+        :param x, y, z: float/str, 位于目标表面上的点
+        :param component: str, 归属组件
+        :return: int 或 None, 面编号；查询失败返回 None
+        :raises RuntimeError: 当前 CST Python 接口未暴露 model3d.Pick
+        """
+        pick = self._pick_object()
+        try:
+            return pick.GetFaceIdFromPoint(f"{component}:{name}", x, y, z)
+        except Exception:
+            return None
+
+    def get_edge_id_from_point(self, name, x, y, z, component='component1'):
+        """
+        读取实体在指定坐标处的**棱边编号**（只查询，不改变选取状态）。
+
+        :param name: str, 实体名称
+        :param x, y, z: float/str, 位于目标棱边上的点
+        :param component: str, 归属组件
+        :return: int 或 None, 棱边编号；查询失败返回 None
+        :raises RuntimeError: 当前 CST Python 接口未暴露 model3d.Pick
+        """
+        pick = self._pick_object()
+        try:
+            return pick.GetEdgeIdFromPoint(f"{component}:{name}", x, y, z)
+        except Exception:
+            return None
+
+    def get_picked_count(self, kind='face'):
+        """
+        返回当前已选取的面/棱边/点数量（只查询）。
+
+        :param kind: str, 'face' / 'edge' / 'point'，默认 'face'
+        :return: int 或 None, 已选数量；查询失败返回 None
+        :raises ValueError: kind 取值非法
+        :raises RuntimeError: 当前 CST Python 接口未暴露 model3d.Pick
+        """
+        attr = {
+            'face': 'GetNumberOfPickedFaces',
+            'edge': 'GetNumberOfPickedEdges',
+            'point': 'GetNumberOfPickedPoints',
+        }.get(str(kind).lower())
+        if attr is None:
+            raise ValueError(
+                f"kind 必须是 'face' / 'edge' / 'point'，当前为: {kind}")
+        pick = self._pick_object()
+        try:
+            return getattr(pick, attr)()
+        except Exception:
+            return None
+
     def pick_face_auto(self, name, points=None, candidates=(), component='component1'):
         """
         稳健拾取表面：先按**坐标点**逐个试，再退回按**面编号**逐个试。
