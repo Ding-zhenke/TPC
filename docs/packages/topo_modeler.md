@@ -16,7 +16,7 @@
 | **源码位置** | `topo_modeler/`：`modeler.py`、`name_manager.py`、`builders/`（8 个构建器）、阶段 7 工具层（`config.py` / `result_reader.py` / `report.py` / `audit.py`）、`lens_build.py`、`lens_build_standalone.py`、`tests/` |
 | **当前阶段** | 阶段 0–3 已完成；**阶段 5（库加固）离线部分完成**；**阶段 6 几何层完成**（`builders/lens.py`）；**阶段 7 的「看得见 / 留得下」两半完成**（配置 ▸ 结果读取 ▸ 自包含 HTML 报告 ▸ 审计落盘）。仍缺：`GRINLensAntenna` 模板、阶段 7 的 `scanner` / `batch` / `optimizer`、端到端真机验证 |
 
-**公开 API 规模**（AST 统计，2026-09-16）：`TopoModeler` 22 个公开方法，`NameManager` 8 个公开方法，
+**公开 API 规模**（AST 统计，2026-09-16）：`TopoModeler` 32 个公开方法，`NameManager` 8 个公开方法，
 另有 `builders/` 与两个透镜脚本中的模块级函数（`builders/` 见第 3 节的表）。
 阶段 7 工具层（7 个模块）见 §11。
 `tests/test_lens.py`（36 项）是透镜构建器的**等价性护栏**：把原脚本
@@ -125,8 +125,8 @@ tpc_toolkit/  独立工具层：不依赖 CST，也不被本包依赖
 | `__init__.py` | `TopoModeler`、`NameManager` | 包级导出（`__all__` 仅两项） | 0（纯 re-export） |
 | `modeler.py` | `TopoModeler` | 智能推断（模型类型 / 拓扑相 / 监视器 / 端口数）+ 流水线编排 + 端到端 / 保存 / 运行 / 关闭 / 预览 / 验收 | 21 |
 | `name_manager.py` | `NameManager` | CST 实体命名唯一化、别名、按部件取名 | 8 |
-| `builders/__init__.py` | 21 个导出符号 | 统一导出全部构建器，供 `from topo_modeler.builders import …` | 0（纯 re-export） |
-| `builders/substrate.py` | `build_substrate` | 沿路径生成带状基板并 z 居中 | 1 |
+| `builders/__init__.py` | 22 个导出符号 | 统一导出全部构建器，供 `from topo_modeler.builders import …` | 0（纯 re-export） |
+| `builders/substrate.py` | `build_substrate`、`build_substrate_multi` | 沿路径生成带状基板并 z 居中；**多路径版**各路径各做一条带再布尔并（阶段 8） | 2 |
 | `builders/vpc_region.py` | `build_vpc_regions`、`intersect_vpc_with_substrate` | 生成 VPC-A（上半区）/ VPC-B（下半区）并可与基板求交 | 2 |
 | `builders/crystal.py` | `build_topological_crystal`、`intersect_crystal_with_vpc` | 三角孔超元胞阵列（最核心的重复代码：25 行 → 1 个函数），并可与 VPC 求交 | 2 |
 | `builders/feed.py` | `build_feed`、`build_ab_elliptical_feed`、`build_ba_tapered_feed`、`build_cylinder_feed` | 3 种馈源几何（统一入口 + 3 个具体实现） | 4 |
@@ -171,13 +171,17 @@ tpc_toolkit/  独立工具层：不依赖 CST，也不被本包依赖
 > 由于拓扑相只在「尚未设置」时自动推断，**先 `set_topology` 再 `set_path`** 或**先 `set_path` 再 `set_topology`** 都可以，
 > 后者会覆盖推断值。
 
-### 4.2 方法表（21 个公开方法）
+### 4.2 方法表（26 个公开方法）
 
 配置类：
 
 | 方法 | 签名 | 说明 | 返回 |
 |---|---|---|---|
 | `set_path` | `set_path(path)` | 设置 `TopoPath`，自动推断 `model_type`（并按需推断 `topology`） | `self` |
+| `set_paths` | `set_paths(paths)` | **多路径**（阶段 8）：`{名字: TopoPath}` | `self` |
+| `add_path` / `remove_path` | `add_path(name, path)` / `remove_path(name)` | 增删单条路径（不允许清空） | `self` |
+| `array_range` | `array_range(names=None)` | 覆盖**所有路径**的阵列范围（逐项最大值） | `(xup, yup, ydn)` |
+| `bounding_box` / `all_lattice_points` / `describe_paths` | 无参 | 并集包围盒 / 晶格点并集 / 摘要 | `tuple` / `list` / `str` |
 | `set_topology` | `set_topology(topology)` | 设置拓扑相，仅 `'AB'` / `'BA'`，其它抛 `ValueError` | `self` |
 | `set_parameters` | `set_parameters(params)` | 批量：写入 `self.params` 并调用 `app.set_parameters(params)` | `self` |
 | `set_parameter` | `set_parameter(name, value)` | 单个：写入 `self.params` 并调用 `app.para(name, value)` | `self` |
@@ -232,6 +236,27 @@ tpc_toolkit/  独立工具层：不依赖 CST，也不被本包依赖
 **`_built_parts` 的键**（`get_built_parts()` 返回它）：
 
 `substrate`、`vpca`、`vpcb`、`crystal_a`、`crystal_b`、`feed`、`waveguide`、`ports`、`solver = True`。
+
+### 4.25 多路径（阶段 8 模块 6.1）
+
+TopoPath 仍只表示**一条**折线；多路径由 TopoModeler 用 `{名字: TopoPath}` 管理：
+
+| 方法 | 说明 |
+|---|---|
+| `set_paths(paths)` | 设置多条路径（`set_path(path)` 等价于 `set_paths({\'main\': path})`，向后兼容） |
+| `add_path(name, path)` / `remove_path(name)` | 增删单条（不允许清空） |
+| `paths` / `path_names` / `is_multi_path` | 只读视图（`paths` 返回**副本**） |
+| **`array_range()`** | 覆盖**所有路径**的阵列范围 —— 各路径所需范围的**逐项最大值** |
+| **`bounding_box()`** | 覆盖所有路径的数值包围盒 |
+| `all_lattice_points()` | 晶格点并集（排序去重） |
+| `describe_paths()` | 多路径摘要（GBK 安全） |
+
+🔴 **为什么 rray_range() 是关键**：基板 / VPC / 晶体阵列的范围必须按**并集**取，
+只按主干推会让分支露在基板之外（与阶段 4 T2/T5 同源）。
+uild_substrate() 在路径数 > 1 时**自动**改走 `build_substrate_multi()`。
+
+> 旧 notebook 本来就这么表达：`功分器加天线\\B5\\Ant6_2H4L_epc.ipynb` 的参数表里
+> 同时有 `px1..py8` 与 `qx1..qy4` **两套坐标族**。
 
 ### 4.3 端到端示例
 
