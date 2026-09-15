@@ -200,17 +200,34 @@ wg.save()
 `create_waveguide_port_free()` 已在 `cst_solver/simulation/ports.py` 落地（纯新增，
 未改动旧的 `add_port` / `create_waveguide_port`）。
 
-#### 6.3.4 仍未核验的事实（进阶段 4 之前必须验）
+#### 6.3.4 核验结果（已实测，全部通过）
 
-| 编号 | 待验 | 影响 |
+核验脚本：`scripts/verify_port_face_api.py`（用 `new_project()` 建空白工程，
+不触碰任何既有工程；逐项打印并汇总）。
+
+| 编号 | 待验 | 实测结论 |
 |---|---|---|
-| V2 | `Coordinates "Free"` + `Xrange/Yrange/Zrange` 能否真正建出端口 | 决定 §6.3.3 第一行是否成立 |
-| V3 | `model3d.Pick` 是否暴露、查询能否把值返回 Python | 决定 `get_face_id_from_point` / `get_picked_count` 是否可用 |
-| V4 | 反查出的编号喂回 `pick_face()` 能否真的选中面 | 决定 §6.3.3 第二行是否闭环 |
+| V3.1 | `model3d.Pick` 是否暴露 | ✅ 暴露，取到 `_cst_interface.RemoteObject` |
+| V3.2 | 按坐标反查面编号 | ✅ 1×1×1 方块上表面中心 `(0.5, 0.5, 1.0)` → 面编号 `1`（`int`） |
+| V3.3 | `get_picked_count()` | ✅ 未拾取时返回 `0`；`kind` 传非法值按文档抛 `ValueError` |
+| V4 | 反查编号喂回 `pick_face()` | ✅ 反查得 `1` → `pick_face(1)` → 已选面数 = `1`，链路闭环 |
+| V2 | `Coordinates "Free"` + 范围建端口 | ✅ `create_waveguide_port_free(1, xrange, yrange)` 无报错 |
+| 对照 | 现有 Picks 链路可用性 | ✅ `pick_face` + `add_port` 无报错 |
+| 验收 | `Rebuild()` 重放历史树 | ✅ 无错重放，消息为空 |
 
-核验脚本：`scripts/verify_port_face_api.py`（新建空白工程，不触碰任何既有工程；
-逐项打印 V2/V3/V4 并汇总）。结论出来后回填本节，并把 `builders/port.py` 的
-硬编码编号替换排进阶段 4。
+**结论**：§6.3.3 的双通道方案两条都成立，可以照它实现 `builders/port.py`。
+
+**遗留的确认项**：V2 只验证了"无报错 + 历史树可重放"，端口的**几何落位**
+（是否落在 z=0 / z=1 面、尺寸是否等于给定范围）尚未独立确认 —— 核验脚本
+不保存工程，无法事后目视。要确认需在 CST GUI 中打开工程目视，或补一个
+S 参数冒烟。
+
+**本次实测顺带发现并修掉的缺陷**：`ProjectMixin.new_project()` 缺工程类型参数
+（CST 2026 的 `DesignEnvironment.new_project()` 必传 `ProjectType`），
+在该版本上必抛 `TypeError`；已在 `cst_solver/project.py` 修正。
+
+**后续动作**：把 `builders/port.py` 的硬编码 `'10'` / `'22'` 替换排进阶段 4 ——
+方案已定、事实已验，剩下的是实现本身。
 
 > **依据**：[bbl21/cst-runtime-cli](https://github.com/bbl21/cst-runtime-cli)（MIT）
 > 随包的 `devkit/references/vba-official-reference.md` §9 Pick / §16 Port。
@@ -232,7 +249,7 @@ wg.save()
 
 | 阶段 | 名称 | 前置条件 | 预估 |
 |---|---|---|---|
-| 4 | 复杂模板层（GRIN 透镜 builder + 透镜天线模板） | **§6.1 几何验收通过**、§6.2 语义决策完成、§6.3 方案已定 **且 V2/V3/V4 已核验** | 3 天 |
+| 4 | 复杂模板层（GRIN 透镜 builder + 透镜天线模板） | **§6.1 几何验收通过**、§6.2 语义决策完成、§6.3 方案与事实均已确定 ✅ | 3 天 |
 | 5 | 工具层（ResultReader / YAML 配置 / 参数扫描 / 批量建模 / GA 优化可选） | 阶段 4 的模板可用（ResultReader 需要有结果产出） | 2 天 |
 | 6 | 复杂结构 + 旧代码迁移（多路径、多端口、功分器、MZI、87 个 notebook 迁移） | 阶段 5 完成 | 3 天 |
 
