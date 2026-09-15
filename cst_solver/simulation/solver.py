@@ -78,18 +78,40 @@ End With"""
 End With"""
         self.cst_file.model3d.add_to_history(f"Parallel Threads: {threads}", f1)
 
+    def set_mesh_adaption(self, enable=False):
+        """
+        开关网格自适应（``Solver.MeshAdaption``）。
+
+        关闭自适应可显著缩短求解时间（省去多轮网格细化），
+        适用于**对比验证**场景 —— 只要两个模型用同样的设置，比较仍然公平。
+
+        :param enable: bool, 是否启用网格自适应，默认 False（关闭，求快）
+        """
+        f1 = f"""With Solver
+     .MeshAdaption "{enable}"
+End With"""
+        self.cst_file.model3d.add_to_history(
+            f"Mesh Adaption: {enable}", f1)
+
     def set_gpu_acceleration(self, gpus=1, enable=True):
         """
         设置 GPU 硬件加速。
 
-        :param gpus: int/str, 最大 GPU 数
+        :param gpus: int/str, 最大 GPU 数。**必须 ≥ 1** —— CST 对
+            ``MaximumNumberOfGPUs 0`` 会报
+            ``Invalid number of hardware devices``，关闭 GPU 要用 ``enable=False``
         :param enable: bool, 是否启用 GPU 加速，默认 True
         """
-        f1 = f"""With Solver
-     .HardwareAcceleration "{enable}"
+        if enable:
+            f1 = f"""With Solver
+     .HardwareAcceleration "True"
      .MaximumNumberOfGPUs "{gpus}"
 End With"""
-        self.cst_file.model3d.add_to_history(f"GPU Acceleration: {gpus}", f1)
+        else:
+            f1 = """With Solver
+     .HardwareAcceleration "False"
+End With"""
+        self.cst_file.model3d.add_to_history(f"GPU Acceleration: {enable}", f1)
 
     def configure_time_solver(self):
         """
