@@ -78,15 +78,23 @@ VBA 命令通过 `self.cst_file.model3d.add_to_history("<日志名>", f1)` 下�
   - CST **没有**面法向/面中心/面面积的查询 API（`Solid.GetArea` 返回的是**实体**表面积），
     所以"按法向自动找面"只能由参数化几何**正算出一个点**再反查，不能遍历已有面匹配法向量
 
-## 待修清单（修完请同步删掉 `../../SKILL.md` §6 对应行）
+## 待修清单
 
-| 文件 | 问题 | 建议修法 |
-|---|---|---|
-| `builders/vpc_region.py` `build_vpc_regions(side='lower')` | 顶点为**顺时针**，却用内部 `translate -h/2` → 与晶体差一个 h | 拉伸前统一 CCW（局部加 `_ensure_ccw(pts)`），不改 API |
-| `builders/substrate.py` `build_substrate` | 同上（带状多边形为 CW） | 同上（不要去改 `topo_path.build_substrate_polygon`，那里有单测） |
-| `builders/crystal.py` `build_topological_crystal` | 阵列范围只能由 `path.get_array_range()` 推断，宽板覆盖不全 | 加可选形参 `xup=None, yup=None, ydn=None`，None 时回退原行为 |
-| `templates/straight_waveguide.py` | 给 `build_vpc_regions` 传了 `topology=`、给 `build_topological_crystal` 传了 `xup/yup/ydn=`,两函数都不接受 → TypeError | 去掉多余实参（配合上一条加形参后即可正确传参） |
-| `templates/unit_antenna.py` | 同 `topology=` 问题 | 同上 |
+**当前为空。** 此前 5 行已全部修掉（对照 [`../../docs/next_plan/00_旧版README_整理与历史记录.md`](../../docs/next_plan/00_旧版README_整理与历史记录.md) §5 第 1–5 号），按 [`../../skills/developer/WORKFLOW.md`](./WORKFLOW.md) §6 的「修掉一个已知缺陷 → 删掉对应行」规则清空：
+
+| 原问题 | 现状 |
+|---|---|
+| `builders/vpc_region.py` 顶点顺时针 → 与晶体差一个 h | ✅ 已修（两条边界链改为「每个路径点都参与」的确定绕向，全部保证 CCW，并有第 16 项单测用有向面积钉住） |
+| `builders/substrate.py` 带状多边形为 CW | ✅ 已修（同上，未改 `topo_path.build_substrate_polygon`） |
+| `builders/crystal.py` 阵列范围只能按路径推断 | ✅ 已修（加可选形参 `xup=None, yup=None, ydn=None`） |
+| `templates/straight_waveguide.py` 传了不被接受的实参 → TypeError | ✅ 已修 |
+| `templates/unit_antenna.py` 同 `topology=` 问题 | ✅ 已修 |
+
+> **注意**：`unit_antenna.py` 仍有一处**已知但未验证**的隐患 ——
+> 它用 `path.get_array_range()` 推导阵列范围，与 `StraightWaveguide` 同源
+> （后者已修为「覆盖整个基板」）。详见
+> [`../../docs/next_plan/stages/04_阶段4_验收与缺陷清账.md`](../../docs/next_plan/stages/04_阶段4_验收与缺陷清账.md) 的 T5。
+> 单元天线是含拐弯的路径，需先确定参考基准再改，**不要照搬直波导的取法**。
 
 ## 冒烟测试（最小验证，不污染正式工程）
 
