@@ -8,6 +8,7 @@ topo_modeler.builders — 各部件构建器
 """
 
 from topo_modeler.builders.substrate import build_substrate
+from topo_modeler.builders.materials import build_materials, DEFAULT_MATERIALS
 from topo_modeler.builders.vpc_region import build_vpc_regions, intersect_vpc_with_substrate
 from topo_modeler.builders.crystal import build_topological_crystal, intersect_crystal_with_vpc
 from topo_modeler.builders.solver import configure_solver
@@ -25,6 +26,9 @@ from topo_modeler.builders.port import (
 )
 
 __all__ = [
+    # 材料（建模前置，阶段3补充）
+    "build_materials",
+    "DEFAULT_MATERIALS",
     # 基础 builders（阶段2）
     "build_substrate",
     "build_vpc_regions",
