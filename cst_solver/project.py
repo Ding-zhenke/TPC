@@ -69,12 +69,22 @@ class ProjectMixin:
         """
         self.save(filename)
 
-    def new_project(self):
+    def new_project(self, project_type=None):
         """
-        创建一个新的空白 CST 工程（需要 CST 环境支持）
-        注意：此功能依赖 CST 版本，可能不被所有版本支持
+        创建一个新的空白 CST 工程并激活
+
+        CST 2026 的 ``DesignEnvironment.new_project()`` **必须**给出工程类型，
+        缺参会直接抛 ``TypeError: new_project(): incompatible function arguments``。
+        默认取 ``ProjectType.MWS``（CST 微波工作室，即本库使用的三维电磁工程）。
+
+        :param project_type: ProjectType 可选, 工程类型枚举，不传则用
+            ``ProjectType.MWS``；其它可选值见 ``cst.interface.ProjectType``
+            （FD3D / EMS / PS / CS / DS / MPS / PCBS）
         """
-        self.cst_file = self.project.new_project()
+        from cst.interface import ProjectType
+        if project_type is None:
+            project_type = ProjectType.MWS
+        self.cst_file = self.project.new_project(project_type)
         self.cst_file.activate()
 
     def activate(self):

@@ -423,7 +423,7 @@ body {
     <div class="header-stats">
         <span><i class="fas fa-code"></i> 219 个方法</span>
         <span><i class="fas fa-layer-group"></i> 23 个类别</span>
-        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-15 12:58:21</span>
+        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-15 13:11:14</span>
     </div>
     <div class="search-bar">
         <i class="fas fa-search"></i>
@@ -6323,17 +6323,28 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                 <div class="method-card-header" onclick="toggleMethod(this)">
                     <span class="name">new_project</span>
                     <span class="badge">方法</span>
-                    <span class="desc">创建一个新的空白 CST 工程（需要 CST 环境支持）</span>
+                    <span class="desc">创建一个新的空白 CST 工程并激活</span>
                     <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
                 </div>
                 <div class="method-details">
                     <div class="section">
                         <div class="section-title">签名</div>
-                        <div class="signature">new_project(self)</div>
+                        <div class="signature">new_project(self, project_type=None)</div>
                     </div>
-                    <div class="desc-text"><p>创建一个新的空白 CST 工程（需要 CST 环境支持）</p><p>注意：此功能依赖 CST 版本，可能不被所有版本支持</p></div>
+                    <div class="desc-text"><p>创建一个新的空白 CST 工程并激活</p><p>CST 2026 的 ``DesignEnvironment.new_project()`` **必须**给出工程类型，
+缺参会直接抛 ``TypeError: new_project(): incompatible function arguments``。
+默认取 ``ProjectType.MWS``（CST 微波工作室，即本库使用的三维电磁工程）。</p></div>
                     
                     
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">project_type</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">ProjectType 可选, 工程类型枚举，不传则用 ``ProjectType.MWS``；其它可选值见 ``cst.interface.ProjectType`` （FD3D / EMS / PS / CS / DS / MPS / PCBS）</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
                     
                     <div class="source-file">
                         源文件: <code>cst_solver\project.py</code>
