@@ -80,8 +80,8 @@ ant.preview(); ant.build_all(); ant.save()
 ```
 
 > ⚠️ **模板类目前有已知限制**：端到端 `build_all()` 的验收（与参考工程对比几何）
-> 尚未执行；`run()` 需要 CST 环境。详见
-> [`../../docs/next_plan/README.md`](../../docs/next_plan/README.md) §6。
+> 尚在进行中；`run()` 需要 CST 环境。详见
+> [`../../docs/next_plan/stages/04_阶段4_验收与缺陷清账.md`](../../docs/next_plan/stages/04_阶段4_验收与缺陷清账.md)。
 
 ---
 
