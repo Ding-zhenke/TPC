@@ -40,14 +40,27 @@ class PortMixin:
     提供波导端口、离散端口、集总端口、Floquet 端口等创建功能
     """
 
-    def add_port(self, id_val, orientation='positive', shield=''):
+    def add_port(self, id_val, orientation='positive', shield='',
+                 *, number_of_modes=1, adjust_polarization='False',
+                 polarization_angle='0.0', reference_plane_distance='0'):
         """
         创建标准波导端口（波端口），用于激励和采集 S 参数
         保留原函数名以兼容旧代码
 
+        阶段 5.8：把原先写死的四项开放为**关键字参数**（默认值与改动前**逐字节相同**，
+        不传就等于老行为）：
+
+        - ``number_of_modes`` → ``.NumberOfModes``（多模波导/过模传输时用得到）
+        - ``adjust_polarization`` / ``polarization_angle`` → ``.AdjustPolarization`` / ``.PolarizationAngle``
+        - ``reference_plane_distance`` → ``.ReferencePlaneDistance``（参考面回退距离，做去嵌入时用）
+
         :param id_val: int/str, 端口编号
         :param orientation: str, 'positive' 或 'negative'
         :param shield: str, 端口屏蔽类型 'electric'/'magnetic'/''，默认 ''
+        :param number_of_modes: int, 端口模式数，默认 1
+        :param adjust_polarization: str/bool, 是否自动调整极化，默认 'False'
+        :param polarization_angle: float/str, 极化角（度），默认 '0.0'
+        :param reference_plane_distance: float/str, 参考面距离，默认 '0'
         """
         if shield == 'electric':
             f2 = '.Shield "PEC"'
@@ -60,10 +73,10 @@ class PortMixin:
             .PortNumber "{id_val}" 
             .Label ""
             .Folder ""
-            .NumberOfModes "1"
-            .AdjustPolarization "False"
-            .PolarizationAngle "0.0"
-            .ReferencePlaneDistance "0"
+            .NumberOfModes "{number_of_modes}"
+            .AdjustPolarization "{adjust_polarization}"
+            .PolarizationAngle "{polarization_angle}"
+            .ReferencePlaneDistance "{reference_plane_distance}"
             .TextSize "50"
             .TextMaxLimit "0"
             .Coordinates "Picks"
@@ -78,16 +91,24 @@ class PortMixin:
         """
         self.cst_file.model3d.add_to_history("Define Port: " + str(id_val), f1)
 
-    def create_waveguide_port(self, id_val, orientation='positive', shield=''):
+    def create_waveguide_port(self, id_val, orientation='positive', shield='',
+                              **kwargs):
         """
         创建波导端口（蛇形命名）
         等同于 add_port()
+
+        :param kwargs: 透传给 ``add_port()`` 的关键字参数
+            （``number_of_modes`` / ``adjust_polarization`` /
+            ``polarization_angle`` / ``reference_plane_distance``）
         """
-        self.add_port(id_val, orientation, shield)
+        self.add_port(id_val, orientation, shield, **kwargs)
 
     def create_waveguide_port_free(self, id_val, xrange=None, yrange=None,
                                    zrange=None, orientation='positive',
-                                   shield=''):
+                                   shield='', *, number_of_modes=1,
+                                   adjust_polarization='False',
+                                   polarization_angle='0.0',
+                                   reference_plane_distance='0'):
         """
         用**坐标范围**创建波导端口（``Coordinates "Free"``），无需任何面拾取。
 
@@ -110,6 +131,10 @@ class PortMixin:
         :param zrange: tuple, (min, max)，z 方向范围，元素可为 CST 表达式
         :param orientation: str, 端口法向朝向，沿用 ``add_port`` 的约定
         :param shield: str, 端口屏蔽类型 'electric'/'magnetic'/''，默认 ''
+        :param number_of_modes: int, 端口模式数，默认 1（阶段 5.8 新增）
+        :param adjust_polarization: str/bool, 是否自动调整极化，默认 'False'（阶段 5.8 新增）
+        :param polarization_angle: float/str, 极化角（度），默认 '0.0'（阶段 5.8 新增）
+        :param reference_plane_distance: float/str, 参考面距离，默认 '0'（阶段 5.8 新增）
         :raises ValueError: 三个方向的范围全部为 None，无法确定端口面
         """
         if xrange is None and yrange is None and zrange is None:
@@ -135,10 +160,10 @@ class PortMixin:
             .PortNumber "{id_val}" 
             .Label "" 
             .Folder "" 
-            .NumberOfModes "1" 
-            .AdjustPolarization "False" 
-            .PolarizationAngle "0.0" 
-            .ReferencePlaneDistance "0" 
+            .NumberOfModes "{number_of_modes}" 
+            .AdjustPolarization "{adjust_polarization}" 
+            .PolarizationAngle "{polarization_angle}" 
+            .ReferencePlaneDistance "{reference_plane_distance}" 
             .TextSize "50" 
             .TextMaxLimit "0" 
             .Coordinates "Free" 

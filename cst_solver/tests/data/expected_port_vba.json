@@ -1,0 +1,104 @@
+{
+ "_source": "git HEAD:cst_solver/simulation/ports.py",
+ "_head": "98fd0ca20fe82e404e27b629b3d11be0422f7ad3",
+ "_note": "波导端口 VBA 字符串基线：不传新关键字参数时必须与改动前逐字节相同。由 scripts/_check_port_vba_identity.py 对 HEAD 实测 7/7 相同。",
+ "_tuple_keys": [
+  "xrange",
+  "yrange",
+  "zrange"
+ ],
+ "cases": {
+  "picks_default": {
+   "method": "add_port",
+   "args": [
+    1
+   ],
+   "kwargs": {},
+   "label": "Define Port: 1",
+   "vba": "With Port \n            .Reset \n            .PortNumber \"1\" \n            .Label \"\"\n            .Folder \"\"\n            .NumberOfModes \"1\"\n            .AdjustPolarization \"False\"\n            .PolarizationAngle \"0.0\"\n            .ReferencePlaneDistance \"0\"\n            .TextSize \"50\"\n            .TextMaxLimit \"0\"\n            .Coordinates \"Picks\"\n            .Orientation \"positive\"\n            .PortOnBound \"True\"\n            .ClipPickedPortToBound \"False\"\n            .SingleEnded \"False\"\n            .WaveguideMonitor \"False\"\n            \n            .Create \n        End With\n        "
+  },
+  "picks_negative": {
+   "method": "add_port",
+   "args": [
+    2,
+    "negative"
+   ],
+   "kwargs": {},
+   "label": "Define Port: 2",
+   "vba": "With Port \n            .Reset \n            .PortNumber \"2\" \n            .Label \"\"\n            .Folder \"\"\n            .NumberOfModes \"1\"\n            .AdjustPolarization \"False\"\n            .PolarizationAngle \"0.0\"\n            .ReferencePlaneDistance \"0\"\n            .TextSize \"50\"\n            .TextMaxLimit \"0\"\n            .Coordinates \"Picks\"\n            .Orientation \"negative\"\n            .PortOnBound \"True\"\n            .ClipPickedPortToBound \"False\"\n            .SingleEnded \"False\"\n            .WaveguideMonitor \"False\"\n            \n            .Create \n        End With\n        "
+  },
+  "picks_electric": {
+   "method": "add_port",
+   "args": [
+    3,
+    "positive",
+    "electric"
+   ],
+   "kwargs": {},
+   "label": "Define Port: 3",
+   "vba": "With Port \n            .Reset \n            .PortNumber \"3\" \n            .Label \"\"\n            .Folder \"\"\n            .NumberOfModes \"1\"\n            .AdjustPolarization \"False\"\n            .PolarizationAngle \"0.0\"\n            .ReferencePlaneDistance \"0\"\n            .TextSize \"50\"\n            .TextMaxLimit \"0\"\n            .Coordinates \"Picks\"\n            .Orientation \"positive\"\n            .PortOnBound \"True\"\n            .ClipPickedPortToBound \"False\"\n            .SingleEnded \"False\"\n            .WaveguideMonitor \"False\"\n            .Shield \"PEC\"\n            .Create \n        End With\n        "
+  },
+  "picks_magnetic": {
+   "method": "add_port",
+   "args": [
+    4,
+    "positive",
+    "magnetic"
+   ],
+   "kwargs": {},
+   "label": "Define Port: 4",
+   "vba": "With Port \n            .Reset \n            .PortNumber \"4\" \n            .Label \"\"\n            .Folder \"\"\n            .NumberOfModes \"1\"\n            .AdjustPolarization \"False\"\n            .PolarizationAngle \"0.0\"\n            .ReferencePlaneDistance \"0\"\n            .TextSize \"50\"\n            .TextMaxLimit \"0\"\n            .Coordinates \"Picks\"\n            .Orientation \"positive\"\n            .PortOnBound \"True\"\n            .ClipPickedPortToBound \"False\"\n            .SingleEnded \"False\"\n            .WaveguideMonitor \"False\"\n            .Shield \"PMC\"\n            .Create \n        End With\n        "
+  },
+  "free_xrange_yrange": {
+   "method": "create_waveguide_port_free",
+   "args": [
+    1
+   ],
+   "kwargs": {
+    "xrange": [
+     "0",
+     "a"
+    ],
+    "yrange": [
+     "-b",
+     "b"
+    ]
+   },
+   "label": "Define Free Port: 1",
+   "vba": "With Port \n            .Reset \n            .PortNumber \"1\" \n            .Label \"\" \n            .Folder \"\" \n            .NumberOfModes \"1\" \n            .AdjustPolarization \"False\" \n            .PolarizationAngle \"0.0\" \n            .ReferencePlaneDistance \"0\" \n            .TextSize \"50\" \n            .TextMaxLimit \"0\" \n            .Coordinates \"Free\" \n            .Orientation \"positive\" \n            .PortOnBound \"True\" \n            .ClipPickedPortToBound \"False\" \n            .Xrange 0, a\n            .Yrange -b, b\n            .SingleEnded \"False\" \n            .WaveguideMonitor \"False\" \n            \n            .Create \n        End With\n        "
+  },
+  "free_zrange": {
+   "method": "create_waveguide_port_free",
+   "args": [
+    2
+   ],
+   "kwargs": {
+    "zrange": [
+     "0",
+     "h"
+    ]
+   },
+   "label": "Define Free Port: 2",
+   "vba": "With Port \n            .Reset \n            .PortNumber \"2\" \n            .Label \"\" \n            .Folder \"\" \n            .NumberOfModes \"1\" \n            .AdjustPolarization \"False\" \n            .PolarizationAngle \"0.0\" \n            .ReferencePlaneDistance \"0\" \n            .TextSize \"50\" \n            .TextMaxLimit \"0\" \n            .Coordinates \"Free\" \n            .Orientation \"positive\" \n            .PortOnBound \"True\" \n            .ClipPickedPortToBound \"False\" \n            .Zrange 0, h\n            .SingleEnded \"False\" \n            .WaveguideMonitor \"False\" \n            \n            .Create \n        End With\n        "
+  },
+  "free_xrange_zrange_electric": {
+   "method": "create_waveguide_port_free",
+   "args": [
+    3
+   ],
+   "kwargs": {
+    "xrange": [
+     "0",
+     "a"
+    ],
+    "zrange": [
+     "0",
+     "h"
+    ],
+    "shield": "electric"
+   },
+   "label": "Define Free Port: 3",
+   "vba": "With Port \n            .Reset \n            .PortNumber \"3\" \n            .Label \"\" \n            .Folder \"\" \n            .NumberOfModes \"1\" \n            .AdjustPolarization \"False\" \n            .PolarizationAngle \"0.0\" \n            .ReferencePlaneDistance \"0\" \n            .TextSize \"50\" \n            .TextMaxLimit \"0\" \n            .Coordinates \"Free\" \n            .Orientation \"positive\" \n            .PortOnBound \"True\" \n            .ClipPickedPortToBound \"False\" \n            .Xrange 0, a\n            .Zrange 0, h\n            .SingleEnded \"False\" \n            .WaveguideMonitor \"False\" \n            .Shield \"PEC\"\n            .Create \n        End With\n        "
+  }
+ }
+}

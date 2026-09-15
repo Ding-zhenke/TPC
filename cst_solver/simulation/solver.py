@@ -7,6 +7,8 @@ CST 求解器 Mixin 模块
 @author: PC
 """
 
+from cst_solver._guards import get_guard_state
+
 
 class SolverMixin:
     """
@@ -121,12 +123,25 @@ End With"""
         self.T_solver()
 
     def run(self):
-        """执行当前 CST 工程的求解器计算，提交仿真任务"""
+        """
+        执行当前 CST 工程的求解器计算，提交仿真任务
+
+        ⚠️ 提交前会过一遍守卫层（``cst_solver._guards`` 的 T2）：
+        参数改过但工程历史没重建时，仿真算的是**旧几何**，结果看着正常却是错的。
+        ``mode='strict'`` 下直接抛 ``CstGuardError``；``mode='warn'`` 下只警告。
+        修复方式：先 ``app.update()`` 或把 ``para(..., log_flag=1)``。
+        """
+        get_guard_state(self).check_before_run()
         self.cst_file.model3d.run_solver()
 
     def update(self):
-        """刷新当前 CST 工程的模型历史，使参数修改生效"""
+        """
+        刷新当前 CST 工程的模型历史，使参数修改生效
+
+        这也是守卫层认可的「重建」动作 —— 调用后参数脏标记清除。
+        """
         self.cst_file.model3d.full_history_rebuild()
+        get_guard_state(self).mark_rebuilt()
 
     def configure_fd_solver(self, accuracy='-60'):
         """

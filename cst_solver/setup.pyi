@@ -327,16 +327,23 @@ class _MaterialMixin:
 # ============================================================
 class _PortMixin:
     def add_port(self, id_val: Union[int, str], orientation: str = 'positive',
-                 shield: str = '') -> None: ...
+                 shield: str = '', *, number_of_modes: int = 1,
+                 adjust_polarization: Any = 'False',
+                 polarization_angle: Any = '0.0',
+                 reference_plane_distance: Any = '0') -> None: ...
     def create_waveguide_port(self, id_val: Union[int, str],
                               orientation: str = 'positive',
-                              shield: str = '') -> None: ...
+                              shield: str = '', **kwargs: Any) -> None: ...
     def create_waveguide_port_free(self, id_val: Union[int, str],
                                    xrange: Optional[tuple] = None,
                                    yrange: Optional[tuple] = None,
                                    zrange: Optional[tuple] = None,
                                    orientation: str = 'positive',
-                                   shield: str = '') -> None: ...
+                                   shield: str = '', *,
+                                   number_of_modes: int = 1,
+                                   adjust_polarization: Any = 'False',
+                                   polarization_angle: Any = '0.0',
+                                   reference_plane_distance: Any = '0') -> None: ...
     # 注：discrete_port / create_discrete_face_port 的旧拼写关键字
     #     invertdrection 仍可通过 **legacy_kwargs 传入，已废弃
     def discrete_port(self, r0: Union[float, str], id_val: Union[int, str],
@@ -571,7 +578,8 @@ class _FarfieldMixin:
     def farfield_plot(self) -> Any: ...
     def set_farfield_plot(self, plottype: str = '3d',
                           plotmode: str = 'realized gain',
-                          frequency: Optional[float] = None) -> None: ...
+                          frequency: Optional[float] = None,
+                          require_gain: bool = False) -> None: ...
     def compute_farfield_array(self, array_type: str = 'rectangular',
                                element_count: tuple = (2, 2),
                                spacing: tuple = (0.5, 0.5)) -> None: ...
@@ -595,9 +603,11 @@ class _PlotMixin:
     def farfield_plot_polar(self, frequency: Optional[float] = None,
                             mode: str = 'directivity',
                             theta_start: float = 0, theta_stop: float = 360,
-                            theta_step: float = 1) -> None: ...
+                            theta_step: float = 1,
+                            require_gain: bool = False) -> None: ...
     def farfield_plot_cartesian(self, frequency: Optional[float] = None,
-                                mode: str = 'directivity') -> None: ...
+                                mode: str = 'directivity',
+                                require_gain: bool = False) -> None: ...
     def plot_set_properties(self, properties: dict) -> None: ...
     def plot_animate(self, tree_path: str, parameter: str,
                      start: float, stop: float, step: float) -> None: ...
@@ -612,6 +622,27 @@ class _ExportMixin:
                            mode: str = 'FixedWidth', step: int = -1,
                            usesubvolume: bool = False,
                            setsubvolume: Optional[list] = None) -> None: ...
+
+# ============================================================
+# 结构化验收 (ValidationMixin)
+# ============================================================
+class _ValidationMixin:
+    def get_messages(self) -> List[Any]: ...
+    def validate_model(self, rebuild: bool = True,
+                       messages_prefix: str = '1D Results') -> Dict[str, Any]: ...
+
+# ============================================================
+# 运行时守卫层（cst_solver._guards）
+#
+# 守卫不是 setup 的方法，而是模块级 API；这里只列出最常用的几个，
+# 完整清单见 cst_solver/_guards.py。
+# ============================================================
+class _GuardAPI:
+    def get_guard_state(self, owner: Any) -> Any: ...
+    def get_guard_mode(self) -> str: ...
+    def set_guard_mode(self, mode: str) -> str: ...
+    def assert_gain_mode(self, mode: str) -> bool: ...
+    def reset_guard_state(self, owner: Any) -> None: ...
 
 # ============================================================
 # setup 主类 — 聚合所有功能的类型声明
@@ -640,6 +671,7 @@ class setup(
     _FarfieldMixin,
     _PlotMixin,
     _ExportMixin,
+    _ValidationMixin,
 ):
     """
     CST 电磁仿真自动化操作核心类

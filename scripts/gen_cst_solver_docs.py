@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 CST Solver API 文档自动生成器
 ==============================
@@ -58,6 +58,7 @@ CATEGORIES = {
     "FarfieldMixin": "远场分析",
     "PlotMixin": "绘图控制",
     "ExportMixin": "结果导出",
+    "ValidationMixin": "结构化验收",
 }
 
 # 每个类别的图标（Font Awesome 图标名）
@@ -826,6 +827,7 @@ def scrape_package():
     import cst_solver.postprocessing.farfield
     import cst_solver.postprocessing.plot
     import cst_solver.postprocessing.result_export
+    import cst_solver.validation
 
     all_methods = []
 
@@ -853,6 +855,7 @@ def scrape_package():
         ("FarfieldMixin", cst_solver.postprocessing.farfield, cst_solver.postprocessing.farfield.FarfieldMixin),
         ("PlotMixin", cst_solver.postprocessing.plot, cst_solver.postprocessing.plot.PlotMixin),
         ("ExportMixin", cst_solver.postprocessing.result_export, cst_solver.postprocessing.result_export.ExportMixin),
+        ("ValidationMixin", cst_solver.validation, cst_solver.validation.ValidationMixin),
     ]
 
     for mixin_name, module, cls in modules:

@@ -46,7 +46,7 @@ for _name in ["config.py", "config_template.py"]:
     if os.path.exists(_path):
         _cfg = _load_cfg(_path)
         if _name == "config_template.py":
-            print("⚠ 未找到 config.py，使用 config_template.py 中的默认配置")
+            print("[WARN] 未找到 config.py，使用 config_template.py 中的默认配置")
             print("   请复制 config_template.py 为 config.py 并修改 CST_INSTALL_PATH")
         break
 
@@ -61,7 +61,7 @@ CST_PYTHON_LIB = _cfg.get("CST_PYTHON_LIB") or _derive_python_lib(CST_INSTALL_PA
 CST_MATERIAL_LIB = _cfg.get("CST_MATERIAL_LIB") or _derive_material_lib(CST_INSTALL_PATH)
 
 if not _cfg:
-    print("⚠ 未找到配置文件，使用默认 CST 路径")
+    print("[WARN] 未找到配置文件，使用默认 CST 路径")
     print("   请创建 cst_solver/config.py 并设置 CST_INSTALL_PATH")
 
 # 将 CST Python 库路径添加到系统路径
@@ -72,6 +72,34 @@ if CST_PYTHON_LIB and CST_PYTHON_LIB not in sys.path:
 import cst
 import cst.interface
 import cst.results
+
+# ============================================================
+# 运行时守卫层：模式可在 config.py 里用 CST_GUARD_MODE 覆盖
+# （'off' 完全不检查 = 引入守卫层之前的行为；'warn' 默认；'strict' 硬拦截）
+# ============================================================
+from cst_solver._guards import (  # noqa: E402
+    CstGuardError,
+    GuardFinding,
+    GuardState,
+    GUARD_MODES,
+    DEFAULT_GUARD_MODE,
+    FARFIELD_GAIN_MODES,
+    FARFIELD_KNOWN_MODES,
+    PROJECT_SUFFIXES,
+    assert_gain_mode,
+    get_guard_mode,
+    get_guard_state,
+    reset_guard_state,
+    set_guard_mode,
+)
+
+_guard_mode_cfg = _cfg.get("CST_GUARD_MODE")
+if _guard_mode_cfg:
+    if _guard_mode_cfg in GUARD_MODES:
+        set_guard_mode(_guard_mode_cfg)
+    else:
+        print(f"[WARN] config.py 里的 CST_GUARD_MODE='{_guard_mode_cfg}' 非法，"
+              f"可选 {GUARD_MODES}；已回退到 '{DEFAULT_GUARD_MODE}'")
 
 # ============================================================
 # 导入所有 Mixin 模块
@@ -98,6 +126,7 @@ from cst_solver.postprocessing.proc import PostProcMixin
 from cst_solver.postprocessing.farfield import FarfieldMixin
 from cst_solver.postprocessing.plot import PlotMixin
 from cst_solver.postprocessing.result_export import ExportMixin
+from cst_solver.validation import ValidationMixin
 
 # ============================================================
 # 导入结果类
@@ -250,6 +279,7 @@ class setup(
     FarfieldMixin,
     PlotMixin,
     ExportMixin,
+    ValidationMixin,
 ):
     """
     CST 电磁仿真自动化操作核心类
@@ -319,6 +349,9 @@ class setup(
             raise FileNotFoundError(
                 f"CST project file not found: {filename_abs}")
 
+        # 陷阱 T10：后缀校验（strict 模式下后缀非法直接抛 CstGuardError）
+        get_guard_state(self).check_project_path(filename_abs)
+
         try:
             self.cst_file = self.project.open_project(filename_abs)
             self.cst_file.activate()
@@ -329,6 +362,7 @@ class setup(
                 f"Possible causes: file is not a valid .cst project, "
                 f"CST automation not available, or permissions/encoding issues."
             )
+        get_guard_state(self).mark_opened()
 
     def open(self, filename):
         """

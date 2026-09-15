@@ -421,9 +421,9 @@ body {
     <h1><i class="fas fa-cubes"></i> CST Solver Python API 文档</h1>
     <p>cst_solver 包 — 基于 Mixin 多继承模式的 CST Studio Suite 自动化 Python 接口</p>
     <div class="header-stats">
-        <span><i class="fas fa-code"></i> 223 个方法</span>
-        <span><i class="fas fa-layer-group"></i> 23 个类别</span>
-        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-15 21:23:34</span>
+        <span><i class="fas fa-code"></i> 225 个方法</span>
+        <span><i class="fas fa-layer-group"></i> 24 个类别</span>
+        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-15 23:39:28</span>
     </div>
     <div class="search-bar">
         <i class="fas fa-search"></i>
@@ -457,6 +457,7 @@ body {
 <a href="#cat-20" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-20')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-code"></i>单位设置</a>
 <a href="#cat-21" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-21')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-satellite-dish"></i>远场分析</a>
 <a href="#cat-22" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-22')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-file-export"></i>结果导出</a>
+<a href="#cat-23" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-23')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-code"></i>结构化验收</a>
 
     </nav>
 
@@ -1016,7 +1017,10 @@ body {
                         <div class="section-title">签名</div>
                         <div class="signature">run(self)</div>
                     </div>
-                    <div class="desc-text"><p>执行当前 CST 工程的求解器计算，提交仿真任务</p></div>
+                    <div class="desc-text"><p>执行当前 CST 工程的求解器计算，提交仿真任务</p><p>⚠️ 提交前会过一遍守卫层（``cst_solver._guards`` 的 T2）：
+参数改过但工程历史没重建时，仿真算的是**旧几何**，结果看着正常却是错的。
+``mode='strict'`` 下直接抛 ``CstGuardError``；``mode='warn'`` 下只警告。
+修复方式：先 ``app.update()`` 或把 ``para(..., log_flag=1)``。</p></div>
                     
                     
                     
@@ -1311,7 +1315,7 @@ body {
                         <div class="section-title">签名</div>
                         <div class="signature">update(self)</div>
                     </div>
-                    <div class="desc-text"><p>刷新当前 CST 工程的模型历史，使参数修改生效</p></div>
+                    <div class="desc-text"><p>刷新当前 CST 工程的模型历史，使参数修改生效</p><p>这也是守卫层认可的「重建」动作 —— 调用后参数脏标记清除。</p></div>
                     
                     
                     
@@ -3996,7 +4000,7 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                 <div class="method-details">
                     <div class="section">
                         <div class="section-title">签名</div>
-                        <div class="signature">farfield_plot_cartesian(self, frequency=None, mode='directivity')</div>
+                        <div class="signature">farfield_plot_cartesian(self, frequency=None, mode='directivity', require_gain=False)</div>
                     </div>
                     <div class="desc-text"><p>绘制直角坐标远场方向图</p></div>
                     
@@ -4007,6 +4011,7 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                         <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
                         <tbody><tr><td class="param-name">frequency</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float 可选, 频率</td></tr>
 <tr><td class="param-name">mode</td><td><span style="color:#f59e0b;font-size:12px">= directivity</span></td><td class="param-desc">str, 显示模式</td></tr>
+<tr><td class="param-name">require_gain</td><td><span style="color:#f59e0b;font-size:12px">= False</span></td><td class="param-desc">bool, True 表示这次绘图要当增益证据用（见 T8 说明）</td></tr>
 </tbody>
                     </table>
                 </div>
@@ -4028,9 +4033,13 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                 <div class="method-details">
                     <div class="section">
                         <div class="section-title">签名</div>
-                        <div class="signature">farfield_plot_polar(self, frequency=None, mode='directivity', theta_start=0, theta_stop=360, theta_step=1)</div>
+                        <div class="signature">farfield_plot_polar(self, frequency=None, mode='directivity', theta_start=0, theta_stop=360, theta_step=1, require_gain=False)</div>
                     </div>
-                    <div class="desc-text"><p>绘制极坐标远场方向图</p></div>
+                    <div class="desc-text"><p>绘制极坐标远场方向图</p><p>⚠️ 守卫层（陷阱 T8）：``'efield'`` 这类模式画出来的是 **Abs(E)**，
+量纲与增益无关，**不能**当作增益证据引用。要写进增益结论请用
+``'directivity'`` / ``'gain'`` / ``'realized gain'``（见
+``cst_solver.FARFIELD_GAIN_MODES``）；
+传 ``require_gain=True`` 会让守卫强制校验这一点。</p></div>
                     
                     
                 <div class="section">
@@ -4042,6 +4051,7 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
 <tr><td class="param-name">theta_start</td><td><span style="color:#f59e0b;font-size:12px">= 0</span></td><td class="param-desc">float, 起始角度</td></tr>
 <tr><td class="param-name">theta_stop</td><td><span style="color:#f59e0b;font-size:12px">= 360</span></td><td class="param-desc">float, 终止角度</td></tr>
 <tr><td class="param-name">theta_step</td><td><span style="color:#f59e0b;font-size:12px">= 1</span></td><td class="param-desc">float, 角度步长</td></tr>
+<tr><td class="param-name">require_gain</td><td><span style="color:#f59e0b;font-size:12px">= False</span></td><td class="param-desc">bool, True 表示这次绘图要当增益证据用，强制白名单校验</td></tr>
 </tbody>
                     </table>
                 </div>
@@ -4218,7 +4228,7 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                     <div class="section-title">参数</div>
                     <table class="params-table">
                         <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">properties</td><td><span class="param-type">dict</span></td><td class="param-desc">dict, 属性键值对 例如: {'PlotMode': 'directivity', 'Frequency': '3.5'}  支持的属性: - PlotMode: 'directivity'/'gain'/'realized gain'/'efield' - Frequency: 频率值 - ThetaStart/ThetaStop/ThetaStep: 角度范围 - PhiStart/PhiStop/PhiStep: 方位角范围 - Trace: 'all'/'max'/'min'</td></tr>
+                        <tbody><tr><td class="param-name">properties</td><td><span class="param-type">dict</span></td><td class="param-desc">dict, 属性键值对 例如: {'PlotMode': 'directivity', 'Frequency': '3.5'}  支持的属性: - PlotMode: 'directivity'/'gain'/'realized gain'/'efield' - Frequency: 频率值 - ThetaStart/ThetaStop/ThetaStep: 角度范围 - PhiStart/PhiStop/PhiStep: 方位角范围 - Trace: 'all'/'max'/'min'  ⚠️ ``PlotMode`` 会过守卫层（陷阱 T8）：未知模式会报警； ``'efield'`` 等非增益模式本身合法，但**不能**当增益证据引用。</td></tr>
 </tbody>
                     </table>
                 </div>
@@ -4986,7 +4996,9 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                         <div class="section-title">签名</div>
                         <div class="signature">para(self, name, value, log_flag=0, expression='')</div>
                     </div>
-                    <div class="desc-text"><p>在 CST 工程中创建/修改单个全局仿真参数</p></div>
+                    <div class="desc-text"><p>在 CST 工程中创建/修改单个全局仿真参数</p><p>⚠️ ``log_flag=0``（默认）只把参数写进参数表，**不会**重建工程历史 ——
+**改一个已被几何引用的参数**时，几何不会随之变化，此时直接仿真会算到
+**旧几何**。守卫层（``cst_solver._guards``）会在 ``run()`` 前拦截或警告这种用法。</p></div>
                     
                 <div class="alias-info">
                     <i class="fas fa-info-circle"></i>
@@ -6045,9 +6057,14 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                 <div class="method-details">
                     <div class="section">
                         <div class="section-title">签名</div>
-                        <div class="signature">add_port(self, id_val, orientation='positive', shield='')</div>
+                        <div class="signature">add_port(self, id_val, orientation='positive', shield='', *, number_of_modes=1, adjust_polarization='False', polarization_angle='0.0', reference_plane_distance='0')</div>
                     </div>
-                    <div class="desc-text"><p>创建标准波导端口（波端口），用于激励和采集 S 参数</p><p>保留原函数名以兼容旧代码</p></div>
+                    <div class="desc-text"><p>创建标准波导端口（波端口），用于激励和采集 S 参数</p><p>保留原函数名以兼容旧代码
+阶段 5.8：把原先写死的四项开放为**关键字参数**（默认值与改动前**逐字节相同**，
+不传就等于老行为）：
+- ``number_of_modes`` → ``.NumberOfModes``（多模波导/过模传输时用得到）
+- ``adjust_polarization`` / ``polarization_angle`` → ``.AdjustPolarization`` / ``.PolarizationAngle``
+- ``reference_plane_distance`` → ``.ReferencePlaneDistance``（参考面回退距离，做去嵌入时用）</p></div>
                     
                 <div class="alias-info">
                     <i class="fas fa-info-circle"></i>
@@ -6062,6 +6079,10 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                         <tbody><tr><td class="param-name">id_val</td><td></td><td class="param-desc">int/str, 端口编号</td></tr>
 <tr><td class="param-name">orientation</td><td><span style="color:#f59e0b;font-size:12px">= positive</span></td><td class="param-desc">str, 'positive' 或 'negative'</td></tr>
 <tr><td class="param-name">shield</td><td></td><td class="param-desc">str, 端口屏蔽类型 'electric'/'magnetic'/''，默认 ''</td></tr>
+<tr><td class="param-name">number_of_modes</td><td><span style="color:#f59e0b;font-size:12px">= 1</span></td><td class="param-desc">int, 端口模式数，默认 1</td></tr>
+<tr><td class="param-name">adjust_polarization</td><td><span style="color:#f59e0b;font-size:12px">= False</span></td><td class="param-desc">str/bool, 是否自动调整极化，默认 'False'</td></tr>
+<tr><td class="param-name">polarization_angle</td><td><span style="color:#f59e0b;font-size:12px">= 0.0</span></td><td class="param-desc">float/str, 极化角（度），默认 '0.0'</td></tr>
+<tr><td class="param-name">reference_plane_distance</td><td><span style="color:#f59e0b;font-size:12px">= 0</span></td><td class="param-desc">float/str, 参考面距离，默认 '0'</td></tr>
 </tbody>
                     </table>
                 </div>
@@ -6258,7 +6279,7 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                 <div class="method-details">
                     <div class="section">
                         <div class="section-title">签名</div>
-                        <div class="signature">create_waveguide_port(self, id_val, orientation='positive', shield='')</div>
+                        <div class="signature">create_waveguide_port(self, id_val, orientation='positive', shield='', **kwargs)</div>
                     </div>
                     <div class="desc-text"><p>创建波导端口（蛇形命名）</p><p>等同于 add_port()</p></div>
                     
@@ -6270,6 +6291,7 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                         <tbody><tr><td class="param-name">id_val</td><td></td><td class="param-desc"></td></tr>
 <tr><td class="param-name">orientation</td><td><span style="color:#f59e0b;font-size:12px">= positive</span></td><td class="param-desc"></td></tr>
 <tr><td class="param-name">shield</td><td></td><td class="param-desc"></td></tr>
+<tr><td class="param-name">kwargs</td><td></td><td class="param-desc">透传给 ``add_port()`` 的关键字参数 （``number_of_modes`` / ``adjust_polarization`` / ``polarization_angle`` / ``reference_plane_distance``）</td></tr>
 </tbody>
                     </table>
                 </div>
@@ -6291,7 +6313,7 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                 <div class="method-details">
                     <div class="section">
                         <div class="section-title">签名</div>
-                        <div class="signature">create_waveguide_port_free(self, id_val, xrange=None, yrange=None, zrange=None, orientation='positive', shield='')</div>
+                        <div class="signature">create_waveguide_port_free(self, id_val, xrange=None, yrange=None, zrange=None, orientation='positive', shield='', *, number_of_modes=1, adjust_polarization='False', polarization_angle='0.0', reference_plane_distance='0')</div>
                     </div>
                     <div class="desc-text"><p>用**坐标范围**创建波导端口（``Coordinates &quot;Free&quot;``），无需任何面拾取。</p><p>与 ``create_waveguide_port`` 的分工：后者走 ``Coordinates &quot;Picks&quot;``，
 必须先 ``pick_face`` 选到面才生效，而面编号与实体几何、生成顺序强相关，
@@ -6315,6 +6337,10 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
 <tr><td class="param-name">zrange</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">tuple, (min, max)，z 方向范围，元素可为 CST 表达式</td></tr>
 <tr><td class="param-name">orientation</td><td><span style="color:#f59e0b;font-size:12px">= positive</span></td><td class="param-desc">str, 端口法向朝向，沿用 ``add_port`` 的约定</td></tr>
 <tr><td class="param-name">shield</td><td></td><td class="param-desc">str, 端口屏蔽类型 'electric'/'magnetic'/''，默认 ''</td></tr>
+<tr><td class="param-name">number_of_modes</td><td><span style="color:#f59e0b;font-size:12px">= 1</span></td><td class="param-desc">int, 端口模式数，默认 1（阶段 5.8 新增）</td></tr>
+<tr><td class="param-name">adjust_polarization</td><td><span style="color:#f59e0b;font-size:12px">= False</span></td><td class="param-desc">str/bool, 是否自动调整极化，默认 'False'（阶段 5.8 新增）</td></tr>
+<tr><td class="param-name">polarization_angle</td><td><span style="color:#f59e0b;font-size:12px">= 0.0</span></td><td class="param-desc">float/str, 极化角（度），默认 '0.0'（阶段 5.8 新增）</td></tr>
+<tr><td class="param-name">reference_plane_distance</td><td><span style="color:#f59e0b;font-size:12px">= 0</span></td><td class="param-desc">float/str, 参考面距离，默认 '0'（阶段 5.8 新增）</td></tr>
 </tbody>
                     </table>
                 </div>
@@ -6441,7 +6467,9 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                         <div class="section-title">签名</div>
                         <div class="signature">close(self)</div>
                     </div>
-                    <div class="desc-text"><p>关闭当前打开的 CST 工程文件和设计环境，释放所有资源</p></div>
+                    <div class="desc-text"><p>关闭当前打开的 CST 工程文件和设计环境，释放所有资源</p><p>⚠️ 顺序约定（陷阱 T15）：**先 save() 再 close()**。
+工程关闭后再调 ``save()`` 什么都不会写出，守卫层会直接报错。
+关闭前若检测到未保存的改动（建了几何但没 save），会给一条 warning。</p></div>
                     
                     
                     
@@ -6614,7 +6642,10 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                     </div>
                     <div class="desc-text"><p>保存当前 CST 工程</p><p>CST 的工程对象只提供 ``Project.save(path, include_results, allow_overwrite)``，
 **没有** ``save_as`` —— 早期实现误用 ``save_as``，带路径保存时必抛
-``AttributeError: '_cst_interface.Project' object has no attribute 'save_as'``。</p></div>
+``AttributeError: '_cst_interface.Project' object has no attribute 'save_as'``。
+⚠️ 守卫层（陷阱 T15/T3）：工程已 ``close()`` 后再 save 会直接报错；
+刚导出过远场/2D-3D 结果时 ``include_results=True`` 会给一条
+「建议 include_results=False」的警告。</p></div>
                     
                     
                 <div class="section">
@@ -8257,9 +8288,12 @@ OpenAddSpaceFactor: 扩展空间系数</p></div>
                 <div class="method-details">
                     <div class="section">
                         <div class="section-title">签名</div>
-                        <div class="signature">set_farfield_plot(self, plottype='3d', plotmode='realized gain', frequency=None)</div>
+                        <div class="signature">set_farfield_plot(self, plottype='3d', plotmode='realized gain', frequency=None, require_gain=False)</div>
                     </div>
-                    <div class="desc-text"><p>设置远场方向图绘制参数</p></div>
+                    <div class="desc-text"><p>设置远场方向图绘制参数</p><p>⚠️ 守卫层（陷阱 T8）：``plotmode`` 会做白名单校验；
+``'efield'`` 画的是 **Abs(E)**，不能当增益证据；
+要用作增益结论请传 ``require_gain=True`` 强制只接受
+``'directivity'`` / ``'gain'`` / ``'realized gain'``。</p></div>
                     
                     
                 <div class="section">
@@ -8269,6 +8303,7 @@ OpenAddSpaceFactor: 扩展空间系数</p></div>
                         <tbody><tr><td class="param-name">plottype</td><td><span style="color:#f59e0b;font-size:12px">= 3d</span></td><td class="param-desc">str, 'polar'/'cartesian'/'2d'/'2dortho'/'3d'</td></tr>
 <tr><td class="param-name">plotmode</td><td><span style="color:#f59e0b;font-size:12px">= realized gain</span></td><td class="param-desc">str, 绘制模式</td></tr>
 <tr><td class="param-name">frequency</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float 可选, 频率</td></tr>
+<tr><td class="param-name">require_gain</td><td><span style="color:#f59e0b;font-size:12px">= False</span></td><td class="param-desc">bool, True 表示这次绘图要当增益证据用</td></tr>
 </tbody>
                     </table>
                 </div>
@@ -8325,7 +8360,7 @@ OpenAddSpaceFactor: 扩展空间系数</p></div>
                 <div class="method-card-header" onclick="toggleMethod(this)">
                     <span class="name">export_result_2d3d</span>
                     <span class="badge">方法</span>
-                    <span class="desc">导出 2D/3D 结果到 ASCII 文件</span>
+                    <span class="desc">导出 2D/3D 结果到 ASCII 文件（**含远场**）</span>
                     <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
                 </div>
                 <div class="method-details">
@@ -8333,7 +8368,9 @@ OpenAddSpaceFactor: 扩展空间系数</p></div>
                         <div class="section-title">签名</div>
                         <div class="signature">export_result_2d3d(self, tree_path, save_path, mode='FixedWidth', step=-1, usesubvolume=False, setsubvolume=None)</div>
                     </div>
-                    <div class="desc-text"><p>导出 2D/3D 结果到 ASCII 文件</p></div>
+                    <div class="desc-text"><p>导出 2D/3D 结果到 ASCII 文件（**含远场**）</p><p>⚠️ 守卫层（陷阱 T3）：导出远场/2D-3D 结果后再
+``save(include_results=True)`` 有把工程写坏的风险，
+守卫会给一条「建议 include_results=False」的警告。</p></div>
                     
                     
                 <div class="section">
@@ -8353,6 +8390,80 @@ OpenAddSpaceFactor: 扩展空间系数</p></div>
                     
                     <div class="source-file">
                         源文件: <code>cst_solver\postprocessing\result_export.py</code>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+        <div class="category" id="cat-23">
+            <div class="category-header" onclick="this.nextElementSibling.nextElementSibling.querySelector('input')?.focus()">
+                <div class="icon" style="background:#dc2626"><i class="fas fa-code"></i></div>
+                <h2>结构化验收</h2>
+                <span class="count">2 方法</span>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">get_messages</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">读取并清空 CST 的待处理消息。</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">get_messages(self)</div>
+                    </div>
+                    <div class="desc-text"><p>读取并清空 CST 的待处理消息。</p><p>CST 的 VBA 失败**不会**抛 Python 异常，只会往消息队列里写一条；
+非空即代表上一步操作有问题。读取即清空（CST 自身行为）。</p></div>
+                    
+                    
+                    
+                <div class="section">
+                    <div class="section-title">返回值</div>
+                    <div class="return-section">list, 消息列表（可能是字符串或消息对象）；空列表表示无消息</div>
+                </div>
+                
+                    <div class="source-file">
+                        源文件: <code>cst_solver\validation.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">validate_model</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">验收当前工程：读消息 + 跑 Rebuild + 再读消息，返回结构化结果。</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">validate_model(self, rebuild=True, messages_prefix='1D Results')</div>
+                    </div>
+                    <div class="desc-text"><p>验收当前工程：读消息 + 跑 Rebuild + 再读消息，返回结构化结果。</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">rebuild</td><td><span style="color:#f59e0b;font-size:12px">= True</span></td><td class="param-desc">bool, 是否执行 ``Rebuild()`` 重放工程历史，默认 True。 重放会重新生成几何，是发现「参数改了但历史没重建」的最后一道检查。</td></tr>
+<tr><td class="param-name">messages_prefix</td><td><span style="color:#f59e0b;font-size:12px">= 1D Results</span></td><td class="param-desc">str, 预留参数（当前未用于过滤，仅为将来按导航树 筛消息留出签名位置）</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                <div class="section">
+                    <div class="section-title">返回值</div>
+                    <div class="return-section">dict::  { &quot;status&quot;:     &quot;success&quot; | &quot;error&quot;,   # 结论 &quot;messages&quot;:   [ ... ],               # 本次验收到的问题消息（含 rebuild 阶段） &quot;rebuild_ok&quot;: bool,                  # Rebuild 本身是否干净 &quot;before&quot;:     [ ... ],               # 调用前积压的历史消息（已清空） &quot;guard&quot;:      {...},                 # 守卫层发现摘要 }  判定规则（与 WORKFLOW §3 一致，不引入新口径）：  - ``before`` 或 ``rebuild`` 阶段**任一条**消息 ⇒ ``status='error'`` - ``rebuild=False`` 时 ``rebuild_ok`` 恒为 True（未执行即不作失败论） - 本方法**不抛异常**，调用方按 ``status`` 分流；这样它既能用在 断言脚本里，也能用在「先跑一遍看看能不能继续」的探测场景</div>
+                </div>
+                
+                    <div class="source-file">
+                        源文件: <code>cst_solver\validation.py</code>
                     </div>
                 </div>
             </div>

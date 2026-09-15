@@ -7,6 +7,8 @@ CST 结果导出 Mixin 模块
 @author: PC
 """
 
+from cst_solver._guards import get_guard_state
+
 
 class ExportMixin:
     """
@@ -26,11 +28,16 @@ class ExportMixin:
         ascii_export.Reset()
         ascii_export.FileName(save_path)
         ascii_export.Execute()
+        get_guard_state(self).mark_result_exported('1d')
 
     def export_result_2d3d(self, tree_path, save_path, mode='FixedWidth',
                            step=-1,usesubvolume=False,setsubvolume=None):
         """
-        导出 2D/3D 结果到 ASCII 文件
+        导出 2D/3D 结果到 ASCII 文件（**含远场**）
+
+        ⚠️ 守卫层（陷阱 T3）：导出远场/2D-3D 结果后再
+        ``save(include_results=True)`` 有把工程写坏的风险，
+        守卫会给一条「建议 include_results=False」的警告。
 
         :param tree_path: str, 导航树路径
         :param save_path: str, 保存路径
@@ -48,3 +55,4 @@ class ExportMixin:
         if step != -1:
             ascii_export.Step(step)
         ascii_export.Execute()
+        get_guard_state(self).mark_result_exported('2d3d')

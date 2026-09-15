@@ -385,7 +385,7 @@ End With
         """
         lib_path = self._get_material_library_path()
         if not os.path.exists(lib_path):
-            print(f"⚠ 材料库路径不存在: {lib_path}")
+            print(f"[WARN] 材料库路径不存在: {lib_path}")
             return []
         materials = []
         for f in os.listdir(lib_path):
@@ -425,11 +425,11 @@ End With
             if os.path.exists(candidate):
                 filepath = candidate
             else:
-                print(f"⚠ 未找到材料文件: {filepath}")
+                print(f"[WARN] 未找到材料文件: {filepath}")
                 return False
 
         if not os.path.exists(filepath):
-            print(f"⚠ 材料文件不存在: {filepath}")
+            print(f"[WARN] 材料文件不存在: {filepath}")
             return False
 
         # 解析 .mtd 文件
@@ -454,7 +454,7 @@ End With
                 commands.append(stripped)
 
         if not commands:
-            print(f"⚠ 材料文件 {filepath} 中未找到有效定义")
+            print(f"[WARN] 材料文件 {filepath} 中未找到有效定义")
             return False
 
         # 生成 VBA 命令并写入 CST 历史
@@ -465,7 +465,7 @@ End With
 
         self.cst_file.model3d.add_to_history(
             f'Define material: {material_name}', cmd)
-        print(f"✅ 已加载材料: {material_name}")
+        print(f"[OK] 已加载材料: {material_name}")
         return True
 
     def get_material_filepath(self, material_name):
@@ -479,5 +479,5 @@ End With
         filepath = os.path.join(lib_path, material_name + '.mtd')
         if os.path.exists(filepath):
             return filepath
-        print(f"⚠ 材料库中未找到: {material_name}")
+        print(f"[WARN] 材料库中未找到: {material_name}")
         return None
