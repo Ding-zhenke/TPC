@@ -28,7 +28,7 @@
 | **开发者** | 怎么给库加能力、怎么修封装层缺陷、怎么保证不破坏既有约定 | 本文件 + [`cst-solver-dev.md`](./cst-solver-dev.md) |
 
 **判断方法**：如果需求能用现有 API 组合出来 → 使用者任务，**不要**改库；
-如果需求要求新增/修改 `cst_solver`、`mesh_grid`、`topo_modeler`、`templates`、`tpc_toolkit` 里的代码 → 开发者任务。
+如果需求要求新增/修改 `cst_solver`、`mesh_grid`、`topo_modeler`、`topo_templates`、`tpc_toolkit` 里的代码 → 开发者任务。
 
 ---
 
@@ -41,7 +41,7 @@
 | CST 原语操作（画体、设端口、跑求解、读结果） | `cst_solver/` | 需要跟 CST 的 VBA 对象一一对应 |
 | 与 CST 无关的晶格数学、坐标、可视化、DXF | `mesh_grid/` | 不需要 CST 也能跑 |
 | 把部件组装成模型、编排建模顺序 | `topo_modeler/` | 依赖 `cst_solver` + `mesh_grid` |
-| 某个具体器件的完整建模流程 | `templates/` | 一个类 = 一个器件 |
+| 某个具体器件的完整建模流程 | `topo_templates/` | 一个类 = 一个器件 |
 | 仿真前后数据处理、优化算法 | `tpc_toolkit/` | 不需要 CST |
 | 仓库工具（文档生成、统计脚本） | `scripts/` | 不进入发行包 |
 | 文档 / 技能 / 计划 | `docs/`、`skills/` | 不影响运行时 |
@@ -49,7 +49,7 @@
 **反例（不要这样做）**：
 - ❌ 在 `topo_modeler/builders/` 里手写 VBA 字符串 → 应该调 `cst_solver` 的方法。
   唯一例外：`cst_solver` 确实没有对应封装，且该 VBA 只服务这一个部件 —— 此时**先给 `cst_solver` 补封装**，再回来用。
-- ❌ 在 `templates/` 里写几何推导 → 应该下沉到 `topo_modeler/builders/` 或 `TopoPath`。
+- ❌ 在 `topo_templates/` 里写几何推导 → 应该下沉到 `topo_modeler/builders/` 或 `TopoPath`。
 - ❌ 把只服务某个模板的逻辑塞进 `mesh_grid/` → `mesh_grid` 必须保持通用。
 
 ---
@@ -189,9 +189,9 @@ git push origin main
 - [ ] 已在 `builders/__init__.py` 导出并加入 `__all__`
 - [ ] 多边形**绕向 CCW**（见 §5 硬约定 1）
 - [ ] 阵列范围覆盖整个基板
-- [ ] 至少用一个模板（`templates/`）或最小脚本端到端跑通
+- [ ] 至少用一个模板（`topo_templates/`）或最小脚本端到端跑通
 
-### `templates/`
+### `topo_templates/`
 - [ ] 参数有合理默认值，构造后 `preview()` 能画路径
 - [ ] `build_all()` 端到端无 `get_messages()` 报错
 - [ ] 与 `TopoModeler` 的自动推断结果一致（或显式覆盖）
@@ -223,7 +223,7 @@ git push origin main
 | `cst_solver` 公开方法签名 | `cst_solver/setup.pyi`、`docs/guides/api/cst_solver_api.html`（重跑生成器） |
 | `mesh_grid` 公开 API | `mesh_grid/*/__init__.py`、`docs/guides/api/*.html` |
 | 新增/删除包或模块 | `docs/ARCHITECTURE.md`、`docs/packages/*.md`、`pyproject.toml` 的 `packages.find`、`README.md` 的结构图 |
-| 新增 builder / 模板 | `docs/packages/topo_modeler.md` 或 `docs/packages/templates.md` |
+| 新增 builder / 模板 | `docs/packages/topo_modeler.md` 或 `docs/packages/topo_templates.md` |
 | 新增硬约定或踩坑 | `docs/ARCHITECTURE.md` §6 + 相关 skill |
 | 阶段进度变化 | `docs/next_plan/README.md` 的阶段状态表 |
 | 修掉一个已知缺陷 | 删掉 `cst-solver-dev.md` 的「待修清单」对应行 + `docs/next_plan/` 对应条目 |
@@ -259,7 +259,7 @@ git push origin main
 ```
 
 `type`：`feat` / `fix` / `refactor` / `docs` / `chore` / `build` / `test`
-`scope`：`cst_solver` / `mesh_grid` / `topo_modeler` / `templates` / `tpc_toolkit` / `docs` / `repo` / `build`
+`scope`：`cst_solver` / `mesh_grid` / `topo_modeler` / `topo_templates` / `tpc_toolkit` / `docs` / `repo` / `build`
 
 示例：
 
@@ -309,6 +309,6 @@ grep -rn "sys.path.append\|scripts/gen_docs.py\|\.github/skills\|cst_solver/docs
 4. ❌ 在 `mesh_grid` 里引入 CST 依赖（它必须保持纯计算）。
 5. ❌ 在 `tpc_toolkit` 里引入 CST 依赖。
 6. ❌ 删除公开符号而不留别名、不登记弃用。
-7. ❌ 把实验性代码直接写进 `templates/` 或 `topo_modeler/builders/` 的公开路径 —— 先放 `lens_build_standalone.py` 这类沙盒文件验证。
+7. ❌ 把实验性代码直接写进 `topo_templates/` 或 `topo_modeler/builders/` 的公开路径 —— 先放 `lens_build_standalone.py` 这类沙盒文件验证。
 8. ❌ 用 `print` 代替异常。
 9. ❌ 跳过 `docs/next_plan` 的阶段判定就开工。

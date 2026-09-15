@@ -22,7 +22,7 @@ TPC/                              ← 已 pip install -e .，无需 sys.path.app
 ├── cst_solver/       CST VBA 封装（Mixin 聚合，入口 setup；库开发见 ../developer/cst-solver-dev.md）
 ├── mesh_grid/        纯算法：tri_grid（三角晶格/路径 DSL）、hex_grid（六边形/DXF）
 ├── topo_modeler/     建模引擎：TopoModeler + builders/ 各部件构建器
-├── templates/        端到端模板（StraightWaveguide / UnitAntenna）
+├── topo_templates/        端到端模板（StraightWaveguide / UnitAntenna）
 └── tpc_toolkit/      独立工具（s2p 解析 / 遗传算法 / 等效介质），不依赖 CST
 ```
 
@@ -123,7 +123,7 @@ assert signed_area(my_poly) > 0        # 手写多边形拉伸前先自检
 | `RuntimeError: Shape does not exist: component1:xxx` | 该实体此刻不存在：① 上一步布尔把它消耗了（§3.2）② 上一步相交得**空集**（§3.1 z 不共面）③ 命令在 CST 重建中被排队 | 查 §3.1；重操作**分单元**；下一条命令前 `model3d.Rebuild()` 同步 |
 | 实体凭空消失、后续 `add` 报缺实体 | 同上②，最常见是 **CW 多边形 + `-h/2`** | 统一 CCW，或改用 Brick |
 | `NameError: name 'x' is not defined` | ① 定义它的单元没跑 ② **旧 kernel 残留变量掩盖了 bug** | 重启 kernel → 全量顺序重跑；别信"上次跑通了" |
-| `TypeError: build_vpc_regions() got an unexpected keyword argument 'topology'` | `templates/*.py` 传了函数不接受的参数（§6） | 不用 templates，直接调 builders |
+| `TypeError: build_vpc_regions() got an unexpected keyword argument 'topology'` | `topo_templates/*.py` 传了函数不接受的参数（§6） | 不用 topo_templates，直接调 builders |
 | 改参数不生效 | `para()` 只 `StoreParameter`，需刷新 | `app.para(name, val, log_flag=1)` 或 `full_history_rebuild()` |
 | 端口选到错误的面 | `pick_face` 面编号依赖具体几何 | 试 `'10'` / `'22'`，或先在 CST 里看面号 |
 | 求解器 VBA 报错 | `builders/solver.py` 的 `configure_solver` 含存疑 VBA（`.ParallelizationThreads`、`.GPUAcceleration`） | 优先用旧 notebook 实测过的 `With Solver … End With` 整块 |
@@ -172,8 +172,8 @@ cst_log('完整重建后')
 |---|---|---|---|
 | `builders/vpc_region.py` `build_vpc_regions(side='lower')` | 生成**顺时针**多边形，却用内部 `translate -h/2` | 下半区与晶体差一个 h → 相交空集 | 多边形统一 CCW，或按绕向取 `±h/2`，或改 Brick |
 | `builders/substrate.py` `build_substrate` | 同上（带状多边形为 CW） | 基板错一个 h 的平面 | 同上 |
-| `templates/straight_waveguide.py` | 调 `build_vpc_regions(..., topology=...)`、`build_topological_crystal(..., xup/yup/ydn=...)`，两函数都不接受 | 模板直接 TypeError | 去掉多余参数，或给构建器加形参 |
-| `templates/unit_antenna.py` | 同 `topology=` 问题 | 同 | 同 |
+| `topo_templates/straight_waveguide.py` | 调 `build_vpc_regions(..., topology=...)`、`build_topological_crystal(..., xup/yup/ydn=...)`，两函数都不接受 | 模板直接 TypeError | 去掉多余参数，或给构建器加形参 |
+| `topo_templates/unit_antenna.py` | 同 `topology=` 问题 | 同 | 同 |
 | `builders/crystal.py` | 阵列范围只能从 `path.get_array_range()` 推断 | 宽板覆盖不全 | 加 `xup/yup/ydn` 形参 |
 
 ## 7. 最小可用配方（实测写法）

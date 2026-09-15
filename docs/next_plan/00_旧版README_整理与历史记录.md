@@ -28,7 +28,7 @@
 
 | 文件 | 撰写时的用途 | 现在的角色 |
 |---|---|---|
-| [`01_Python建模拓扑光子晶体指南.md`](./01_Python建模拓扑光子晶体指南.md) | 面向 AI 的现状教程（`sys.path.append` + 手写 16 步建模） | **历史资料**。描述的是重构前的 notebook 工作流，不含 `topo_modeler/`、`TopoPath`、`templates/`；且含若干会报错的 API 签名。仅可当「旧 notebook 参数事实」的参考。其中「旧 notebook 参数」已被阶段 3 的验收基准吸收。 |
+| [`01_Python建模拓扑光子晶体指南.md`](./01_Python建模拓扑光子晶体指南.md) | 面向 AI 的现状教程（`sys.path.append` + 手写 16 步建模） | **历史资料**。描述的是重构前的 notebook 工作流，不含 `topo_modeler/`、`TopoPath`、`topo_templates/`；且含若干会报错的 API 签名。仅可当「旧 notebook 参数事实」的参考。其中「旧 notebook 参数」已被阶段 3 的验收基准吸收。 |
 | [`02_函数优化清单.md`](./02_函数优化清单.md) | 函数级/架构级优化清单（53 条可执行议题）+ `TopoPath` 完整实现方案 | **已被实施 19 条**。`TopoPath`（B33–B36）与 `TopoModeler`（B32）两大 P0 架构项均已落地。剩余价值集中在命名/魔法数字（B18–B27）、YAML（B38）、批量建模（B39）、结果自动绘图（B49）、参数扫描/GA 内置（B50/B51）、增量建模（B53）。 |
 | [`03_AI技能知识库.md`](./03_AI技能知识库.md) | AI 干活前的强制知识库 | **已被 [`../skills/user/tpc-usage.md`](../../skills/user/tpc-usage.md) 取代**。其骨架（快速导航/API 速查/10 步流程/参数表/调试表/自检清单）与新技能文档逐节同构但内容更旧。仍有三块独有价值待迁移：notebook 文件名编码约定、物理概念与频段、症状→病因→动作调试表。 |
 | [`04_详细实施计划清单.md`](./04_详细实施计划清单.md) | 112 条详细任务 + 模板参数表 + **第三套阶段编号**（阶段一~四） | **被 06 取代**。§3 的 28 条「库层任务」在 04 自己的阶段表里没有任何归属。 |
@@ -42,10 +42,10 @@
 
 | 阶段 | 名称 | 状态 | 证据 / 备注 |
 |---|---|---|---|
-| **0** | 准备与规范 | ✅ 代码就绪 | `topo_modeler/`、`templates/` 包结构、`__init__.py`、风格规范均已在位 |
+| **0** | 准备与规范 | ✅ 代码就绪 | `topo_modeler/`、`topo_templates/` 包结构、`__init__.py`、风格规范均已在位 |
 | **1** | 坐标统一层 | ✅ 代码就绪 | `mesh_grid/tri_grid/topo_path.py`（625 行）；`python -m pytest mesh_grid -q` → **16 passed**（本轮新增第 16 项绕向测试） |
 | **2** | 基础建模引擎 | ✅ 代码就绪（本轮修了 4 个缺陷） | `name_manager.py`、`builders/{substrate,vpc_region,crystal,solver}.py`、`modeler.py` 全部在位 |
-| **3** | 基础模板层 | ✅ 代码就绪（本轮修了 4 个缺陷） | `builders/{feed,waveguide,port}.py`、`templates/{straight_waveguide,unit_antenna}.py` 全部在位 |
+| **3** | 基础模板层 | ✅ 代码就绪（本轮修了 4 个缺陷） | `builders/{feed,waveguide,port}.py`、`topo_templates/{straight_waveguide,unit_antenna}.py` 全部在位 |
 | **4** | 复杂模板层 | ❌ 未开始 | `builders/lens.py` 不存在；`lens_build.py` / `lens_build_standalone.py` 只是脚本；`GRINLensAntenna` 模板不存在；`TopoModeler.build_lens()` 抛 `NotImplementedError` |
 | **5** | 工具层 | ❌ 未开始 | `result_reader` / `config`(YAML) / `scanner` / `batch` / `optimizer` 五个模块**源码零命中**；`modeler.read_results()` / `plot_results()` 抛 `NotImplementedError`；全仓无 `import yaml` |
 | **6** | 复杂结构 + 旧代码迁移 | ❌ 未开始 | 多路径支持未做；`MultiPortAntenna` / `PowerDivider` / `MZISwitch` 模板不存在；87 个旧 notebook 无一迁移 |
@@ -119,11 +119,11 @@
 | 1 | `topo_modeler/builders/crystal.py` | **AB / BA 的大孔小孔分配装反了**。参考工程 `AB_feed/Model/3D/ModelHistory.json` 的历史树明确记录 `tri_up_A → l1`、`tri_dn_A → l2`、`tri_up_B → l2`、`tri_dn_B → l1`，而旧 notebook 里 AB 的 `l1 = 0.35a`（小孔）；本库把 `l1` 固定为「大孔」，却沿用了旧的列表顺序，导致 AB 与 BA **两张相图都反了** | ✅ 已修：交换 AB / BA 两个分支的 `hole_sizes`，并在模块 docstring 里写下对照表与核对方法 |
 | 2 | `mesh_grid/tri_grid/topo_path.py` | `build_substrate_polygon()` 与 `build_vpc_area_polygon(side='lower')` 生成的多边形是**顺时针**；而调用方统一用「+ 内部 `translate -h/2`」，于是基板 / VPC-B 与晶体在 z 上**差一个 `h`**，布尔求交得空集且 CST 不报错 | ✅ 已修：两条边界链改为「每个路径点都参与」的确定绕向写法，`upper`/`lower`/基板**全部保证 CCW**；新增第 16 项单测用有向面积钉住 |
 | 3 | `topo_modeler/builders/crystal.py` | 阵列范围只能由 `path.get_array_range()` 推断，宽基板覆盖不全 | ✅ 已修：新增可选形参 `xup=None, yup=None, ydn=None` |
-| 4 | `templates/*.py` | `build_all()` 给 `build_vpc_regions` 传 `topology=`、给 `build_topological_crystal` 传 `xup/yup/ydn=` —— 都不被接受 → `TypeError` | ✅ 已修 |
-| 5 | `templates/*.py` | `run()` 调 `self.app.start_solver()`，该方法**全库不存在** → `AttributeError` | ✅ 已修：改用 `self.app.run()` |
+| 4 | `topo_templates/*.py` | `build_all()` 给 `build_vpc_regions` 传 `topology=`、给 `build_topological_crystal` 传 `xup/yup/ydn=` —— 都不被接受 → `TypeError` | ✅ 已修 |
+| 5 | `topo_templates/*.py` | `run()` 调 `self.app.start_solver()`，该方法**全库不存在** → `AttributeError` | ✅ 已修：改用 `self.app.run()` |
 | 6 | `topo_modeler/modeler.py` | `set_parameters()` 调 `app.set_parameters(params)`，而真实签名是 `set_parameters(name, value, log_flag=0)` → **模板构造时就 `TypeError`**（比第 4 条更早触发） | ✅ 已修：改用字典式批量接口 `app.paras(params, None)` |
-| 7 | `templates/*.py` | 布尔加引用 `'vpca'` / `'vpcb'`，而 `build_vpc_regions` 生成的是 `vpc_A` / `vpc_B` | ✅ 已修：改用 `build_vpc_regions()` 的返回值 |
-| 8 | `templates/*.py` | feed / waveguide 参数是硬编码字面量（`x0=1, wf1=0.5, wg_a=0.5 …`），与参考模型（`x0=4, wf1=0.2, wg_a=0.7312, wg_b=0.3756, wg_t=0.2`）不符 → 默认参数下几何必然对不上参考工程 | ✅ 已修：提升为构造参数并把默认值改为参考模型取值 |
+| 7 | `topo_templates/*.py` | 布尔加引用 `'vpca'` / `'vpcb'`，而 `build_vpc_regions` 生成的是 `vpc_A` / `vpc_B` | ✅ 已修：改用 `build_vpc_regions()` 的返回值 |
+| 8 | `topo_templates/*.py` | feed / waveguide 参数是硬编码字面量（`x0=1, wf1=0.5, wg_a=0.5 …`），与参考模型（`x0=4, wf1=0.2, wg_a=0.7312, wg_b=0.3756, wg_t=0.2`）不符 → 默认参数下几何必然对不上参考工程 | ✅ 已修：提升为构造参数并把默认值改为参考模型取值 |
 | 9 | `topo_modeler/builders/port.py` | `full_deembedding` / `consider_material_inside` 形参存在但函数体从不使用（调用方以为生效） | ✅ 已修：删除这两个空转形参，改为 `orientation` / `shield` 并真正转发给 `add_port()` |
 | 10 | `topo_modeler/builders/solver.py` | `calculation_type` 形参被完全忽略，恒定调 `configure_time_solver()` | ✅ 已修：按 `TD-S`/`FD-S`/`EIGENMODE`/`IE-S`/`ASYMPTOTIC` 分派，非法值抛 `ValueError` |
 | 11 | `topo_modeler/lens_build.py` | `from hexlib import ...` —— `hexlib.py` 归档后**导入即失败** | ✅ 已修：改从 `mesh_grid.hex_grid` 导入 |
@@ -159,7 +159,7 @@
 | 2 | `cst_solver/project.py` `save()` / `save_as()` | `Project` 没有 `save_as`，带路径保存必抛 `AttributeError` | 按真实签名改调 `Project.save(...)` |
 | 3 | `cst_solver/parameters.py` `paras()` | docstring 声明支持 dict，函数体未实现该分支 → CST 抛 `type must be array, but is object` | 按文档实现 dict → 两个等长数组的归一化 |
 | 4 | `topo_modeler`（缺失步骤） | 流水线从不定义材料，模板又不带材料 → 第一条 extrude 报 `The specified material does not exist` | 新增 `builders/materials.py::build_materials()`，两个模板 `build_all()` 均调用 |
-| 5 | `templates/straight_waveguide.py` | 阵列范围用了路径推断值（`xup=19/yup=1/ydn=1`），违反 **ARCHITECTURE 第 6 节硬约定 3**；且 `int(yup/2)=0` → CST 报 `Invalid number of repetitions` | 按参考工程取值改为 `xup=length+int(width/2)=25`、`yup=ydn=width=14` |
+| 5 | `topo_templates/straight_waveguide.py` | 阵列范围用了路径推断值（`xup=19/yup=1/ydn=1`），违反 **ARCHITECTURE 第 6 节硬约定 3**；且 `int(yup/2)=0` → CST 报 `Invalid number of repetitions` | 按参考工程取值改为 `xup=length+int(width/2)=25`、`yup=ydn=width=14` |
 | 6 | `cst_solver/simulation/solver.py` `T_solver()` | `Solver.Method` 只接受 `"Hexahedral"` / `"Hexahedral TLM"`，原写 `"T-Solver"` 抛 `Invalid method` | 改为 `"Hexahedral"` |
 
 这 6 条的共性值得记录：**都是"从未被真实调用过"的方法**（或只被同样未跑通的代码调用），
@@ -235,7 +235,7 @@ save()          成功
 
 ```python
 from cst_solver import setup
-from templates import StraightWaveguide
+from topo_templates import StraightWaveguide
 
 # 用模板副本，勿直接改原件
 wg = StraightWaveguide(topology='AB', length=18,
@@ -344,6 +344,14 @@ S 参数冒烟。
 
 顶层包名 `templates` 过于通用，安装进 site-packages 后有与第三方包重名的风险。
 计划改名为 `topo_templates`，并在一个版本周期内保留旧名 shim。
+
+> ✅ **已完成**（2026-09-15，阶段 4 T10）：包已 `git mv` 为 `topo_templates/`，
+> 旧名 `templates/` 保留为一个版本周期的转发 shim（发 `DeprecationWarning`）。
+> 执行细节与验证见 [`stages/04_阶段4_验收与缺陷清账.md`](./stages/04_阶段4_验收与缺陷清账.md) 的 T10。
+>
+> 注：本文件是**历史记录**，上文 §6.4 的标题与风险描述保持成文时的原样（当时该包仍叫 `templates`）；
+> 文中其余 `templates/*.py` 一类**路径引用**已统一改写成新名，以免读到的人去找不存在的路径。
+
 
 ---
 

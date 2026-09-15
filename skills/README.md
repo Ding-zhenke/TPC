@@ -38,7 +38,7 @@
 ```
 需求能用现有 API 组合出来吗？
 ├─ 能  → user/         （不要改库）
-└─ 不能，要动 cst_solver / mesh_grid / topo_modeler / templates / tpc_toolkit 的源码
+└─ 不能，要动 cst_solver / mesh_grid / topo_modeler / topo_templates / tpc_toolkit 的源码
         → developer/    （先读 WORKFLOW.md）
 ```
 

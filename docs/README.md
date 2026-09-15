@@ -30,7 +30,7 @@ docs/
 │   ├── cst_solver.md                 CST 会话封装层
 │   ├── mesh_grid.md                  晶格/网格算法层
 │   ├── topo_modeler.md               建模引擎层
-│   ├── templates.md                  端到端模板层
+│   ├── topo_templates.md                  端到端模板层
 │   └── tpc_toolkit.md                独立工具层
 │
 ├── guides/                           面向「怎么用」的指南

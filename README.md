@@ -6,7 +6,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  templates/       直波导 / 单元天线 端到端一键建模                     │
+│  topo_templates/       直波导 / 单元天线 端到端一键建模                     │
 ├──────────────────────────────────────────────────────────────┤
 │  topo_modeler/    TopoModeler（智能推断+流水线） + builders/ 部件构建器 │
 ├───────────────────────────────┬──────────────────────────────┤
@@ -46,7 +46,7 @@ copy cst_solver\config_template.py cst_solver\config.py
 from cst_solver import setup, result          # CST 工程控制 + 结果读取
 from mesh_grid.tri_grid import TopoPath       # 三角晶格路径 DSL
 from topo_modeler import TopoModeler          # 建模引擎
-from templates import StraightWaveguide       # 端到端模板
+from topo_templates import StraightWaveguide       # 端到端模板
 
 # ── 最简：用模板建一个直波导 ──
 wg = StraightWaveguide(topology='AB', length=18,
@@ -75,7 +75,7 @@ modeler.save('antenna.cst')
 | [`cst_solver/`](./cst_solver) | CST VBA → Python 封装；24 个 Mixin 聚合成 `setup` 类 | ✅ | [docs/packages/cst_solver.md](./docs/packages/cst_solver.md) |
 | [`mesh_grid/`](./mesh_grid) | 三角晶格 / 六边形晶格算法、可视化、DXF 导出、`TopoPath` 路径 DSL | ❌ | [docs/packages/mesh_grid.md](./docs/packages/mesh_grid.md) |
 | [`topo_modeler/`](./topo_modeler) | 建模引擎：`TopoModeler` + `builders/` 各部件构建器 | ✅ | [docs/packages/topo_modeler.md](./docs/packages/topo_modeler.md) |
-| [`templates/`](./templates) | 端到端器件模板 | ✅ | [docs/packages/templates.md](./docs/packages/templates.md) |
+| [`topo_templates/`](./topo_templates) | 端到端器件模板 | ✅ | [docs/packages/topo_templates.md](./docs/packages/topo_templates.md) |
 | [`tpc_toolkit/`](./tpc_toolkit) | S 参数解析、遗传算法算子、等效介质公式 | ❌ | [docs/packages/tpc_toolkit.md](./docs/packages/tpc_toolkit.md) |
 
 整体架构与依赖关系 → [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
@@ -118,7 +118,7 @@ TPC/
 ├── cst_solver/                包 1：CST 会话封装
 ├── mesh_grid/                 包 2：晶格算法
 ├── topo_modeler/              包 3：建模引擎
-├── templates/                 包 4：端到端模板
+├── topo_templates/                 包 4：端到端模板
 ├── tpc_toolkit/               包 5：独立工具
 │
 ├── docs/                      文档：架构 / 单包说明 / 指南 / 计划
@@ -135,7 +135,7 @@ TPC/
 ## 环境要求
 
 - **Python** ≥ 3.9（开发环境为 Anaconda Python 3.11）
-- **CST Studio Suite**（仅使用 `cst_solver` / `topo_modeler` / `templates` 时需要，仅 Windows）
+- **CST Studio Suite**（仅使用 `cst_solver` / `topo_modeler` / `topo_templates` 时需要，仅 Windows）
 - `numpy` / `matplotlib` / `tqdm` 为必需依赖；`shapely` / `ezdxf` / `scipy` 为可选依赖
 
 ---

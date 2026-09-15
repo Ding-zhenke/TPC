@@ -48,7 +48,7 @@ TPC/
 
 │       └── port.py                # 阶段3：波导端口构建器
 
-└── templates/                      # 阶段3：端到端模板
+└── topo_templates/                      # 阶段3：端到端模板
 
 &#x20;   ├── \_\_init\_\_.py                # 导出 StraightWaveguide, UnitAntenna
 
@@ -61,7 +61,7 @@ TPC/
 
 
 
-* 新功能全部写在 `topo_modeler/` 和 `templates/`，**不修改** `cst_solver` 和 `mesh_grid` 核心源码
+* 新功能全部写在 `topo_modeler/` 和 `topo_templates/`，**不修改** `cst_solver` 和 `mesh_grid` 核心源码
 
 * `topo_path.py` 是唯一新增到 `mesh_grid/tri_grid/` 的文件
 
@@ -513,7 +513,7 @@ add\_port\_for\_antenna(app, waveguide\_name='wg1')
 
 
 ```
-from templates import StraightWaveguide
+from topo_templates import StraightWaveguide
 
 wg = StraightWaveguide(
 
@@ -575,7 +575,7 @@ wg.save()             # 保存 .cst
 
 
 ```
-from templates import UnitAntenna
+from topo_templates import UnitAntenna
 
 ant = UnitAntenna(
 
@@ -654,7 +654,7 @@ CST 安装路径只需配置一次：复制 `cst_solver/config_template.py` 为
 
 
 ```
-from templates import StraightWaveguide, UnitAntenna
+from topo_templates import StraightWaveguide, UnitAntenna
 
 \# 直波导
 
@@ -833,7 +833,7 @@ path.auto\_define\_cst\_params(app)
 | `preview()`                  | matplotlib 预览         |
 | `get_built_parts()`          | 获取已构建部件名称             |
 
-### 6.4 Templates（templates）
+### 6.4 Templates（topo_templates）
 
 
 

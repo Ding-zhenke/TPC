@@ -1,6 +1,6 @@
-# templates —— 端到端模板层
+# topo_templates —— 端到端模板层
 
-`templates/` 是 TPC 分层架构的**第 4 层（应用层）**，核心约定只有一条：**一个类 = 一个器件**。
+`topo_templates/` 是 TPC 分层架构的**第 4 层（应用层）**，核心约定只有一条：**一个类 = 一个器件**。
 类内部把「晶格路径 → CST 参数 → 基板 → VPC 区域 → 光子晶体阵列 → 馈源 → 波导 → 镜像 → 端口 → 布尔整合 → 求解器」
 这条流水线一次性编排完毕；用户只需要在构造函数里填物理参数，然后调 3~4 个方法就能拿到一个可仿真的 `.cst` 工程。
 
@@ -13,10 +13,10 @@
 |---|---|
 | **职责** | 把「某个具体器件的完整建模流程」固化成可复用、可参数化的类，实现一键端到端建模 |
 | **需要 CST** | ✅ 必须。构造函数里就会 `TopoModeler(template_cst='tmp.cst')` 打开模板工程 |
-| **入口** | `from templates import StraightWaveguide, UnitAntenna` |
+| **入口** | `from topo_templates import StraightWaveguide, UnitAntenna` |
 | **依赖** | `topo_modeler`（`TopoModeler` / `NameManager` / `builders.*`）、`mesh_grid.tri_grid.TopoPath`；间接依赖 `cst_solver` |
-| **被谁依赖** | 库内**没有任何其它包依赖它**（全仓库 `from templates` 只命中模板自身）；只有用户 notebook / 脚本使用 |
-| **源码位置** | `templates/__init__.py`、`templates/straight_waveguide.py`、`templates/unit_antenna.py` |
+| **被谁依赖** | 库内**没有任何其它包依赖它**（全仓库 `from topo_templates` 只命中模板自身）；只有用户 notebook / 脚本使用 |
+| **源码位置** | `topo_templates/__init__.py`、`topo_templates/straight_waveguide.py`、`topo_templates/unit_antenna.py` |
 | **公开 API** | AST 统计：**2 个类、0 个模块级函数**；两个类各有 **4 个公开方法**：`preview` / `build_all` / `save` / `run` |
 | **当前阶段** | 阶段 3（基础模板层）已完成；透镜模板属阶段 4，**尚未实现**（见 §6.3） |
 
@@ -38,7 +38,7 @@
 模板层把这一整套压缩成：
 
 ```python
-from templates import StraightWaveguide
+from topo_templates import StraightWaveguide
 
 wg = StraightWaveguide(topology='AB', length=18, output_path=r'D:\out\wg.cst')
 wg.preview()      # matplotlib 看一眼路径
@@ -60,7 +60,7 @@ wg.save()         # 保存 .cst
 | 维度 | `StraightWaveguide` | `UnitAntenna` |
 |---|---|---|
 | 器件 | 拓扑光子晶体**直波导** | **单元天线**（直段 + 拐弯 + 臂，可选辐射体） |
-| 源文件 | `templates/straight_waveguide.py` | `templates/unit_antenna.py` |
+| 源文件 | `topo_templates/straight_waveguide.py` | `topo_templates/unit_antenna.py` |
 | 内部路径 | `.start(0, -1).move(length+1, 'c')` → `[(0,-1), (0,length)]` | `.start(0, -1).move(straight_length+1, 'c')`；`bend_angle != 0` 时再加 `.turn(...).move(arm_length+1, 'along')` |
 | 默认拓扑 | `'AB'` | `'BA'` |
 | 默认馈源 | `'ab_elliptical'`（实体名 `feed1`） | `'ba_tapered'`（实体名 `feed2`） |
@@ -87,7 +87,7 @@ wg.save()         # 保存 .cst
 
 ## 3. StraightWaveguide
 
-源码：`templates/straight_waveguide.py`（224 行）。
+源码：`topo_templates/straight_waveguide.py`（224 行）。
 
 ### 3.1 构造参数
 
@@ -176,7 +176,7 @@ StraightWaveguide(topology='AB', length=18, width=14,
 ### 3.4 完整示例
 
 ```python
-from templates import StraightWaveguide
+from topo_templates import StraightWaveguide
 
 wg = StraightWaveguide(
     topology='AB',            # 'AB' 或 'BA'
@@ -208,7 +208,7 @@ wg.save()                     # 保存到 output_path
 
 ## 4. UnitAntenna
 
-源码：`templates/unit_antenna.py`（238 行）。
+源码：`topo_templates/unit_antenna.py`（238 行）。
 
 ### 4.1 构造参数
 
@@ -305,7 +305,7 @@ UnitAntenna(bend_angle=120, straight_length=18, arm_length=14,
 ### 4.4 完整示例
 
 ```python
-from templates import UnitAntenna
+from topo_templates import UnitAntenna
 
 # ① 默认：BA 型 120° 单元天线
 ant = UnitAntenna(
@@ -342,14 +342,14 @@ TPC 建模有**三层入口**，能力越往下越通用、代码越长。模板
 
 | 层 | 入口 | 何时用 | 自由度 | 代码量 |
 |---|---|---|---|---|
-| **模板层** | `templates.StraightWaveguide` / `UnitAntenna` | 器件正好是「直波导」或「单元天线」，只想改尺寸/拓扑/频段 | 只能改构造参数 | ~10 行 |
+| **模板层** | `topo_templates.StraightWaveguide` / `UnitAntenna` | 器件正好是「直波导」或「单元天线」，只想改尺寸/拓扑/频段 | 只能改构造参数 | ~10 行 |
 | **Modeler 层** | `TopoModeler` | 器件形态相同但需要自定义路径、分步构建、调整流水线开关 | 路径任意（`TopoPath` DSL）+ 每步可跳过 + 可传 kwargs 给 builders | ~15 行 |
 | **Builder 层** | `topo_modeler.builders.*` | 需要**完全控制**：换阵列范围、改布尔顺序、插自定义部件、混用 `cst_solver` 原语 | 完全自由 | 30 行以上 |
 
 **① 模板层**（推荐起点）：
 
 ```python
-from templates import StraightWaveguide
+from topo_templates import StraightWaveguide
 
 wg = StraightWaveguide(topology='AB', length=18, output_path=r'D:\out\wg.cst')
 wg.preview(); wg.build_all(); wg.save()
@@ -415,15 +415,15 @@ print(app.cst_file.get_messages())               # 验收
 
 | 位置 | 问题 | 影响 | 建议修法 |
 |---|---|---|---|
-| `templates/straight_waveguide.py:172` | `build_vpc_regions(app, self.path, topology=self.topology)` —— `build_vpc_regions` 的真实签名是 `(app, path, name_prefix='vpc', height='h', material='Silicon (lossy)', y_margin='e2', component='component1')`，**没有 `topology`** | `build_all()` 一执行到第 3 步就 `TypeError: build_vpc_regions() got an unexpected keyword argument 'topology'`，整个模板不可用 | 去掉 `topology=` 实参；拓扑只影响晶体阵列，与 VPC 区域无关 |
-| `templates/straight_waveguide.py:175-176` | `build_topological_crystal(app, self.path, topology=..., xup=..., yup=..., ydn=...)` —— 真实签名是 `(app, path, topology='AB', lattice='a', height='h', large_hole='l1', small_hole='l2', y_margin='e2', component='component1', name_prefix='g')`，**不接受 `xup/yup/ydn`**，阵列范围目前只能由内部 `path.get_array_range()` 推断 | 同上，`TypeError`；且即使删掉实参，「宽板覆盖不全」的问题仍在（阵列范围只按路径推，覆盖不到整个基板） | 给 `build_topological_crystal` **新增可选形参** `xup=None, yup=None, ydn=None`（`None` 时回退到原行为），模板再只传被接受的参数 |
-| `templates/unit_antenna.py:181` | 同样的 `build_vpc_regions(app, self.path, topology=self.topology)` | 同第 1 行 | 同第 1 行 |
-| `templates/unit_antenna.py:184-185` | 同样的 `xup/yup/ydn=` | 同第 2 行 | 同第 2 行 |
+| `topo_templates/straight_waveguide.py:172` | `build_vpc_regions(app, self.path, topology=self.topology)` —— `build_vpc_regions` 的真实签名是 `(app, path, name_prefix='vpc', height='h', material='Silicon (lossy)', y_margin='e2', component='component1')`，**没有 `topology`** | `build_all()` 一执行到第 3 步就 `TypeError: build_vpc_regions() got an unexpected keyword argument 'topology'`，整个模板不可用 | 去掉 `topology=` 实参；拓扑只影响晶体阵列，与 VPC 区域无关 |
+| `topo_templates/straight_waveguide.py:175-176` | `build_topological_crystal(app, self.path, topology=..., xup=..., yup=..., ydn=...)` —— 真实签名是 `(app, path, topology='AB', lattice='a', height='h', large_hole='l1', small_hole='l2', y_margin='e2', component='component1', name_prefix='g')`，**不接受 `xup/yup/ydn`**，阵列范围目前只能由内部 `path.get_array_range()` 推断 | 同上，`TypeError`；且即使删掉实参，「宽板覆盖不全」的问题仍在（阵列范围只按路径推，覆盖不到整个基板） | 给 `build_topological_crystal` **新增可选形参** `xup=None, yup=None, ydn=None`（`None` 时回退到原行为），模板再只传被接受的参数 |
+| `topo_templates/unit_antenna.py:181` | 同样的 `build_vpc_regions(app, self.path, topology=self.topology)` | 同第 1 行 | 同第 1 行 |
+| `topo_templates/unit_antenna.py:184-185` | 同样的 `xup/yup/ydn=` | 同第 2 行 | 同第 2 行 |
 
 这两条已在两处技能文档登记，修完请同步删除对应条目：
 
 - [`../../skills/developer/cst-solver-dev.md`](../../skills/developer/cst-solver-dev.md) §「待修清单」
-  （`templates/straight_waveguide.py` / `templates/unit_antenna.py` 两行，以及配套的
+  （`topo_templates/straight_waveguide.py` / `topo_templates/unit_antenna.py` 两行，以及配套的
   `builders/crystal.py` 新增 `xup=None, yup=None, ydn=None` 一行）；
 - [`../../skills/user/tpc-usage.md`](../../skills/user/tpc-usage.md) §6「已知库缺陷」
   （同一缺陷的使用者视角表述）。
@@ -432,29 +432,34 @@ print(app.cst_file.get_messages())               # 验收
 
 | 位置 | 问题 | 影响 | 建议修法 |
 |---|---|---|---|
-| `templates/*.py` 构造期 `self.modeler.set_parameters({...})` | `TopoModeler.set_parameters(params)` 内部调用 `self.app.set_parameters(params)`；而 `cst_solver` 的 `set_parameters(name, value, log_flag=0)` 需要**两个**位置参数（批量接口叫 `paras(name, value)`） | CST 可用时，`StraightWaveguide(...)` / `UnitAntenna(...)` **在构造阶段就 `TypeError`**（缺 `value`），比 §6.1 更早触发 | 在 `topo_modeler/modeler.py` 里改为 `self.app.paras(params, None)`（`paras` 的 docstring 明确支持 dict），或逐项 `self.app.para(k, v)` |
-| `templates/*.py` 的 `run()` | 调用 `self.app.start_solver()`，但 `cst_solver` 里**没有** `start_solver` 方法，求解器入口是 `SolverMixin.run()` | `wg.run()` → `AttributeError: 'setup' object has no attribute 'start_solver'` | 改为 `self.app.run()`（`TopoModeler.run()` 用的就是它） |
-| `templates/*.py` 的 `build_all()` 缺少收尾校验 | 建完直接返回，不检查 CST 消息；而库**不保证**把 CST 报错抛成异常（`add_to_history` 只是下发 VBA） | 「跑通」不等于「建对」，可能静默产生空集布尔结果 | 在 `build_all()` 末尾（或提供 `verify()`）读 `app.cst_file.get_messages()`；文档/示例里明确这一步为验收动作 |
-| `templates/*.py` 的 `save()` | 直接调 `self.app.cst_file.save(...)`，绕过 `setup` 封装的 `save()`；`self.width` 接受后从未使用；`a/h/l1/l2/e1/e2` 在 `__init__`（`set_parameters`）与 `_define_all_params()`（`app.para`）被定义两次 | 风格/可维护性问题，不影响几何正确性 | 按 `docs/next_plan/` 的 P2 条目逐步收敛到 `app.save(path)`；`width` 要么实现要么标注 deprecated |
+| `topo_templates/*.py` 构造期 `self.modeler.set_parameters({...})` | `TopoModeler.set_parameters(params)` 内部调用 `self.app.set_parameters(params)`；而 `cst_solver` 的 `set_parameters(name, value, log_flag=0)` 需要**两个**位置参数（批量接口叫 `paras(name, value)`） | CST 可用时，`StraightWaveguide(...)` / `UnitAntenna(...)` **在构造阶段就 `TypeError`**（缺 `value`），比 §6.1 更早触发 | 在 `topo_modeler/modeler.py` 里改为 `self.app.paras(params, None)`（`paras` 的 docstring 明确支持 dict），或逐项 `self.app.para(k, v)` |
+| `topo_templates/*.py` 的 `run()` | 调用 `self.app.start_solver()`，但 `cst_solver` 里**没有** `start_solver` 方法，求解器入口是 `SolverMixin.run()` | `wg.run()` → `AttributeError: 'setup' object has no attribute 'start_solver'` | 改为 `self.app.run()`（`TopoModeler.run()` 用的就是它） |
+| `topo_templates/*.py` 的 `build_all()` 缺少收尾校验 | 建完直接返回，不检查 CST 消息；而库**不保证**把 CST 报错抛成异常（`add_to_history` 只是下发 VBA） | 「跑通」不等于「建对」，可能静默产生空集布尔结果 | 在 `build_all()` 末尾（或提供 `verify()`）读 `app.cst_file.get_messages()`；文档/示例里明确这一步为验收动作 |
+| `topo_templates/*.py` 的 `save()` | 直接调 `self.app.cst_file.save(...)`，绕过 `setup` 封装的 `save()`；`self.width` 接受后从未使用；`a/h/l1/l2/e1/e2` 在 `__init__`（`set_parameters`）与 `_define_all_params()`（`app.para`）被定义两次 | 风格/可维护性问题，不影响几何正确性 | 按 `docs/next_plan/` 的 P2 条目逐步收敛到 `app.save(path)`；`width` 要么实现要么标注 deprecated |
 
-### 6.3 包命名风险（顶层名 `templates` 过于通用）
+### 6.3 包命名风险 —— ✅ **已解决**（T10，2026-09-15）
 
 | 项 | 说明 |
 |---|---|
-| 风险 | `templates` 是极其通用的名字。一旦本库安装进 site-packages，极可能与第三方包**重名**，届时 `import templates` 命中的是谁取决于 `sys.path` 顺序，属于难以排查的隐性故障 |
-| 计划 | 后续版本将其改名为 **`topo_templates`**；旧名 `templates` 在一个弃用周期内保留为 shim（转发导入），再择版本移除 |
-| 连带改动 | 按 [`../../skills/developer/WORKFLOW.md`](../../skills/developer/WORKFLOW.md) §6 的文档同步矩阵：`docs/ARCHITECTURE.md`、本文件、`pyproject.toml` 的 `packages.find`（`templates*` → `topo_templates*`）、`README.md` 结构图；另按 §9 全仓库搜旧路径引用 |
+| 原风险 | 旧包名 `templates` 是极其通用的名字。一旦本库安装进 site-packages，极可能与第三方包**重名**，届时 `import templates` 命中的是谁取决于 `sys.path` 顺序，属于难以排查的隐性故障 |
+| 处置 | **已完成改名**：`templates/` → **`topo_templates/`**（`git mv`，历史保留）；旧名 `templates/` 保留为**转发 shim**（`templates/__init__.py`，导入即发 `DeprecationWarning`），约定**一个版本周期后移除** |
+| 连带改动 | `pyproject.toml` 的 `packages.find`（新增 `topo_templates*`，**并保留** `templates*` 以便 shim 一起分发）；全仓 35 个文件里的 167 处引用统一改名；`docs/packages/templates.md` → `docs/packages/topo_templates.md`；`scripts/_api_stats.py` 的扫描目标改名 |
+| 移除计划 | 下一个版本周期删除 shim。到期前的复评登记在 [`../next_plan/stages/08`](../next_plan/stages/08_阶段8_复杂结构与旧代码迁移.md) |
+| 怎么验 | `python -c "import warnings; warnings.simplefilter('error', DeprecationWarning); import templates"` 应当**报** DeprecationWarning；`import topo_templates` 不应有任何告警 |
 
-### 6.4 透镜模板尚未实现
+### 6.4 透镜模板尚未实现 —— 🔄 **几何层已就绪，模板仍缺**
 
-- `templates/__init__.py` 的 docstring 写的是「直波导、单元天线、**透镜天线**等」，但目录里目前**只有 2 个模板**。
-- `TopoModeler.build_lens(lens_type='grin', method='hexagon', **params)` 直接
-  `raise NotImplementedError("build_lens 将在阶段 4 实现")`。
-- 透镜相关的几何工作目前以**沙盒脚本**形式存在（`topo_modeler/lens_build.py`、
-  `topo_modeler/lens_build_standalone.py`），按
-  [`../../skills/developer/WORKFLOW.md`](../../skills/developer/WORKFLOW.md) §10.7，
-  实验性代码必须先留在沙盒、不得直接进 `templates/` 公开路径。
-- 因此「透镜天线模板」属于**阶段 4**：先按 WORKFLOW §3 步骤 0 判定阶段，只完善计划，不直接写实现。
+- `topo_templates/__init__.py` 的 docstring 写的是「直波导、单元天线、**透镜天线**等」，但目录里目前**只有 2 个模板**。
+- ✅ `TopoModeler.build_lens()` **已不再抛 `NotImplementedError`**（2026-09-15，阶段 6 几何层）：
+  透镜几何下沉到了 `topo_modeler/builders/lens.py`（`GrinLensSpec` / `GrinLensHoles` /
+  `build_grin_lens_holes()` / `build_grin_lens()`），并已与原脚本
+  `topo_modeler/lens_build.py` 做**逐点/逐条等价**回归（`topo_modeler/tests/test_lens.py`）。
+- ❌ 仍缺：**`GRINLensAntenna` 模板本身**（阶段 6 剩余项）、`method='dxf'` 入口。
+  端到端跑通必须真 CST，在算力受限期间不做 —— 详见
+  [`../next_plan/stages/06`](../next_plan/stages/06_阶段6_复杂模板层.md) §7。
+- 沙盒脚本 `topo_modeler/lens_build.py` / `lens_build_standalone.py` **保留**（notebook 仍在 `exec` 它），
+  但库侧不再依赖它们。按 [`../../skills/developer/WORKFLOW.md`](../../skills/developer/WORKFLOW.md) §10.7，
+  实验性代码仍应先留在沙盒、不直接进 `topo_templates/` 公开路径。
 
 ---
 
@@ -462,16 +467,16 @@ print(app.cst_file.get_messages())               # 验收
 
 模板层的改动流程固定，**完整流程以
 [`../../skills/developer/WORKFLOW.md`](../../skills/developer/WORKFLOW.md) 为准**（尤其 §2 改动归属、
-§3 标准工作流、§4 `templates/` 验收清单、§6 文档同步矩阵、§8 提交规范）。这里只列模板专属要点：
+§3 标准工作流、§4 `topo_templates/` 验收清单、§6 文档同步矩阵、§8 提交规范）。这里只列模板专属要点：
 
 1. **判定阶段与归属**：读 `docs/next_plan/` 确认需求属于哪个阶段；确认它确实是「某个具体器件的完整流程」
    （若只是新增几何部件，应落在 `topo_modeler/builders/`，不是模板）。
 2. **确认几何推导不在模板里**：路径用 `TopoPath`，实体/布尔/端口/求解器用 `topo_modeler.builders.*`。
    模板里出现手算坐标、手写 VBA 字符串、多边形顶点列表，都属于违规（WORKFLOW §2 反例）。
    —— 而且**不要传构建器签名里没有的参数**（§6.1 就是这么来的）。
-3. **新建 `templates/<器件>.py`**：一个类 = 一个器件；`__init__` 只做「校验 + 派生参数 + 建 `TopoPath` + 建 `TopoModeler` + 定义参数」，
+3. **新建 `topo_templates/<器件>.py`**：一个类 = 一个器件；`__init__` 只做「校验 + 派生参数 + 建 `TopoPath` + 建 `TopoModeler` + 定义参数」，
    建模全部放在 `build_all()`；提供 `preview()` / `build_all()` / `save()` / `run()` 这套统一接口，并实现 `__repr__`。
-4. **同步导出**：修改 `templates/__init__.py`，把新类加进 `import` 与 `__all__`。
+4. **同步导出**：修改 `topo_templates/__init__.py`，把新类加进 `import` 与 `__all__`。
 5. **同步文档**：本文件（§2 总览表 + 新增一节）、`docs/ARCHITECTURE.md` §3.4 的模板表、
    `docs/guides/topo_modeler_guide_stage0-3.md` §4 的模板小节，以及 `README.md`
    （若有面向使用者的用法变化）。
@@ -479,7 +484,7 @@ print(app.cst_file.get_messages())               # 验收
    - 参数有合理默认值，构造后 `preview()` 能画出路径；
    - `build_all()` 端到端跑通，且 `app.cst_file.get_messages()` 为空，`model3d.Rebuild()` 之后仍为空；
    - 与 `TopoModeler` 的自动推断结果一致，或显式覆盖并说明理由。
-7. **提交**：一个包一条 commit（`feat(templates): …`），建议连带跑一次
+7. **提交**：一个包一条 commit（`feat(topo_templates): …`），建议连带跑一次
    `python -m pytest -q` 确认没有破坏 `mesh_grid` 的单测。
 
 ---

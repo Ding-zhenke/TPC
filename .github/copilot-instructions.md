@@ -10,7 +10,7 @@
 | 你的任务 | 读 |
 |---|---|
 | 用 TPC 建模型、跑仿真、读结果（**使用者视角**，不改库） | [`skills/user/tpc-usage.md`](../skills/user/tpc-usage.md) |
-| 改 `cst_solver` / `mesh_grid` / `topo_modeler` / `templates` / `tpc_toolkit` 的源码（**开发者视角**） | [`skills/developer/WORKFLOW.md`](../skills/developer/WORKFLOW.md) ← 先读这个 |
+| 改 `cst_solver` / `mesh_grid` / `topo_modeler` / `topo_templates` / `tpc_toolkit` 的源码（**开发者视角**） | [`skills/developer/WORKFLOW.md`](../skills/developer/WORKFLOW.md) ← 先读这个 |
 | 给 `cst_solver` 加 VBA 封装 / 修封装层缺陷 | [`skills/developer/cst-solver-dev.md`](../skills/developer/cst-solver-dev.md) |
 | 了解包结构 | [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) |
 
@@ -50,7 +50,7 @@
 | `cst_solver/` | CST VBA → Python 封装（24 个 Mixin 聚合成 `setup`） | ✅ |
 | `mesh_grid/` | 三角晶格 / 六边形晶格算法（含 `TopoPath` 路径 DSL） | ❌ |
 | `topo_modeler/` | 建模引擎：`TopoModeler` + `builders/` 各部件构建器 | ✅ |
-| `templates/` | 端到端器件模板 | ✅ |
+| `topo_templates/` | 端到端器件模板 | ✅ |
 | `tpc_toolkit/` | S 参数解析、遗传算法、等效介质公式 | ❌ |
 
 细节见 [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md)。

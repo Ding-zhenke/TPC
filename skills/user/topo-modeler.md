@@ -10,7 +10,7 @@
 ## 0. 三十秒上手
 
 ```python
-from templates import StraightWaveguide        # 模板层：一个类 = 一个器件
+from topo_templates import StraightWaveguide        # 模板层：一个类 = 一个器件
 
 wg = StraightWaveguide(topology='AB', length=18, output_path=r'D:\out\wg.cst')
 wg.preview()      # matplotlib 预览路径
@@ -27,7 +27,7 @@ wg.save()         # 保存 .cst
 
 | 层次 | 入口 | 什么时候用 | 代价 |
 |---|---|---|---|
-| **① 模板层** | `templates.StraightWaveguide` / `UnitAntenna` | 建的就是这两种标准器件，只想填参数 | 器件形状被模板限定 |
+| **① 模板层** | `topo_templates.StraightWaveguide` / `UnitAntenna` | 建的就是这两种标准器件，只想填参数 | 器件形状被模板限定 |
 | **② Modeler 层** | `topo_modeler.TopoModeler` + `TopoPath` | 器件形状自定义，但仍想用标准流水线 | 要自己写路径与参数 |
 | **③ Builder 层** | `topo_modeler.builders.*` | 只要一两个部件，或要插进自己的流程 | 全都要自己编排 |
 
@@ -40,7 +40,7 @@ wg.save()         # 保存 .cst
 ### `StraightWaveguide`（拓扑光子晶体直波导）
 
 ```python
-from templates import StraightWaveguide
+from topo_templates import StraightWaveguide
 
 wg = StraightWaveguide(
     topology='AB',           # 'AB' 或 'BA'
@@ -64,7 +64,7 @@ wg.preview(); wg.build_all(); wg.save()
 ### `UnitAntenna`（单元天线）
 
 ```python
-from templates import UnitAntenna
+from topo_templates import UnitAntenna
 
 ant = UnitAntenna(
     bend_angle=120,          # 拐弯角度（60 的倍数；0 = 直波导型）

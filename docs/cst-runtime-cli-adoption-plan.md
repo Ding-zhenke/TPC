@@ -318,7 +318,7 @@ def validate_model(self):
 
 - [ ] **1.1** 新增 `cst_solver/_guards.py`（纯新增，零风险）
 - [ ] **1.2** `topo_modeler/modeler.py` 接线（**方案 A：零侵入 cst_solver**）
-- [ ] **1.3** 回归：跑 `templates/straight_waveguide.py` + `unit_antenna.py`，确认**不误报**
+- [ ] **1.3** 回归：跑 `topo_templates/straight_waveguide.py` + `unit_antenna.py`，确认**不误报**
       （它们的 `para` 在建模前，应判 clean）
 - [ ] **1.4** **构造反例**：`modeler.set_parameter('g', 25).run()` → 必须报警
 - [ ] **1.5** 若 1.3 通过 → 扩到**方案 B**：`cst_solver` 三处追加（`para`/`update`/`run`）

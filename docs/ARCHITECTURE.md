@@ -17,7 +17,7 @@ TPC 是一个**拓扑光子晶体（Topological Photonic Crystal, TPC）太赫�
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│  第 4 层  应用层     templates/        直波导 / 单元天线 端到端一键建模   │
+│  第 4 层  应用层     topo_templates/        直波导 / 单元天线 端到端一键建模   │
 ├──────────────────────────────────────────────────────────────┤
 │  第 3 层  引擎层     topo_modeler/     TopoModeler（智能推断 + 流水线） │
 │                                      builders/（各部件构建器）        │
@@ -33,7 +33,7 @@ TPC 是一个**拓扑光子晶体（Topological Photonic Crystal, TPC）太赫�
 **依赖方向严格单向**：上层依赖下层，同层之间 `cst_solver` 与 `mesh_grid` **互不依赖**。
 
 ```
-templates ──▶ topo_modeler ──┬──▶ cst_solver ──▶ cst (CST 自带)
+topo_templates ──▶ topo_modeler ──┬──▶ cst_solver ──▶ cst (CST 自带)
                              └──▶ mesh_grid.tri_grid
 tpc_toolkit ──▶ mesh_grid（仅可视化/坐标，可选）        ← 独立，不需要 CST
 ```
@@ -47,7 +47,7 @@ tpc_toolkit ──▶ mesh_grid（仅可视化/坐标，可选）        ← 独
 | **`cst_solver/`** | 把 CST 的 VBA 宏 API 封装成 Pythonic 的 `setup` 对象 | ✅ 必须 | `setup`, `result` | [packages/cst_solver.md](./packages/cst_solver.md) |
 | **`mesh_grid/`** | 纯数学：六边形/三角形晶格的生成、坐标换算、可视化、DXF 导出 | ❌ 不需要 | `HexLib`, `TopoPath` | [packages/mesh_grid.md](./packages/mesh_grid.md) |
 | **`topo_modeler/`** | 建模引擎：把「路径 + 参数」变成完整 CST 模型 | ✅ 必须 | `TopoModeler`, `builders.*` | [packages/topo_modeler.md](./packages/topo_modeler.md) |
-| **`templates/`** | 端到端模板：一个类 = 一个器件，填参数就出模型 | ✅ 必须 | `StraightWaveguide`, `UnitAntenna` | [packages/templates.md](./packages/templates.md) |
+| **`topo_templates/`** | 端到端模板：一个类 = 一个器件，填参数就出模型 | ✅ 必须 | `StraightWaveguide`, `UnitAntenna` | [packages/topo_templates.md](./packages/topo_templates.md) |
 | **`tpc_toolkit/`** | 独立工具：S 参数解析、遗传算法算子、等效介质公式 | ❌ 不需要 | 各子模块函数 | [packages/tpc_toolkit.md](./packages/tpc_toolkit.md) |
 
 ### 3.1 `cst_solver/` —— CST 会话封装层
@@ -103,7 +103,7 @@ lens_build.py    GRIN 透镜（阶段 4，进行中）
 
 **关键设计**：`builders/` 里的函数**不依赖 `TopoModeler` 实例**，可以被单独调用（完全控制模式）。
 
-### 3.4 `templates/` —— 端到端应用层
+### 3.4 `topo_templates/` —— 端到端应用层
 
 **它是什么**：每个类对应一个具体器件，内部组装 `TopoModeler` + 参数定义 + 端口 + 求解器。
 
@@ -114,8 +114,12 @@ lens_build.py    GRIN 透镜（阶段 4，进行中）
 
 **它解决什么**：同一类器件反复建模时的最高层复用。
 
-> ⚠ **命名风险**：顶层包名 `templates` 过于通用，安装到 site-packages 后有与第三方包重名的风险。
-> 计划在后续版本改名为 `topo_templates`（详见 [`next_plan/`](./next_plan/)）。
+> ✅ **命名风险已解决**（2026-09-15，T10）：旧包名 `templates` 过于通用，安装到 site-packages
+> 后有与第三方包重名的风险（`import templates` 命中谁取决于 `sys.path` 顺序）。
+> 现已更名为 **`topo_templates`**；旧名 `templates` 保留为**一个版本周期的转发 shim**
+> （发 `DeprecationWarning`），下一版本周期移除 —— 见
+> [`packages/topo_templates.md`](./packages/topo_templates.md) §6.3 与
+> [`next_plan/stages/08`](./next_plan/stages/08_阶段8_复杂结构与旧代码迁移.md)。
 
 ### 3.5 `tpc_toolkit/` —— 独立工具层（不依赖 CST）
 
@@ -141,7 +145,7 @@ TPC/
 ├── cst_solver/                ← 包 1：CST 会话封装
 ├── mesh_grid/                 ← 包 2：晶格算法
 ├── topo_modeler/              ← 包 3：建模引擎
-├── templates/                 ← 包 4：端到端模板
+├── topo_templates/                 ← 包 4：端到端模板
 ├── tpc_toolkit/               ← 包 5：独立工具
 │
 ├── docs/                      ← 文档（本目录）
@@ -180,7 +184,7 @@ pip install -e ".[all]"
 from cst_solver import setup, result
 from mesh_grid.tri_grid import TopoPath
 from topo_modeler.builders import build_feed
-from templates import StraightWaveguide
+from topo_templates import StraightWaveguide
 ```
 
 > `cst` 模块由 CST Studio Suite 自带，**不能**从 PyPI 安装；
@@ -241,7 +245,7 @@ from templates import StraightWaveguide
 | 改路径 DSL（`.move/.turn/.line_to`） | `mesh_grid/tri_grid/topo_path.py`（**有单测**：`mesh_grid/tri_grid/tests/`） |
 | 加一个新部件构建器 | `topo_modeler/builders/<部件>.py` + 在 `builders/__init__.py` 导出 |
 | 改建模流水线顺序 | `topo_modeler/modeler.py` |
-| 加一个器件模板 | `templates/<器件>.py` |
+| 加一个器件模板 | `topo_templates/<器件>.py` |
 | 加 S 参数处理 / 优化算法 | `tpc_toolkit/` |
 | 改文档 / 重新生成 API HTML | `docs/`、`scripts/gen_cst_solver_docs.py`、`scripts/gen_mesh_docs.py` |
 

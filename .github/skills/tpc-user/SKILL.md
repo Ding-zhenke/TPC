@@ -1,6 +1,6 @@
 ---
 name: tpc-user
-description: '**用 TPC 库建拓扑光子晶体模型** —— 写 notebook、调用模板/建模引擎、排查 CST 报错、验收模型。USE FOR: 用 cst_solver / topo_modeler / templates 建模型；CST 历史树报错定位；S 参数与远场结果读取。DO NOT USE FOR: 修改库源码 —— 那属于开发者视角，读 ../developer/WORKFLOW.md。'
+description: '**用 TPC 库建拓扑光子晶体模型** —— 写 notebook、调用模板/建模引擎、排查 CST 报错、验收模型。USE FOR: 用 cst_solver / topo_modeler / topo_templates 建模型；CST 历史树报错定位；S 参数与远场结果读取。DO NOT USE FOR: 修改库源码 —— 那属于开发者视角，读 ../developer/WORKFLOW.md。'
 argument-hint: 描述要建的器件与目标频段（如「300-380 GHz 的 120° 拐弯单元天线」）
 ---
 
@@ -14,7 +14,7 @@ argument-hint: 描述要建的器件与目标频段（如「300-380 GHz 的 120�
 
 ```python
 # ① 模板层（推荐起点）：一个类 = 一个器件
-from templates import StraightWaveguide, UnitAntenna
+from topo_templates import StraightWaveguide, UnitAntenna
 wg = StraightWaveguide(topology='AB', length=18, output_path=r'D:\out\wg.cst')
 wg.preview(); wg.build_all(); wg.save()
 

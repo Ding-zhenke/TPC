@@ -110,7 +110,7 @@ VBA 命令通过 `self.cst_file.model3d.add_to_history("<日志名>", f1)` 下�
 **④ 因此本库的并发纪律（现在就这么办）**
 
 1. **一个进程同时只持有一个 `setup` 实例**（即一个 DE）。要批量跑就在循环里
-   `setup(...) → 干活 → save() → close()`，一次一个 —— 这也是 `templates/*` 和
+   `setup(...) → 干活 → save() → close()`，一次一个 —— 这也是 `topo_templates/*` 和
    `TopoModeler` 都补了 `close()` 与 `with` 支持的原因（阶段 5.7.1）。
 2. **`close()` 之前一定 `save()`**：反之什么都不会写出（守卫层陷阱 T15 会直接拦）。
 3. **用完就关**，别把 DE 留着等下一次 —— 阶段 4 反复强调过「不要开几十个工程窗口留着」。
@@ -164,8 +164,8 @@ VBA 命令通过 `self.cst_file.model3d.add_to_history("<日志名>", f1)` 下�
 | `builders/vpc_region.py` 顶点顺时针 → 与晶体差一个 h | ✅ 已修（两条边界链改为「每个路径点都参与」的确定绕向，全部保证 CCW，并有第 16 项单测用有向面积钉住） |
 | `builders/substrate.py` 带状多边形为 CW | ✅ 已修（同上，未改 `topo_path.build_substrate_polygon`） |
 | `builders/crystal.py` 阵列范围只能按路径推断 | ✅ 已修（加可选形参 `xup=None, yup=None, ydn=None`） |
-| `templates/straight_waveguide.py` 传了不被接受的实参 → TypeError | ✅ 已修 |
-| `templates/unit_antenna.py` 同 `topology=` 问题 | ✅ 已修 |
+| `topo_templates/straight_waveguide.py` 传了不被接受的实参 → TypeError | ✅ 已修 |
+| `topo_templates/unit_antenna.py` 同 `topology=` 问题 | ✅ 已修 |
 
 > **注意**：`unit_antenna.py` 仍有一处**已知但未验证**的隐患 ——
 > 它用 `path.get_array_range()` 推导阵列范围，与 `StraightWaveguide` 同源

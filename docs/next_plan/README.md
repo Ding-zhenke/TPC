@@ -26,7 +26,7 @@
 
 | 阶段 | 名称 | 负责什么（一句话） | 核心交付 | 状态 | 前置 |
 |---|---|---|---|---|---|
-| **0** | 准备与规范 | 立规矩 | `topo_modeler/`、`templates/` 包结构 + 代码风格规范 | ✅ 完成 | — |
+| **0** | 准备与规范 | 立规矩 | `topo_modeler/`、`topo_templates/` 包结构 + 代码风格规范 | ✅ 完成 | — |
 | **1** | 坐标统一层 | 让晶格坐标只有一个来源 | `mesh_grid/tri_grid/topo_path.py`（TopoPath + 16 项单测） | ✅ 完成 | 0 |
 | **2** | 基础建模引擎 | 把「路径 + 参数」变成完整模型 | `NameManager` + 4 个 builders + `TopoModeler` 骨架 | ✅ 完成（**未验收**） | 1 |
 | **3** | 基础模板层 | 跑通两个完整器件 | 3 个部件 builders + `StraightWaveguide` + `UnitAntenna` | ✅ 完成（**未验收**） | 2 |
@@ -95,7 +95,11 @@
       但改动前需先理清 TPC 的 `straight_length`/`arm_length`/`bend_angle`
       与参考 `x1/y1/x2/y2` 的对应关系（`xup` 随拓扑变，25(AB)/26(BA)）；
       **且无法用 CST 验证时不宜动几何**，故暂缓。
-- [ ] **T10 `templates` 包名风险** —— 顶层包名过于通用，改名 `topo_templates` 并保留一个版本周期的 shim。
+- [x] **T10 `topo_templates` 包名改名** —— ✅ **已完成**（2026-09-15）：旧包名 `templates`
+      过于通用（装进 site-packages 有与第三方包重名风险），已 `git mv` 为 `topo_templates/`；
+      旧名保留为**一个版本周期的转发 shim**（发 `DeprecationWarning`），到期复评登记在
+      [`stages/08`](./stages/08_阶段8_复杂结构与旧代码迁移.md)。全仓 35 个文件 / 167 处引用统一改名。
+      详见 [`stages/04`](./stages/04_阶段4_验收与缺陷清账.md) 的 T10。
 
 **T5 参考基准（已查明，2026-09-15）**：`拓扑光子晶体模型\硅基\普通单元天线\` 下三个工程
 （AB/BA 120° cylinder、AB 120° Feed_antenna）的参数表一致给出：

@@ -622,7 +622,7 @@ import tpc_toolkit          # → ImportError: scipy
 针对本包的要点：
 
 1. **先判定归属**：确实是「与 CST 无关的数据处理 / 优化算法 / 数学公式」才放这里；
-   读 CST 结果 → `cst_solver`；晶格/坐标/DXF → `mesh_grid`；建模顺序 → `topo_modeler`；器件流程 → `templates`。
+   读 CST 结果 → `cst_solver`；晶格/坐标/DXF → `mesh_grid`；建模顺序 → `topo_modeler`；器件流程 → `topo_templates`。
 2. **不要引入 CST，也不要无意引入重依赖**：新代码里任何 `import` 都要问一句「这个包是必需的吗」；
    画图/加速之类的库请在**函数内部**延迟导入，别放在模块顶层（§6.2 就是反面教材）。
 3. **函数而非类**：本包是纯函数库（0 个类），保持一致；输入输出数组的**形状与 dtype 写进 docstring**

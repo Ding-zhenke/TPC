@@ -1,6 +1,6 @@
 # mesh_grid —— 晶格/网格算法层
 
-`mesh_grid` 是 TPC 的**纯计算底座**：它只做晶格数学 —— 三角晶格与六边形晶格的网格生成、`(r, c) / (q, r, s) ↔ (x, y)` 坐标换算、几何与空间筛选、matplotlib 预览、DXF 导出，以及把「一条晶格路径」升格为唯一数据源的声明式路径 DSL（`TopoPath`，阶段 1 交付物）。它**从不 import CST**：既不需要 `cst` 模块，也不持有 `setup` 对象；`TopoPath` 只是在需要时把晶格坐标**编译成 CST 能接受的表达式字符串**（`'x1*a'`、`'y1*a/2*sqr(3)'`），这些字符串由上层（`topo_modeler` / `templates`）负责下发。因此它可以脱离 CST 单独安装、单独测试、单独画图。
+`mesh_grid` 是 TPC 的**纯计算底座**：它只做晶格数学 —— 三角晶格与六边形晶格的网格生成、`(r, c) / (q, r, s) ↔ (x, y)` 坐标换算、几何与空间筛选、matplotlib 预览、DXF 导出，以及把「一条晶格路径」升格为唯一数据源的声明式路径 DSL（`TopoPath`，阶段 1 交付物）。它**从不 import CST**：既不需要 `cst` 模块，也不持有 `setup` 对象；`TopoPath` 只是在需要时把晶格坐标**编译成 CST 能接受的表达式字符串**（`'x1*a'`、`'y1*a/2*sqr(3)'`），这些字符串由上层（`topo_modeler` / `topo_templates`）负责下发。因此它可以脱离 CST 单独安装、单独测试、单独画图。
 
 **元信息**
 
@@ -10,7 +10,7 @@
 | 需要 CST | ❌ **完全不需要**。`import mesh_grid` 不会把 `cst` 拉进 `sys.modules`（实测为 `False`）；它只产出 CST 表达式**字符串**，不做任何下发 |
 | 入口 | `from mesh_grid.tri_grid import TopoPath`（路径 DSL / 坐标统一层）<br>`from mesh_grid.hex_grid import HexLib, HexGridVisualizer`（六边形晶格）<br>子包 `__init__.py` 的 `__all__` 决定公开面 |
 | 依赖 | 必需：`numpy`、`matplotlib`；进度条：`tqdm`。`mesh_grid/hex_grid/core.py` 在**模块顶层**就 `import ezdxf` 与 `from shapely...`，而 `mesh_grid/__init__.py` 会自动导入两个子包 —— 所以导入 `mesh_grid` 需要先 `pip install -e ".[geometry]"`（或 `.[all]`，即 `ezdxf>=1.0` + `shapely>=2.0`） |
-| 被谁依赖 | `templates/`（`straight_waveguide.py`、`unit_antenna.py` 用 `TopoPath` 造路径）、`tpc_toolkit/`（`ga_optimizer.py`、`effective_medium.py` 用 hex_grid 工具）、`topo_modeler/builders/`（`substrate.py` / `vpc_region.py` / `crystal.py` 的 `path` 参数就是 `TopoPath` 实例）、`tests/test_grid_opt.py` |
+| 被谁依赖 | `topo_templates/`（`straight_waveguide.py`、`unit_antenna.py` 用 `TopoPath` 造路径）、`tpc_toolkit/`（`ga_optimizer.py`、`effective_medium.py` 用 hex_grid 工具）、`topo_modeler/builders/`（`substrate.py` / `vpc_region.py` / `crystal.py` 的 `path` 参数就是 `TopoPath` 实例）、`tests/test_grid_opt.py` |
 | 源码位置 | `mesh_grid/__init__.py`、`mesh_grid/tri_grid/core.py`、`mesh_grid/tri_grid/topo_path.py`、`mesh_grid/hex_grid/core.py`、各自 README |
 | 公开 API 规模 | **23 个模块级函数 + 4 个类 + 60 个公开方法**（`tri_grid` 19 个函数 + `hex_grid` 4 个函数；方法分布：`HexLib` 25、`TopoPath` 19、`HexGridVisualizer` 10、`TopoPathBuilder` 6）。口径 = `python scripts/_api_stats.py`（AST 扫描，跳过 `tests/` 与下划线开头符号） |
 | 测试 | `mesh_grid/tri_grid/tests/test_topo_path.py`（**18 项**），运行 `python -m pytest mesh_grid -q`。~~全仓库唯一的单测套件~~ —— 阶段 5 起 `cst_solver/tests/test_guards.py`（43 项）也是单测，两者都在 `pyproject.toml` 的 `testpaths` 里 |
@@ -478,7 +478,7 @@ python mesh_grid/tri_grid/tests/test_topo_path.py
 1. **`path_loc_to_xy` 是坐标的唯一真源。**
    `mesh_grid/tri_grid/core.py::path_loc_to_xy`（`x = c·a + r·(a/2)`，`y = r·(a/2·√3)`）定义了整套三角晶格坐标口径。`TopoPath._lattice_to_xy`、`lattice_to_cst_expr`、`build_*_polygon`、`get_array_range` 以及上层 `topo_modeler` 的全部几何都必须与它一致；新增任何晶格变换/方向定义，先对齐它，再用单测锁定（`test_consistency_with_path_loc_to_xy`）。
 2. **`mesh_grid` 永不 import CST。**
-   它是纯计算包（`numpy` + `matplotlib`，`tqdm` 进度条，`ezdxf` / `shapely` 用于 DXF 与几何运算）。它只产出 CST **表达式字符串**；实际的 CST 下发永远发生在 `cst_solver` / `topo_modeler` / `templates`。这条是 `skills/developer/WORKFLOW.md` §10 的禁止事项之一（「❌ 在 `mesh_grid` 里引入 CST 依赖（它必须保持纯计算）」），也是 `docs/ARCHITECTURE.md` §2 单向依赖图的一部分。相应地，`auto_define_cst_params(app)` 只做鸭子类型调用（要求 `app.para(name, expr)`），不 import 任何 CST 模块。
+   它是纯计算包（`numpy` + `matplotlib`，`tqdm` 进度条，`ezdxf` / `shapely` 用于 DXF 与几何运算）。它只产出 CST **表达式字符串**；实际的 CST 下发永远发生在 `cst_solver` / `topo_modeler` / `topo_templates`。这条是 `skills/developer/WORKFLOW.md` §10 的禁止事项之一（「❌ 在 `mesh_grid` 里引入 CST 依赖（它必须保持纯计算）」），也是 `docs/ARCHITECTURE.md` §2 单向依赖图的一部分。相应地，`auto_define_cst_params(app)` 只做鸭子类型调用（要求 `app.para(name, expr)`），不 import 任何 CST 模块。
 3. **新增公开 API 必须导出到子包 `__init__.py` 的 `__all__`。**
    `mesh_grid/__init__.py` 自动导入两个子包，`mesh_grid/tri_grid/__init__.py` 与 `mesh_grid/hex_grid/__init__.py` 各自维护 `__all__`。只在 `core.py` 里写函数而不导出，等于对外不可见，且 `docs/guides/api/*.html` 与技能文档都会与代码脱节。删除/改名公开符号时按 `WORKFLOW.md` §5 保留别名并登记弃用。
 4. **改动公开 API 后重新生成 `docs/guides/api/{hex,tri}_grid_api.html`。**
@@ -495,7 +495,7 @@ python mesh_grid/tri_grid/tests/test_topo_path.py
 
 **先读流程，再动手**：完整开发流程、验收清单、提交规范、文档同步矩阵一律以 [`../../skills/developer/WORKFLOW.md`](../../skills/developer/WORKFLOW.md) 为准（文档生成细节见 `skills/developer/doc-generation.md`）。以下是落到 `mesh_grid` 的最短路径：
 
-1. **判定归属**：确认需求属于「与 CST 无关的晶格数学 / 坐标 / 可视化 / DXF」→ `mesh_grid`；若它只在某个器件里成立，或需要 CST 对象 → 归 `topo_modeler` / `templates`（`WORKFLOW.md` §2）。`mesh_grid` 必须保持通用，禁止塞入只服务单个模板的逻辑。
+1. **判定归属**：确认需求属于「与 CST 无关的晶格数学 / 坐标 / 可视化 / DXF」→ `mesh_grid`；若它只在某个器件里成立，或需要 CST 对象 → 归 `topo_modeler` / `topo_templates`（`WORKFLOW.md` §2）。`mesh_grid` 必须保持通用，禁止塞入只服务单个模板的逻辑。
 2. **读技能文档**：`skills/user/tri-grid.md`、`skills/user/hex-grid.md`；改路径 DSL 还要读 `docs/guides/topo_modeler_guide_stage0-3.md` 的「阶段 1」章节。
 3. **确认公式基准**：三角晶格一律与 `path_loc_to_xy` 对齐（§7 约定 1）；六边形晶格一律与 Red Blob Games 的 cube 口径和 `Orientation` 矩阵对齐。
 4. **设计签名**：明确参数名/默认值/返回类型与异常语义；数值与符号双模式的 API 要写清「哪些操作需要 `param_values`」；遵循 `WORKFLOW.md` §4 的 mesh_grid 清单（中文 Google/Numpy 风格 docstring、`# -*- coding: utf-8 -*-` 文件头、4 空格缩进）。

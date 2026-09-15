@@ -1,7 +1,7 @@
 # topo_modeler —— 建模引擎层
 
 `topo_modeler` 是 TPC 的**建模引擎**：它把「一条三角晶格路径（`TopoPath`）+ 一组物理参数」翻译成一个完整的 CST 模型。
-向上，它为 `templates/` 提供 `TopoModeler`（智能推断 + 流水线编排）与一组可直接调用的部件构建器；
+向上，它为 `topo_templates/` 提供 `TopoModeler`（智能推断 + 流水线编排）与一组可直接调用的部件构建器；
 向下，它只通过 `cst_solver` 的 `setup` 对象下发命令，几何数据全部来自 `mesh_grid.tri_grid.TopoPath`。
 包内**不含手写 VBA**（唯一例外见第 8 节 `builders/solver.py` 的高级求解器参数），
 它自己不发明坐标、不发明 CST 语法，只负责「顺序、参数、归属」。
@@ -12,7 +12,7 @@
 | **需要 CST** | ✅ 必须（仅真实建模时）。无 CST 环境下 `TopoModeler.app = None` 并给出 warning，路径/参数/推断/预览仍可用 |
 | **入口** | `TopoModeler`、`NameManager`（包级导出）；底层入口 `topo_modeler.builders.*` |
 | **依赖** | `cst_solver`（CST 会话：`setup`）、`mesh_grid.tri_grid.TopoPath`（几何与坐标） |
-| **被谁依赖** | `templates/`（`StraightWaveguide`、`UnitAntenna`） |
+| **被谁依赖** | `topo_templates/`（`StraightWaveguide`、`UnitAntenna`） |
 | **源码位置** | `topo_modeler/`：`modeler.py`、`name_manager.py`、`builders/`（8 个构建器）、`lens_build.py`、`lens_build_standalone.py`、`tests/` |
 | **当前阶段** | 阶段 0–3 已完成（坐标层 / 基础引擎 / 模板层）；**阶段 5（库加固）离线部分完成**；**阶段 6 的透镜几何层已完成并离线验收通过**（`builders/lens.py` + `TopoModeler.build_lens()`）；`GRINLensAntenna` 模板与端到端真机验证未做 |
 
@@ -42,7 +42,7 @@
 分层之后，同一件事变成：
 
 ```python
-from templates import StraightWaveguide
+from topo_templates import StraightWaveguide
 
 StraightWaveguide(topology='AB', length=18, output_path=r'D:\out\wg.cst').build_all().save()
 ```
@@ -56,7 +56,7 @@ StraightWaveguide(topology='AB', length=18, output_path=r'D:\out\wg.cst').build_
 | 可复现 | 建模步骤是代码而不是鼠标操作，`Rebuild()` 能无错重放历史树 |
 | 可组合 | 三种用法（模板 / Modeler / Builder）共用同一套构建器，低层不会被高层绑架 |
 | 可测试 | 推断逻辑、参数处理可在**没有 CST** 的环境里跑（`app=None`） |
-| 归属清晰 | 「几何在 `TopoPath`、CST 原语在 `cst_solver`、顺序在 `topo_modeler`、器件在 `templates`」，改错地方一眼可辨 |
+| 归属清晰 | 「几何在 `TopoPath`、CST 原语在 `cst_solver`、顺序在 `topo_modeler`、器件在 `topo_templates`」，改错地方一眼可辨 |
 
 ---
 
@@ -88,21 +88,21 @@ topo_modeler/                    建模引擎层（本包）
 
 | 层次 | 入口 | 谁在用 | 控制粒度 |
 |---|---|---|---|
-| **模板层** | `templates.StraightWaveguide` / `UnitAntenna` | 日常建模型（一个类 = 一个器件） | 只填参数：`topology`、`length`、`output_path` … |
+| **模板层** | `topo_templates.StraightWaveguide` / `UnitAntenna` | 日常建模型（一个类 = 一个器件） | 只填参数：`topology`、`length`、`output_path` … |
 | **Modeler 层** | `TopoModeler` | 新器件、非标准路径、需要分步调试 | 逐步骤调用（`build_substrate()` → `build_crystal()` → …），或 `build_all()` 一键 |
 | **Builder 层** | `topo_modeler.builders.*` | 需要完全自定义几何顺序、或只想复用某一个部件 | 直接给 `app` + 显式参数，**不需要** `TopoModeler` 实例 |
 
 ### 2.3 依赖方向（严格单向）
 
 ```
-templates/ ──────────▶ topo_modeler/ ──┬──▶ cst_solver/ ──▶ cst（CST 自带）
+topo_templates/ ──────────▶ topo_modeler/ ──┬──▶ cst_solver/ ──▶ cst（CST 自带）
    （应用层）             （引擎层）      │      （基础层）
                                       └──▶ mesh_grid.tri_grid（TopoPath，晶格/坐标）
 
 tpc_toolkit/  独立工具层：不依赖 CST，也不被本包依赖
 ```
 
-- 本包**只依赖** `cst_solver` 与 `mesh_grid.tri_grid`，**不依赖** `templates`；
+- 本包**只依赖** `cst_solver` 与 `mesh_grid.tri_grid`，**不依赖** `topo_templates`；
 - 同层之间 `cst_solver` 与 `mesh_grid` 互不依赖；
 - 本包**不写手写 VBA**：所有 CST 操作都通过 `app.*` 方法下发，唯一的例外是
   `builders/solver.py` 里 `cst_solver` 未封装的求解器高级参数（`SteadyStateLimit` / `ParallelizationThreads` / `GPUAcceleration` / Farfield 监视器）。
@@ -317,7 +317,7 @@ print(nm)                 # NameManager(generated=0, aliases=0)
 ```
 
 > 现状说明：`TopoModeler` 会创建一个 `self.nm = NameManager()`，但当前流水线里各 builder 均使用**显式名字**
-> （`'substrate'`、`'vpc_A'`、`'feed1'`、`'wg1'` …）。`NameManager` 目前主要供模板（`templates/` 里同样
+> （`'substrate'`、`'vpc_A'`、`'feed1'`、`'wg1'` …）。`NameManager` 目前主要供模板（`topo_templates/` 里同样
 > `self.nm = NameManager()`）与后续多端口场景使用。
 
 ---
@@ -746,7 +746,7 @@ configure_solver(app, freq_range=(300, 380), monitors=('E', 'Farfield'))     # �
 一个类 = 一个器件，内部组装 `TopoModeler` + 参数定义 + 镜像 + 端口 + 求解器。
 
 ```python
-from templates import StraightWaveguide, UnitAntenna
+from topo_templates import StraightWaveguide, UnitAntenna
 
 # 直波导（AB 型，2 端口）
 wg = StraightWaveguide(
@@ -782,7 +782,7 @@ ant.build_all()
 ant.save()
 ```
 
-> ⚠ **当前不可直接运行**：`templates/straight_waveguide.py` 与 `templates/unit_antenna.py` 的 `build_all()`
+> ⚠ **当前不可直接运行**：`topo_templates/straight_waveguide.py` 与 `topo_templates/unit_antenna.py` 的 `build_all()`
 > 会给 `build_vpc_regions` 传 `topology=`、给 `build_topological_crystal` 传 `xup/yup/ydn=`，
 > ✅ 已修：`build_topological_crystal` 现在接受 `xup/yup/ydn`，`build_vpc_regions` 不再接收 `topology`（见第 8 节 (d)(e)）。
 > 修好这两处（或先按 7.2 / 7.3 的方式绕开）之后，上面的代码才是可用路径。
@@ -917,10 +917,10 @@ app.save(r'D:\out\manual.cst')
 | (a) `mesh_grid/tri_grid/topo_path.py::build_vpc_area_polygon(side='lower')` | 多边形顶点曾为**顺时针（CW）** | `ExtrudeCurve` 沿多边形**法向**拉伸（CCW → +z，CW → −z），该实体与晶体在 z 上**差一个 `h`**；布尔求交得到**空集且 CST 不报错** | ✅ 已修：两条边界链改为「每个路径点都参与」的确定绕向写法，`upper`/`lower` **均保证 CCW**；`test_topo_path.py` 新增第 16 项测试用有向面积钉住该约定 |
 | (b) `mesh_grid/tri_grid/topo_path.py::build_substrate_polygon` | 同上：带状多边形曾为 CW | 基板与晶体/其它实体在 z 上差一个 `h`，后续布尔运算静默出错 | ✅ 已修：改为「下侧偏移链正向 → 上侧偏移链反向」，保证 CCW（一并更新了单测的顶点数断言：VPC 区域由 `N+3` 变为 `2N+1`） |
 | (c) `builders/crystal.py::build_topological_crystal` | 阵列范围只能由 `path.get_array_range()` 推断 | 宽基板上阵列**覆盖不全**（边缘留实心区），且调用方无法纠正 | ✅ 已修：新增可选形参 `xup=None, yup=None, ydn=None`，`None` 时回退自动推导 |
-| (d) `templates/straight_waveguide.py` | `build_all()` 曾给 `build_vpc_regions` 传 `topology=`、给 `build_topological_crystal` 传 `xup/yup/ydn=` | 模板一调用就 `TypeError` | ✅ 已修：`topology` 只传给 `build_topological_crystal`；`xup/yup/ydn` 现在被接受 |
-| (e) `templates/unit_antenna.py` | 同 (d) | `UnitAntenna.build_all()` 同样 `TypeError` | ✅ 已修 |
-| (f) `templates/*.py` 的 `run()` | 调用 `self.app.start_solver()`，而该方法在全库中**不存在** | `run()` 必抛 `AttributeError`（`build_all()` 正常） | ✅ 已修：改用 `self.app.run()` |
-| (g) `templates/*.py` 的 `__init__` | 经 `TopoModeler.set_parameters()` 调 `app.set_parameters(params)`，而真实签名是 `set_parameters(name, value, log_flag=0)` | **构造时就抛 `TypeError`**，比 (d)(e) 更早触发 | ✅ 已修：`TopoModeler.set_parameters()` 改用字典式批量接口 `app.paras(params, None)` |
+| (d) `topo_templates/straight_waveguide.py` | `build_all()` 曾给 `build_vpc_regions` 传 `topology=`、给 `build_topological_crystal` 传 `xup/yup/ydn=` | 模板一调用就 `TypeError` | ✅ 已修：`topology` 只传给 `build_topological_crystal`；`xup/yup/ydn` 现在被接受 |
+| (e) `topo_templates/unit_antenna.py` | 同 (d) | `UnitAntenna.build_all()` 同样 `TypeError` | ✅ 已修 |
+| (f) `topo_templates/*.py` 的 `run()` | 调用 `self.app.start_solver()`，而该方法在全库中**不存在** | `run()` 必抛 `AttributeError`（`build_all()` 正常） | ✅ 已修：改用 `self.app.run()` |
+| (g) `topo_templates/*.py` 的 `__init__` | 经 `TopoModeler.set_parameters()` 调 `app.set_parameters(params)`，而真实签名是 `set_parameters(name, value, log_flag=0)` | **构造时就抛 `TypeError`**，比 (d)(e) 更早触发 | ✅ 已修：`TopoModeler.set_parameters()` 改用字典式批量接口 `app.paras(params, None)` |
 | `builders/port.py::add_ports_for_straight_waveguide` / `add_port_for_antenna` | CST 面编号 `'10'` / `'22'` 从旧 notebook **硬编码**提取 | 面编号与实体几何强相关：一旦波导尺寸/朝向/构建顺序变化，端口可能落在**错误的面上** | ⏳ 未修（阶段 3 已知限制）：应改为按法向量自动查找，把 `face_id` 降级为可选覆盖项 |
 | `TopoModeler.build_lens` / `builders/lens.py`（GRIN 透镜） | ~~**阶段 4 未实现**~~ | ~~含 GRIN 透镜的器件暂不能建~~ | ✅ **已修**（2026-09-15）：透镜几何下沉为 `builders/lens.py` 的无状态层（`GrinLensSpec` / `GrinLensHoles` / `build_grin_lens_holes`），`build_lens()` 已接线。**与原脚本 `lens_build.py` 逐点/逐条等价**（`topo_modeler/tests/test_lens.py`，36 项）。⚠️ 仍缺：`method='dxf'` 入口、`GRINLensAntenna` 模板、CST 端到端真机验证 |
 | `TopoModeler.read_results` / `plot_results` | **阶段 7 未实现**：两者都抛 `NotImplementedError` | 仿真结果（S 参数 / 远场 / E 场）无法通过本包读取 | ⏳ 待阶段 7 实现独立的 `ResultReader`（阶段 5 已把底层读取/导出 API 做进 `cst_solver.Result`） |
@@ -945,7 +945,7 @@ app.save(r'D:\out\manual.cst')
 - **符号路径的阵列范围**：符号路径的 `get_array_range()` 需要 `param_values` 才能数值化，
   无法直接返回 CST 表达式；
 - **无 CST 环境**：`TopoModeler` 会把 `app` 置为 `None` 并给 warning，
-  此时 `set_path` / `set_parameters` / `preview` 可用，但任何 `build_*` 会失败（`templates` 里则显式抛 `RuntimeError`）。
+  此时 `set_path` / `set_parameters` / `preview` 可用，但任何 `build_*` 会失败（`topo_templates` 里则显式抛 `RuntimeError`）。
 
 ---
 
@@ -955,7 +955,7 @@ app.save(r'D:\out\manual.cst')
 流程、命名、验收清单、提交规范以它为准，本节只是把「加一个部件构建器」这条最常见的路径串起来。
 
 1. **判定归属**。按 WORKFLOW §2 的表格判断需求落在哪个包：
-   把部件组装成模型、编排建模顺序 → `topo_modeler/`；某个具体器件的完整流程 → `templates/`；
+   把部件组装成模型、编排建模顺序 → `topo_modeler/`；某个具体器件的完整流程 → `topo_templates/`；
    CST 原语本身缺失 → 先去 `cst_solver/` 补封装，**再**回来用。
    在 `topo_modeler/builders/` 里手写 VBA 是明确的反例。
 2. **写进 `builders/<部件>.py`，作为无状态函数**。签名风格与本包一致：
@@ -966,7 +966,7 @@ app.save(r'D:\out\manual.cst')
 4. **保证多边形 CCW 绕向**（`有向面积 > 0`）+ 内部 `translate -h/2`。
    `ExtrudeCurve` 沿法向拉伸：CW 会得到 −z 方向实体，实体之间在 z 上差一个 `h`，
    布尔求交返回空集**且不报错** —— 这是本仓库最高频的静默事故（ARCHITECTURE §6 硬约定 1）。
-5. **用模板端到端验证**：至少用一个 `templates/` 里的模板（或最小脚本）跑通，
+5. **用模板端到端验证**：至少用一个 `topo_templates/` 里的模板（或最小脚本）跑通，
    并检查 `app.cst_file.get_messages()` 为空、`model3d.Rebuild()` 后仍为空
    （CST 不保证把错误抛成 Python 异常）。
 6. **同步文档**：新增/修改 builder 或模板 → 更新本文件（`docs/packages/topo_modeler.md`）对应小节；

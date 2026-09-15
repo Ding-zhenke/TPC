@@ -1,6 +1,6 @@
 # cst_solver —— CST 会话封装层
 
-`cst_solver/` 是 TPC 的**最底层包**：CST Studio Suite 的自动化接口本质上是「拼一段 VBA 宏字符串 → 下发到工程的历史树」，本包把这套宏 API 收敛成 **24 个 Mixin 类**，再用多继承聚合成**一个** `setup` 类，于是 200 多个 CST 原语操作（画体、布尔、端口、边界、求解器、网格、导出）都能通过同一个 Python 对象调用；此外还独立提供一个 `result` 类，用于只读地读取**已算完**工程的导航树结果，以及一个**运行时守卫层**（`_guards.py`），把「读文档才知道」的约束变成「写错就提示」。它与 `mesh_grid` 互相不依赖，是 `topo_modeler` / `templates` 的下层依赖。
+`cst_solver/` 是 TPC 的**最底层包**：CST Studio Suite 的自动化接口本质上是「拼一段 VBA 宏字符串 → 下发到工程的历史树」，本包把这套宏 API 收敛成 **24 个 Mixin 类**，再用多继承聚合成**一个** `setup` 类，于是 200 多个 CST 原语操作（画体、布尔、端口、边界、求解器、网格、导出）都能通过同一个 Python 对象调用；此外还独立提供一个 `result` 类，用于只读地读取**已算完**工程的导航树结果，以及一个**运行时守卫层**（`_guards.py`），把「读文档才知道」的约束变成「写错就提示」。它与 `mesh_grid` 互相不依赖，是 `topo_modeler` / `topo_templates` 的下层依赖。
 
 | 项 | 内容 |
 |---|---|
@@ -8,7 +8,7 @@
 | **需要 CST** | ✅ **必须**。`cst_solver/__init__.py` 在导入时直接 `import cst` / `import cst.interface` / `import cst.results`，未安装 CST Studio Suite 的机器上 `import cst_solver` 必然失败 |
 | **入口** | `from cst_solver import setup, result`（`setup` = 聚合类，`result` = 结果读取类） |
 | **依赖** | 第三方 `numpy`（`_result_core.py` 用到）；`cst` 由 CST 自带、无法从 PyPI 安装，故不列入 `pyproject.toml`；不依赖任何其它 TPC 包 |
-| **被谁依赖** | `topo_modeler/`（如 `topo_modeler/modeler.py`、`topo_modeler/lens_build_standalone.py`）、`templates/`；`tpc_toolkit/` **不**依赖它 |
+| **被谁依赖** | `topo_modeler/`（如 `topo_modeler/modeler.py`、`topo_modeler/lens_build_standalone.py`）、`topo_templates/`；`tpc_toolkit/` **不**依赖它 |
 | **源码位置** | `cst_solver/`：23 个 Mixin 模块 + `__init__.py`（内联 `FaceOpsMixin` 与 `setup`）+ `_result_core.py`（`Result`）+ `_guards.py`（守卫层）+ `config_template.py` / `_path_tools.py`，类型存根 `setup.pyi`、`simulation/setup.pyi` |
 
 > AST 统计（不含归档中的死代码 `_result.py`）：`cst_solver/` 共 **24 个 Mixin 类**，
