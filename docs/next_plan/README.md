@@ -131,18 +131,54 @@
 
 ## 6. 仍然阻塞的事项（进阶段 4 之前必须先解决）
 
-### 6.1 几何验收从未执行（最高优先级）
+### 6.1 几何验收（已开始执行；几何流水线已通过，求解器配置段仍失败）
 
 06 为阶段 2/3 定的判据是「与旧 `AB_feed.cst` / `BA_feed.cst` 逐项对比，关键尺寸偏差 < 0.1%」。
-**这条从未跑过**，阶段 3 的自测脚本也从不调用 `build_all()`，所以上面第 4/5/6 号缺陷才能潜伏到本轮。
+**这条此前从未跑过**，阶段 3 的自测脚本也从不调用 `build_all()`，所以下面这些缺陷才能潜伏到本轮。
 
-需要补的验收动作（在装有 CST 的机器上）：
+#### 6.1.1 本轮实测（真实 CST 2026 会话 + 真实模板 `硅基/直波导/AB/tmp.cst`）
+
+模板说明：该 `tmp.cst`（553 KB）经核对是**干净模板** —— `ModelHistory.json` 只有 3 条
+（单位 + PML/边界），无任何几何；用副本操作，未改动原件。
+
+实测结果：**几何流水线全程通过** ——
+材料 → 基板 → VPC 区域 → 晶体阵列 → 馈源 → 空心波导 → mirror → 端口 → 整合，
+最终停在最后一步 `configure_solver`（求解器 VBA 属性名问题，见 6.1.3）。
+
+#### 6.1.2 本轮因跑 `build_all()` 而暴露并已修掉的缺陷
+
+| # | 位置 | 现象 | 处理 |
+|---|---|---|---|
+| 1 | `cst_solver/project.py` `new_project()` | CST 2026 的 `DesignEnvironment.new_project()` 必传 `ProjectType`，缺参抛 `TypeError` | 新增可选形参，默认 `ProjectType.MWS` |
+| 2 | `cst_solver/project.py` `save()` / `save_as()` | `Project` 没有 `save_as`，带路径保存必抛 `AttributeError` | 按真实签名改调 `Project.save(...)` |
+| 3 | `cst_solver/parameters.py` `paras()` | docstring 声明支持 dict，函数体未实现该分支 → CST 抛 `type must be array, but is object` | 按文档实现 dict → 两个等长数组的归一化 |
+| 4 | `topo_modeler`（缺失步骤） | 流水线从不定义材料，模板又不带材料 → 第一条 extrude 报 `The specified material does not exist` | 新增 `builders/materials.py::build_materials()`，两个模板 `build_all()` 均调用 |
+| 5 | `templates/straight_waveguide.py` | 阵列范围用了路径推断值（`xup=19/yup=1/ydn=1`），违反 **ARCHITECTURE 第 6 节硬约定 3**；且 `int(yup/2)=0` → CST 报 `Invalid number of repetitions` | 按参考工程取值改为 `xup=length+int(width/2)=25`、`yup=ydn=width=14` |
+| 6 | `cst_solver/simulation/solver.py` `T_solver()` | `Solver.Method` 只接受 `"Hexahedral"` / `"Hexahedral TLM"`，原写 `"T-Solver"` 抛 `Invalid method` | 改为 `"Hexahedral"` |
+
+这 6 条的共性值得记录：**都是"从未被真实调用过"的方法**（或只被同样未跑通的代码调用），
+所以单测、AST 扫描、存根同步全部查不出来 —— 只有真跑一次 `build_all()` 才能发现。
+这也印证 6.1 把它列为最高优先级的判断。
+
+#### 6.1.3 仍未解决（阻塞几何验收完成）
+
+| 项 | 现象 | 待办 |
+|---|---|---|
+| `T_solver()` 其余 VBA 属性 | `.Accuracy` 实测报 `no such property or method`；`.CalculateAllModes` / `.DetermineFreq` / `.DetermineFreqFromN` 同样不在官方 `Solver` 对象属性表内 | 按 CST 官方 `Solver` 参考重写该方法。可用的对应项如 `Solver.Method` / `Solver.SteadyStateLimit` / `Solver.FrequencyRange` / `Solver.MeshAdaption` |
+| `builders/solver.py` 手写 VBA | `_configure_solver_advanced()` 与 `_create_farfield_monitor()` 直接拼 VBA 字符串，违反 WORKFLOW 第 2 节（builder 里应调 `cst_solver` 方法）；且 `.ParallelizationThreads` / `.GPUAcceleration` 疑似非真实属性（官方为 `Solver.MaximumNumberOfThreads` / `Solver.HardwareAcceleration`） | 先给 `cst_solver` 补对应封装，再回来改 builder |
+| `unit_antenna.py:122` | 与缺陷 5 同源（同一套 `path.get_array_range()`），**未验证未修改** | 先确定 UnitAntenna 的参考基准，再决定其阵列范围取值 |
+| 参数级逐项对比 | 因流水线在求解器段中断，尚未产出完整的"生成工程 vs 参考工程"参数对比结论 | 求解器段修完后重跑 |
+
+#### 6.1.4 验收动作（可复现）
 
 ```python
 from cst_solver import setup
 from templates import StraightWaveguide
 
-wg = StraightWaveguide(topology='AB', length=18, output_path=r'D:\out\wg.cst')
+# 用模板副本，勿直接改原件
+wg = StraightWaveguide(topology='AB', length=18,
+                       template_cst=r'<副本>\tpl_real.cst',
+                       output_path=r'<输出>\wg_AB_L18.cst')
 wg.build_all()
 print(wg.app.cst_file.get_messages())        # 必须为空
 wg.app.cst_file.model3d.Rebuild()            # 阻塞式重放历史，最能暴露问题
@@ -151,6 +187,14 @@ wg.save()
 ```
 
 然后把生成的工程与参考工程逐参数、逐实体比对（重点：`l1`/`l2` 的 AB·BA 分配、`vpc_A/vpc_B` 的半平面、基板与晶体在 z 上是否对齐）。
+
+> **对比时必须注意的一处已知差异**：`l1`/`l2` 的**命名语义与参考相反**。
+> 参考工程 `AB_feed.cst` 的参数表是 `l1=0.35a`（小孔）、`l2=0.65a`（大孔）；
+> 本库的 `StraightWaveguide` 定义 `l1=large_hole_ratio*a=0.65a`、`l2=0.35a`。
+> `builders/crystal.py` 已在逻辑上补偿（docstring 写明参考真值
+> `tri_up_A→l1`、`tri_dn_A→l2`、`tri_up_B→l2`、`tri_dn_B→l1`，
+> AB 分支取 `hole_sizes=[small, large]`），故**几何应一致而参数名相反**。
+> 因此逐项对比不能按名字naive比 `l1`/`l2`，须按实体几何核对。
 
 ### 6.2 VPC 区域语义与参考 notebook 并不一致
 
