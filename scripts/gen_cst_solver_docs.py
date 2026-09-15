@@ -1038,11 +1038,11 @@ def generate():
     """
     os.makedirs(str(OUTPUT_DIR), exist_ok=True)
 
-    print("🔍 正在扫描 cst_solver 包...")
+    print("[1/2] 正在扫描 cst_solver 包...")
     all_methods = scrape_package()
     print(f"   找到 {len(all_methods)} 个方法")
 
-    print("📝 正在生成 HTML...")
+    print("[2/2] 正在生成 HTML...")
     sections, sidebar = build_category_sections(all_methods)
 
     from datetime import datetime
@@ -1060,7 +1060,7 @@ def generate():
         f.write(html)
 
     file_size = os.path.getsize(str(OUTPUT_FILE)) / 1024
-    print(f"✅ 文档已生成: {OUTPUT_FILE}")
+    print(f"[OK] 文档已生成: {OUTPUT_FILE}")
     print(f"   文件大小: {file_size:.1f} KB")
     print(f"   包含 {len(all_methods)} 个方法，{len(CATEGORIES)} 个类别")
 

@@ -189,7 +189,7 @@ def main():
     output_path = os.path.join(docs_dir, "hex_grid_api.html")
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-    print(f"✅ 已生成: {output_path}")
+    print(f"[OK] 已生成: {output_path}")
 
     # 生成 tri_grid API 文档
     print("正在生成 tri_grid API 文档...")
@@ -201,7 +201,7 @@ def main():
     output_path = os.path.join(docs_dir, "tri_grid_api.html")
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(html_content)
-    print(f"✅ 已生成: {output_path}")
+    print(f"[OK] 已生成: {output_path}")
 
     print("\n🎉 文档生成完成！")
 
