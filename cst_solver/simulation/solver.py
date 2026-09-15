@@ -19,22 +19,77 @@ class SolverMixin:
         时域求解器配置接口
         保留原函数名以兼容旧代码
 
-        配置 T-Solver（时域求解器）的基本参数：求解方法、精度
+        只设置求解方法。``Solver`` 对象的属性经真实 CST 2026 会话逐项实测
+        （见下表），历史实现里的 ``.Accuracy`` / ``.CalculateAllModes`` /
+        ``.DetermineFreq`` / ``.DetermineFreqFromN`` **都不是真实属性**，
+        一律报 ``(10091) ActiveX Automation: no such property or method``。
 
-        注意：``Solver.Method`` 只接受 ``"Hexahedral"`` 与
-        ``"Hexahedral TLM"`` 两个取值，写 ``"T-Solver"`` 会被 CST 拒绝并抛
-        ``Invalid method. Valid choices are: "Hexahedral" and "Hexahedral TLM"``。
-        时域求解器即六面体 FIT，故取 ``"Hexahedral"``。
+        ``Solver`` 实测可用的属性（本项目常用的部分）：
+
+        ==============================  ==================================
+        属性                             用途
+        ==============================  ==================================
+        ``Method``                      ``"Hexahedral"`` / ``"Hexahedral TLM"``
+        ``SteadyStateLimit``            稳态限制（dB），收敛判据
+        ``UseParallelization``          并行开关
+        ``MaximumNumberOfThreads``      并行线程数
+        ``HardwareAcceleration``        GPU 加速开关
+        ``MaximumNumberOfGPUs``         GPU 数量
+        ``MeshAdaption``                网格自适应
+        ``FrequencySamples``            频点数
+        ``FrequencySampleRuleLin``      ``"Samples"`` / ``"Steps"`` / ``"Auto"``
+        ``CalculateModesOnly``          仅计算模式
+        ``SParaSymmetry``               S 参数对称
+        ``FullDeembedding``             全去嵌
+        ``StimulationPort``             ``"All"`` / 端口号
+        ``PBAFillLimit``                PBA 填充限制
+        ==============================  ==================================
+
+        精度/稳态限制请用 :meth:`set_steady_state_limit`，
+        并行与 GPU 请用 :meth:`set_parallel_threads` / :meth:`set_gpu_acceleration`。
         """
         f1 = """With Solver
      .Reset
      .Method "Hexahedral"
-     .Accuracy "-60"
-     .CalculateAllModes "True"
-     .DetermineFreq "True"
-     .DetermineFreqFromN "100"
 End With"""
         self.cst_file.model3d.add_to_history("T-Solver Config", f1)
+
+    def set_steady_state_limit(self, db='-30'):
+        """
+        设置时域求解器的稳态限制（收敛判据，dB）。
+
+        :param db: float/str, 稳态限制，如 -30 或 -60；越负越严格，默认 '-30'
+        """
+        f1 = f"""With Solver
+     .SteadyStateLimit "{db}"
+End With"""
+        self.cst_file.model3d.add_to_history(f"Steady State Limit: {db}", f1)
+
+    def set_parallel_threads(self, threads=8, enable=True):
+        """
+        设置并行计算线程数。
+
+        :param threads: int/str, 最大线程数
+        :param enable: bool, 是否启用并行，默认 True
+        """
+        f1 = f"""With Solver
+     .UseParallelization "{enable}"
+     .MaximumNumberOfThreads "{threads}"
+End With"""
+        self.cst_file.model3d.add_to_history(f"Parallel Threads: {threads}", f1)
+
+    def set_gpu_acceleration(self, gpus=1, enable=True):
+        """
+        设置 GPU 硬件加速。
+
+        :param gpus: int/str, 最大 GPU 数
+        :param enable: bool, 是否启用 GPU 加速，默认 True
+        """
+        f1 = f"""With Solver
+     .HardwareAcceleration "{enable}"
+     .MaximumNumberOfGPUs "{gpus}"
+End With"""
+        self.cst_file.model3d.add_to_history(f"GPU Acceleration: {gpus}", f1)
 
     def configure_time_solver(self):
         """

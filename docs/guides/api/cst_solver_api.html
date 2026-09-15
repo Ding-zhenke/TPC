@@ -421,9 +421,9 @@ body {
     <h1><i class="fas fa-cubes"></i> CST Solver Python API 文档</h1>
     <p>cst_solver 包 — 基于 Mixin 多继承模式的 CST Studio Suite 自动化 Python 接口</p>
     <div class="header-stats">
-        <span><i class="fas fa-code"></i> 219 个方法</span>
+        <span><i class="fas fa-code"></i> 222 个方法</span>
         <span><i class="fas fa-layer-group"></i> 23 个类别</span>
-        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-15 13:37:27</span>
+        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-15 13:51:47</span>
     </div>
     <div class="search-bar">
         <i class="fas fa-search"></i>
@@ -466,7 +466,7 @@ body {
             <div class="category-header" onclick="this.nextElementSibling.nextElementSibling.querySelector('input')?.focus()">
                 <div class="icon" style="background:#2563eb"><i class="fas fa-microchip"></i></div>
                 <h2>求解器</h2>
-                <span class="count">21 方法 + 2 别名</span>
+                <span class="count">24 方法 + 2 别名</span>
             </div>
             
             <div class="method-card">
@@ -482,11 +482,31 @@ body {
                         <div class="signature">T_solver(self)</div>
                     </div>
                     <div class="desc-text"><p>时域求解器配置接口</p><p>保留原函数名以兼容旧代码
-配置 T-Solver（时域求解器）的基本参数：求解方法、精度
-注意：``Solver.Method`` 只接受 ``&quot;Hexahedral&quot;`` 与
-``&quot;Hexahedral TLM&quot;`` 两个取值，写 ``&quot;T-Solver&quot;`` 会被 CST 拒绝并抛
-``Invalid method. Valid choices are: &quot;Hexahedral&quot; and &quot;Hexahedral TLM&quot;``。
-时域求解器即六面体 FIT，故取 ``&quot;Hexahedral&quot;``。</p></div>
+只设置求解方法。``Solver`` 对象的属性经真实 CST 2026 会话逐项实测
+（见下表），历史实现里的 ``.Accuracy`` / ``.CalculateAllModes`` /
+``.DetermineFreq`` / ``.DetermineFreqFromN`` **都不是真实属性**，
+一律报 ``(10091) ActiveX Automation: no such property or method``。
+``Solver`` 实测可用的属性（本项目常用的部分）：
+==============================  ==================================
+属性                             用途
+==============================  ==================================
+``Method``                      ``&quot;Hexahedral&quot;`` / ``&quot;Hexahedral TLM&quot;``
+``SteadyStateLimit``            稳态限制（dB），收敛判据
+``UseParallelization``          并行开关
+``MaximumNumberOfThreads``      并行线程数
+``HardwareAcceleration``        GPU 加速开关
+``MaximumNumberOfGPUs``         GPU 数量
+``MeshAdaption``                网格自适应
+``FrequencySamples``            频点数
+``FrequencySampleRuleLin``      ``&quot;Samples&quot;`` / ``&quot;Steps&quot;`` / ``&quot;Auto&quot;``
+``CalculateModesOnly``          仅计算模式
+``SParaSymmetry``               S 参数对称
+``FullDeembedding``             全去嵌
+``StimulationPort``             ``&quot;All&quot;`` / 端口号
+``PBAFillLimit``                PBA 填充限制
+==============================  ==================================
+精度/稳态限制请用 :meth:`set_steady_state_limit`，
+并行与 GPU 请用 :meth:`set_parallel_threads` / :meth:`set_gpu_acceleration`。</p></div>
                     
                 <div class="alias-info">
                     <i class="fas fa-info-circle"></i>
@@ -1008,6 +1028,38 @@ body {
             
             <div class="method-card">
                 <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">set_gpu_acceleration</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">设置 GPU 硬件加速。</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">set_gpu_acceleration(self, gpus=1, enable=True)</div>
+                    </div>
+                    <div class="desc-text"><p>设置 GPU 硬件加速。</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">gpus</td><td><span style="color:#f59e0b;font-size:12px">= 1</span></td><td class="param-desc">int/str, 最大 GPU 数</td></tr>
+<tr><td class="param-name">enable</td><td><span style="color:#f59e0b;font-size:12px">= True</span></td><td class="param-desc">bool, 是否启用 GPU 加速，默认 True</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\simulation\solver.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
                     <span class="name">set_max_iterations</span>
                     <span class="badge">方法</span>
                     <span class="desc">设置求解器最大迭代次数</span>
@@ -1026,6 +1078,38 @@ body {
                     <table class="params-table">
                         <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
                         <tbody><tr><td class="param-name">max_iter</td><td></td><td class="param-desc">int, 最大迭代次数</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\simulation\solver.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">set_parallel_threads</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">设置并行计算线程数。</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">set_parallel_threads(self, threads=8, enable=True)</div>
+                    </div>
+                    <div class="desc-text"><p>设置并行计算线程数。</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">threads</td><td><span style="color:#f59e0b;font-size:12px">= 8</span></td><td class="param-desc">int/str, 最大线程数</td></tr>
+<tr><td class="param-name">enable</td><td><span style="color:#f59e0b;font-size:12px">= True</span></td><td class="param-desc">bool, 是否启用并行，默认 True</td></tr>
 </tbody>
                     </table>
                 </div>
@@ -1097,6 +1181,37 @@ body {
                     <table class="params-table">
                         <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
                         <tbody><tr><td class="param-name">kwargs</td><td></td><td class="param-desc"></td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\simulation\solver.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">set_steady_state_limit</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">设置时域求解器的稳态限制（收敛判据，dB）。</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">set_steady_state_limit(self, db='-30')</div>
+                    </div>
+                    <div class="desc-text"><p>设置时域求解器的稳态限制（收敛判据，dB）。</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">db</td><td><span style="color:#f59e0b;font-size:12px">= -30</span></td><td class="param-desc">float/str, 稳态限制，如 -30 或 -60；越负越严格，默认 '-30'</td></tr>
 </tbody>
                     </table>
                 </div>
