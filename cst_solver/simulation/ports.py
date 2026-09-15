@@ -85,6 +85,75 @@ class PortMixin:
         """
         self.add_port(id_val, orientation, shield)
 
+    def create_waveguide_port_free(self, id_val, xrange=None, yrange=None,
+                                   zrange=None, orientation='positive',
+                                   shield=''):
+        """
+        用**坐标范围**创建波导端口（``Coordinates "Free"``），无需任何面拾取。
+
+        与 ``create_waveguide_port`` 的分工：后者走 ``Coordinates "Picks"``，
+        必须先 ``pick_face`` 选到面才生效，而面编号与实体几何、生成顺序强相关，
+        扭转/布尔/阵列之后会变；本方法直接给出端口矩形范围，不产生拾取动作，
+        因此可复现性更好，也不会因几何微调而指错面。
+
+        适用范围：**轴对齐的矩形端口面**（直波导两端、单元天线入口）。
+        非轴对齐面（拐弯/扭转后的波导端面）不适用 —— 仍走
+        ``pick_face + add_port``，或先用 ``pick_face_at`` 按坐标拾取。
+
+        三个方向的范围至少给出一个；未给出的方向沿用 ``.Reset`` 后的默认值。
+        端口面所处的平面由所给范围决定（例如只给 ``xrange`` + ``yrange``
+        时端口法向沿 z）。
+
+        :param id_val: int/str, 端口编号
+        :param xrange: tuple, (min, max)，x 方向范围，元素可为 CST 表达式
+        :param yrange: tuple, (min, max)，y 方向范围，元素可为 CST 表达式
+        :param zrange: tuple, (min, max)，z 方向范围，元素可为 CST 表达式
+        :param orientation: str, 端口法向朝向，沿用 ``add_port`` 的约定
+        :param shield: str, 端口屏蔽类型 'electric'/'magnetic'/''，默认 ''
+        :raises ValueError: 三个方向的范围全部为 None，无法确定端口面
+        """
+        if xrange is None and yrange is None and zrange is None:
+            raise ValueError(
+                "create_waveguide_port_free 至少需要给出一个方向的范围"
+                "（xrange / yrange / zrange），否则无法确定端口面；"
+                "若确实要按面拾取建端口，请用 create_waveguide_port()")
+
+        ranges = ''
+        for _line, _val in (('.Xrange', xrange), ('.Yrange', yrange),
+                            ('.Zrange', zrange)):
+            if _val is not None:
+                ranges += f'{_line} {_val[0]}, {_val[1]}\n            '
+
+        if shield == 'electric':
+            f2 = '.Shield "PEC"'
+        elif shield == 'magnetic':
+            f2 = '.Shield "PMC"'
+        else:
+            f2 = ''
+        f1 = f"""With Port 
+            .Reset 
+            .PortNumber "{id_val}" 
+            .Label "" 
+            .Folder "" 
+            .NumberOfModes "1" 
+            .AdjustPolarization "False" 
+            .PolarizationAngle "0.0" 
+            .ReferencePlaneDistance "0" 
+            .TextSize "50" 
+            .TextMaxLimit "0" 
+            .Coordinates "Free" 
+            .Orientation "{orientation}" 
+            .PortOnBound "True" 
+            .ClipPickedPortToBound "False" 
+            {ranges}.SingleEnded "False" 
+            .WaveguideMonitor "False" 
+            {f2}
+            .Create 
+        End With
+        """
+        self.cst_file.model3d.add_to_history(
+            "Define Free Port: " + str(id_val), f1)
+
     def discrete_port(self, r0, id_val, fold='', invert_direction=False,
                       **legacy_kwargs):
         """

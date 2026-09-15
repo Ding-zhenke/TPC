@@ -328,6 +328,12 @@ class _PortMixin:
     def create_waveguide_port(self, id_val: Union[int, str],
                               orientation: str = 'positive',
                               shield: str = '') -> None: ...
+    def create_waveguide_port_free(self, id_val: Union[int, str],
+                                   xrange: Optional[tuple] = None,
+                                   yrange: Optional[tuple] = None,
+                                   zrange: Optional[tuple] = None,
+                                   orientation: str = 'positive',
+                                   shield: str = '') -> None: ...
     # 注：discrete_port / create_discrete_face_port 的旧拼写关键字
     #     invertdrection 仍可通过 **legacy_kwargs 传入，已废弃
     def discrete_port(self, r0: Union[float, str], id_val: Union[int, str],

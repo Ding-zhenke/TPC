@@ -421,9 +421,9 @@ body {
     <h1><i class="fas fa-cubes"></i> CST Solver Python API 文档</h1>
     <p>cst_solver 包 — 基于 Mixin 多继承模式的 CST Studio Suite 自动化 Python 接口</p>
     <div class="header-stats">
-        <span><i class="fas fa-code"></i> 218 个方法</span>
+        <span><i class="fas fa-code"></i> 219 个方法</span>
         <span><i class="fas fa-layer-group"></i> 23 个类别</span>
-        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-15 12:55:09</span>
+        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-15 12:58:21</span>
     </div>
     <div class="search-bar">
         <i class="fas fa-search"></i>
@@ -445,8 +445,8 @@ body {
 <a href="#cat-8" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-8')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-sliders-h"></i>参数管理</a>
 <a href="#cat-9" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-9')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-draw-polygon"></i>曲线绘制</a>
 <a href="#cat-10" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-10')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-bolt"></i>激励源</a>
-<a href="#cat-11" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-11')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-folder-open"></i>项目操作</a>
-<a href="#cat-12" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-12')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-plug"></i>端口设置</a>
+<a href="#cat-11" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-11')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-plug"></i>端口设置</a>
+<a href="#cat-12" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-12')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-folder-open"></i>项目操作</a>
 <a href="#cat-13" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-13')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-bezier-curve"></i>曲线操作</a>
 <a href="#cat-14" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-14')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-chart-line"></i>后处理</a>
 <a href="#cat-15" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-15')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-arrows-alt"></i>变换操作</a>
@@ -5876,262 +5876,9 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
         
         <div class="category" id="cat-11">
             <div class="category-header" onclick="this.nextElementSibling.nextElementSibling.querySelector('input')?.focus()">
-                <div class="icon" style="background:#e11d48"><i class="fas fa-folder-open"></i></div>
-                <h2>项目操作</h2>
-                <span class="count">7 方法 + 2 别名</span>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">activate</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">激活当前 CST 工程为操作目标</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">activate(self)</div>
-                    </div>
-                    <div class="desc-text"><p>激活当前 CST 工程为操作目标</p></div>
-                    
-                    
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\project.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">close</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">关闭当前打开的 CST 工程文件和设计环境，释放所有资源</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">close(self)</div>
-                    </div>
-                    <div class="desc-text"><p>关闭当前打开的 CST 工程文件和设计环境，释放所有资源</p></div>
-                    
-                    
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\project.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">close_project</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">关闭当前 CST 工程（保留设计环境），蛇形命名</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">close_project(self)</div>
-                    </div>
-                    <div class="desc-text"><p>关闭当前 CST 工程（保留设计环境），蛇形命名</p></div>
-                    
-                    
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\project.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">new_project</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">创建一个新的空白 CST 工程（需要 CST 环境支持）</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">new_project(self)</div>
-                    </div>
-                    <div class="desc-text"><p>创建一个新的空白 CST 工程（需要 CST 环境支持）</p><p>注意：此功能依赖 CST 版本，可能不被所有版本支持</p></div>
-                    
-                    
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\project.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">open_project</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">打开指定的 CST 工程文件并激活（蛇形命名）</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">open_project(self, filename)</div>
-                    </div>
-                    <div class="desc-text"><p>打开指定的 CST 工程文件并激活（蛇形命名）</p><p>等同于 project_open()</p></div>
-                    
-                    
-                <div class="section">
-                    <div class="section-title">参数</div>
-                    <table class="params-table">
-                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">filename</td><td></td><td class="param-desc">str, CST 工程文件路径</td></tr>
-</tbody>
-                    </table>
-                </div>
-                
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\project.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name alias">project_close</span>
-                    <span class="badge" style="background:#fffbeb;color:#92400e;border:1px solid #fde68a">别名</span>
-                    <span class="desc">关闭当前 CST 工程（保留设计环境）</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">project_close(self)</div>
-                    </div>
-                    <div class="desc-text"><p>关闭当前 CST 工程（保留设计环境）</p></div>
-                    
-                <div class="alias-info">
-                    <i class="fas fa-info-circle"></i>
-                    此函数是 <strong>close_project</strong> 的别名，保留以兼容旧代码。
-                </div>
-                
-                    
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\project.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name alias">project_open</span>
-                    <span class="badge" style="background:#fffbeb;color:#92400e;border:1px solid #fde68a">别名</span>
-                    <span class="desc">打开指定的 CST 工程文件并激活</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">project_open(self, filename)</div>
-                    </div>
-                    <div class="desc-text"><p>打开指定的 CST 工程文件并激活</p><p>保留原函数名以兼容旧代码</p></div>
-                    
-                <div class="alias-info">
-                    <i class="fas fa-info-circle"></i>
-                    此函数是 <strong>open_project</strong> 的别名，保留以兼容旧代码。
-                </div>
-                
-                    
-                <div class="section">
-                    <div class="section-title">参数</div>
-                    <table class="params-table">
-                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">filename</td><td></td><td class="param-desc">str, CST 工程文件路径</td></tr>
-</tbody>
-                    </table>
-                </div>
-                
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\project.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">save</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">保存当前 CST 工程</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">save(self, filename=None)</div>
-                    </div>
-                    <div class="desc-text"><p>保存当前 CST 工程</p></div>
-                    
-                    
-                <div class="section">
-                    <div class="section-title">参数</div>
-                    <table class="params-table">
-                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">filename</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">str 可选, 另存为路径，不传则覆盖保存</td></tr>
-</tbody>
-                    </table>
-                </div>
-                
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\project.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">save_as</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">将当前 CST 工程另存为</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">save_as(self, filename)</div>
-                    </div>
-                    <div class="desc-text"><p>将当前 CST 工程另存为</p></div>
-                    
-                    
-                <div class="section">
-                    <div class="section-title">参数</div>
-                    <table class="params-table">
-                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">filename</td><td></td><td class="param-desc">str, 保存路径</td></tr>
-</tbody>
-                    </table>
-                </div>
-                
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\project.py</code>
-                    </div>
-                </div>
-            </div>
-            
-        </div>
-        
-        <div class="category" id="cat-12">
-            <div class="category-header" onclick="this.nextElementSibling.nextElementSibling.querySelector('input')?.focus()">
-                <div class="icon" style="background:#0d9488"><i class="fas fa-plug"></i></div>
+                <div class="icon" style="background:#e11d48"><i class="fas fa-plug"></i></div>
                 <h2>端口设置</h2>
-                <span class="count">7 方法 + 2 别名</span>
+                <span class="count">8 方法 + 2 别名</span>
             </div>
             
             <div class="method-card">
@@ -6382,6 +6129,51 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
             
             <div class="method-card">
                 <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">create_waveguide_port_free</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">用**坐标范围**创建波导端口（``Coordinates &quot;Free&quot;``），无需任何面拾取。</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">create_waveguide_port_free(self, id_val, xrange=None, yrange=None, zrange=None, orientation='positive', shield='')</div>
+                    </div>
+                    <div class="desc-text"><p>用**坐标范围**创建波导端口（``Coordinates &quot;Free&quot;``），无需任何面拾取。</p><p>与 ``create_waveguide_port`` 的分工：后者走 ``Coordinates &quot;Picks&quot;``，
+必须先 ``pick_face`` 选到面才生效，而面编号与实体几何、生成顺序强相关，
+扭转/布尔/阵列之后会变；本方法直接给出端口矩形范围，不产生拾取动作，
+因此可复现性更好，也不会因几何微调而指错面。
+适用范围：**轴对齐的矩形端口面**（直波导两端、单元天线入口）。
+非轴对齐面（拐弯/扭转后的波导端面）不适用 —— 仍走
+``pick_face + add_port``，或先用 ``pick_face_at`` 按坐标拾取。
+三个方向的范围至少给出一个；未给出的方向沿用 ``.Reset`` 后的默认值。
+端口面所处的平面由所给范围决定（例如只给 ``xrange`` + ``yrange``
+时端口法向沿 z）。</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">id_val</td><td></td><td class="param-desc">int/str, 端口编号</td></tr>
+<tr><td class="param-name">xrange</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">tuple, (min, max)，x 方向范围，元素可为 CST 表达式</td></tr>
+<tr><td class="param-name">yrange</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">tuple, (min, max)，y 方向范围，元素可为 CST 表达式</td></tr>
+<tr><td class="param-name">zrange</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">tuple, (min, max)，z 方向范围，元素可为 CST 表达式</td></tr>
+<tr><td class="param-name">orientation</td><td><span style="color:#f59e0b;font-size:12px">= positive</span></td><td class="param-desc">str, 端口法向朝向，沿用 ``add_port`` 的约定</td></tr>
+<tr><td class="param-name">shield</td><td></td><td class="param-desc">str, 端口屏蔽类型 'electric'/'magnetic'/''，默认 ''</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\simulation\ports.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
                     <span class="name alias">discrete_port</span>
                     <span class="badge" style="background:#fffbeb;color:#92400e;border:1px solid #fde68a">别名</span>
                     <span class="desc">创建离散端口（集总端口），用于射频器件的端接激励</span>
@@ -6448,6 +6240,259 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                     
                     <div class="source-file">
                         源文件: <code>cst_solver\simulation\ports.py</code>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+        <div class="category" id="cat-12">
+            <div class="category-header" onclick="this.nextElementSibling.nextElementSibling.querySelector('input')?.focus()">
+                <div class="icon" style="background:#0d9488"><i class="fas fa-folder-open"></i></div>
+                <h2>项目操作</h2>
+                <span class="count">7 方法 + 2 别名</span>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">activate</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">激活当前 CST 工程为操作目标</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">activate(self)</div>
+                    </div>
+                    <div class="desc-text"><p>激活当前 CST 工程为操作目标</p></div>
+                    
+                    
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\project.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">close</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">关闭当前打开的 CST 工程文件和设计环境，释放所有资源</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">close(self)</div>
+                    </div>
+                    <div class="desc-text"><p>关闭当前打开的 CST 工程文件和设计环境，释放所有资源</p></div>
+                    
+                    
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\project.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">close_project</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">关闭当前 CST 工程（保留设计环境），蛇形命名</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">close_project(self)</div>
+                    </div>
+                    <div class="desc-text"><p>关闭当前 CST 工程（保留设计环境），蛇形命名</p></div>
+                    
+                    
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\project.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">new_project</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">创建一个新的空白 CST 工程（需要 CST 环境支持）</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">new_project(self)</div>
+                    </div>
+                    <div class="desc-text"><p>创建一个新的空白 CST 工程（需要 CST 环境支持）</p><p>注意：此功能依赖 CST 版本，可能不被所有版本支持</p></div>
+                    
+                    
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\project.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">open_project</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">打开指定的 CST 工程文件并激活（蛇形命名）</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">open_project(self, filename)</div>
+                    </div>
+                    <div class="desc-text"><p>打开指定的 CST 工程文件并激活（蛇形命名）</p><p>等同于 project_open()</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">filename</td><td></td><td class="param-desc">str, CST 工程文件路径</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\project.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name alias">project_close</span>
+                    <span class="badge" style="background:#fffbeb;color:#92400e;border:1px solid #fde68a">别名</span>
+                    <span class="desc">关闭当前 CST 工程（保留设计环境）</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">project_close(self)</div>
+                    </div>
+                    <div class="desc-text"><p>关闭当前 CST 工程（保留设计环境）</p></div>
+                    
+                <div class="alias-info">
+                    <i class="fas fa-info-circle"></i>
+                    此函数是 <strong>close_project</strong> 的别名，保留以兼容旧代码。
+                </div>
+                
+                    
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\project.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name alias">project_open</span>
+                    <span class="badge" style="background:#fffbeb;color:#92400e;border:1px solid #fde68a">别名</span>
+                    <span class="desc">打开指定的 CST 工程文件并激活</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">project_open(self, filename)</div>
+                    </div>
+                    <div class="desc-text"><p>打开指定的 CST 工程文件并激活</p><p>保留原函数名以兼容旧代码</p></div>
+                    
+                <div class="alias-info">
+                    <i class="fas fa-info-circle"></i>
+                    此函数是 <strong>open_project</strong> 的别名，保留以兼容旧代码。
+                </div>
+                
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">filename</td><td></td><td class="param-desc">str, CST 工程文件路径</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\project.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">save</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">保存当前 CST 工程</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">save(self, filename=None)</div>
+                    </div>
+                    <div class="desc-text"><p>保存当前 CST 工程</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">filename</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">str 可选, 另存为路径，不传则覆盖保存</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\project.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">save_as</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">将当前 CST 工程另存为</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">save_as(self, filename)</div>
+                    </div>
+                    <div class="desc-text"><p>将当前 CST 工程另存为</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">filename</td><td></td><td class="param-desc">str, 保存路径</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\project.py</code>
                     </div>
                 </div>
             </div>
