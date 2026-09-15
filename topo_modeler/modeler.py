@@ -15,6 +15,7 @@ import numpy as np
 from topo_modeler.name_manager import NameManager
 from topo_modeler.builders import (
     build_substrate,
+    build_substrate_multi,
     build_vpc_regions,
     build_topological_crystal,
     build_feed as _build_feed_func,
@@ -70,7 +71,8 @@ class TopoModeler:
         """
         self.template_cst = template_cst
         self.app = None
-        self.path = None
+        self.path = None                 # 向后兼容：等价于 self._paths['main'] 或第一条
+        self._paths = {}                 # {名字: TopoPath}（阶段 8 模块 6.1 多路径）
         self.topology = None  # 'AB' / 'BA' / None(自动推断)
         self.model_type = None  # 'waveguide' / 'antenna' / None(自动推断)
         self.params = {}
@@ -104,12 +106,182 @@ class TopoModeler:
         :param path: TopoPath 实例
         :return: self（支持链式调用）
         """
-        self.path = path
+        self.set_paths({'main': path})
+        return self
+
+    # ---- 多路径（阶段 8 模块 6.1）----
+    #
+    # 旧 notebook 里「多路径」本来就是既有表达方式：例如
+    # `功分器加天线\B5\Ant6_2H4L_epc.ipynb` 的 CST 参数表里同时有
+    # `px1..py8` 与 `qx1..qy4` **两套坐标族** —— 一路用前缀 p，另一路用 q。
+    # 所以本库的做法是：`TopoPath` 仍然只表示**一条**折线（不改它的语义），
+    # 多路径由 `TopoModeler` 用 `{名字: TopoPath}` 管理。
+
+    def set_paths(self, paths):
+        """
+        设置**多条**路径（阶段 8 模块 6.1）。
+
+        多路径的用途：功分器 / MZI / 多端口天线里，「主干 + 若干分支」或
+        「两条干涉臂」需要各自一条折线；基板、VPC 与晶体阵列的范围要按
+        **所有路径的并集**取，而不是只看主干 —— 否则分支会露在基板之外
+        （这正是阶段 4 T2/T5 那类问题的根因）。
+
+        :param paths: dict, ``{名字: TopoPath}``；必须非空。也接受单个 TopoPath
+            （等价于 ``{'main': path}``）
+        :return: self
+        :raises TypeError: 值不是 TopoPath
+        :raises ValueError: 空字典或重名
+        """
+        if paths is None:
+            raise ValueError('paths 不能为空')
+        if hasattr(paths, 'path_lattice'):            # 直接给了单个 TopoPath
+            paths = {'main': paths}
+        if not isinstance(paths, dict) or not paths:
+            raise ValueError(
+                'set_paths 需要 {名字: TopoPath} 且至少一条；'
+                '只有一条路径时可以直接用 set_path()')
+        for name, path in paths.items():
+            if not hasattr(path, 'path_lattice'):
+                raise TypeError(
+                    f'paths[{name!r}] 不是 TopoPath（收到 {type(path).__name__}）')
+        self._paths = dict(paths)
+        # 向后兼容：self.path 始终指向 'main'（没有 main 时取第一条）
+        self.path = self._paths.get('main') or next(iter(self._paths.values()))
         self.model_type = self._infer_model_type()
-        # 如果 topology 未设置，自动推断
         if self.topology is None:
             self.topology = self._infer_topology()
         return self
+
+    def add_path(self, name, path):
+        """
+        追加一条路径。
+
+        :param name: str, 路径名（例如 ``'main'`` / ``'arm1'`` / ``'arm2'``）
+        :param path: TopoPath 实例
+        :return: self
+        :raises ValueError: 名字已存在
+        :raises TypeError: path 不是 TopoPath
+        """
+        if not hasattr(path, 'path_lattice'):
+            raise TypeError(f'path 不是 TopoPath（收到 {type(path).__name__}）')
+        if name in self._paths:
+            raise ValueError(
+                f"路径名 {name!r} 已存在（现有：{sorted(self._paths)}）；"
+                f"要替换请先 remove_path('{name}')")
+        self._paths[name] = path
+        if self.path is None:
+            self.path = path
+        self.model_type = self._infer_model_type()
+        return self
+
+    def remove_path(self, name):
+        """
+        删掉一条路径。
+
+        :param name: str, 路径名
+        :return: self
+        :raises KeyError: 名字不存在
+        :raises ValueError: 这是最后一条路径（不允许清空）
+        """
+        if name not in self._paths:
+            raise KeyError(f'没有名为 {name!r} 的路径（现有：{sorted(self._paths)}）')
+        if len(self._paths) == 1:
+            raise ValueError('至少要保留一条路径')
+        del self._paths[name]
+        if self.path is not None and not any(p is self.path for p in self._paths.values()):
+            self.path = next(iter(self._paths.values()))
+        return self
+
+    @property
+    def paths(self):
+        """路径字典的**副本**（``{名字: TopoPath}``）。"""
+        return dict(self._paths)
+
+    @property
+    def path_names(self):
+        """所有路径名（保持插入顺序）。"""
+        return list(self._paths)
+
+    @property
+    def is_multi_path(self):
+        """是否是多路径（>1 条）。"""
+        return len(self._paths) > 1
+
+    def all_lattice_points(self):
+        """
+        所有路径的晶格点**并集**（排序去重）。
+
+        符号路径（含 `str` 坐标）会原样保留 —— 此时只能做集合运算，不能算数值。
+
+        :return: list[tuple], 排序后的 ``(r, c)`` 列表
+        """
+        pts = set()
+        for path in self._paths.values():
+            for r, c in path.path_lattice:
+                pts.add((r, c))
+        try:
+            return sorted(pts, key=lambda p: (float(p[0]), float(p[1])))
+        except (TypeError, ValueError):
+            return sorted(pts, key=lambda p: (str(p[0]), str(p[1])))
+
+    def bounding_box(self):
+        """
+        覆盖**所有路径**的数值包围盒。
+
+        :return: tuple, ``(xmin, xmax, ymin, ymax)``
+        :raises RuntimeError: 存在符号路径且未给 param_values（无法算数值）
+        """
+        boxes = []
+        for name, path in self._paths.items():
+            try:
+                boxes.append(path.get_bounding_box())
+            except Exception as exc:                   # noqa: BLE001
+                raise RuntimeError(
+                    f'路径 {name!r} 算不出包围盒（符号路径需要 param_values）：{exc!r}'
+                ) from exc
+        return (min(b[0] for b in boxes), max(b[1] for b in boxes),
+                min(b[2] for b in boxes), max(b[3] for b in boxes))
+
+    def array_range(self, names=None):
+        """
+        覆盖**所有路径（或指定路径）**的晶体阵列范围 ``(xup, yup, ydn)``。
+
+        这就是「基板 / VPC / 阵列范围要按所有路径并集取」的可执行形式：
+        旧写法只按主干路径推，分支一长就会露出基板（阶段 4 T2/T5 的同类问题）。
+
+        :param names: 序列可选, 只统计这些路径；不给则全部
+        :return: tuple, ``(xup, yup, ydn)`` —— 取各路径所需范围的**逐项最大值**
+        :raises KeyError: 给了不存在的路径名
+        """
+        selected = list(names) if names else list(self._paths)
+        for name in selected:
+            if name not in self._paths:
+                raise KeyError(f'没有名为 {name!r} 的路径（现有：{sorted(self._paths)}）')
+        ranges = [self._paths[n].get_array_range() for n in selected]
+        xup = max(r[0] for r in ranges)
+        yup = max(r[1] for r in ranges)
+        ydn = max(r[2] for r in ranges)
+        return (xup, yup, ydn)
+
+    def describe_paths(self) -> str:
+        """多路径的一段文字摘要（日志 / 报告用，不碰 CST）。"""
+        lines = [f'路径数：{len(self._paths)}'
+                 + ('（多路径）' if self.is_multi_path else '（单路径）')]
+        for name, path in self._paths.items():
+            n = len(path)
+            kind = '直' if path.is_straight() else f'{len(path) - 1} 段'
+            lines.append(f'  · {name}: {n} 个点 / {kind}'
+                         f'{"（符号）" if getattr(path, "has_symbols", False) else ""}')
+        if self.is_multi_path:
+            try:
+                xmin, xmax, ymin, ymax = self.bounding_box()
+                lines.append(f'  并集包围盒：x ∈ [{xmin:.4f}, {xmax:.4f}]，'
+                             f'y ∈ [{ymin:.4f}, {ymax:.4f}] mm')
+                xup, yup, ydn = self.array_range()
+                lines.append(f'  并集阵列范围：xup={xup}, yup={yup}, ydn={ydn}')
+            except RuntimeError as exc:
+                lines.append(f'  （数值量算不出：{exc}）')
+        return '\n'.join(lines)
 
     def set_topology(self, topology):
         """
@@ -198,19 +370,32 @@ class TopoModeler:
         _guard_state(self.app).mark_geometry_built()
 
     def build_substrate(self, name='substrate', height='h',
-                        material='Silicon (lossy)', y_margin='e2'):
+                        material='Silicon (lossy)', y_margin='e2',
+                        paths=None, **kwargs):
         """
         构建基板。
+
+        **多路径时自动走并集**（阶段 8 模块 6.1）：`self._paths` 里有多条路径时，
+        各路径各做一条带再布尔并成一个实体 —— 否则分支会露在基板之外。
 
         :param name: str, 基板名称
         :param height: str, 厚度参数名
         :param material: str, 材料
         :param y_margin: str, 半宽参数名
+        :param paths: dict 可选, 只针对这些路径建（``{名字: TopoPath}``）；
+            不给则用全部已设路径
         :return: str, 基板 CST 名称
         """
         self._check_path()
-        cst_name = build_substrate(self.app, self.path, name=name, height=height,
-                                    material=material, y_margin=y_margin)
+        target = paths or self._paths
+        if len(target) > 1:
+            cst_name = build_substrate_multi(
+                self.app, target, name=name, height=height,
+                material=material, y_margin=y_margin, **kwargs)
+        else:
+            one = next(iter(target.values()))
+            cst_name = build_substrate(self.app, one, name=name, height=height,
+                                        material=material, y_margin=y_margin)
         self._built_parts['substrate'] = cst_name
         self._mark_geometry()
         return cst_name
