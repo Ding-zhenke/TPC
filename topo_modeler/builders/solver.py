@@ -20,7 +20,8 @@ _SOLVER_DISPATCH = {
 
 def configure_solver(app, freq_range=(300, 380), monitors=('E',),
                      calculation_type='TD-S', steady_state=-30,
-                     parallel_threads=1024, gpus=1, component='component1'):
+                     parallel_threads=1024, gpus=1, component='component1',
+                     monitor_frequencies=None):
     """
     配置 CST 求解器。
 
@@ -36,8 +37,13 @@ def configure_solver(app, freq_range=(300, 380), monitors=('E',),
         可选 'TD-S' / 'FD-S' / 'EIGENMODE' / 'IE-S' / 'ASYMPTOTIC'
     :param steady_state: int, 稳态精度（dB），默认 -30
     :param parallel_threads: int, 并行线程数，默认 1024
-    :param gpus: int, GPU 数量，默认 1
+    :param gpus: int, GPU 数量；**0 表示关闭 GPU 加速**（CST 不接受
+        ``MaximumNumberOfGPUs 0``，故 0 会走 `HardwareAcceleration "False"`）
     :param component: str, 归属组件
+    :param monitor_frequencies: list 可选, **显式的监视器频点列表**（GHz）。
+        不传则按 freq_range 取 5 个等分点（起点/1-4/中心/3-4/终点）。
+        与参考工程对比 S 参数时**必须显式给出**，否则两边的监视器频点不同、
+        曲线不可比（参考 AB_feed 用的是 310/312/314/316/318/320 GHz）。
     :return: None
     :raises ValueError: calculation_type 不是受支持的求解器类型
     """
@@ -61,8 +67,11 @@ def configure_solver(app, freq_range=(300, 380), monitors=('E',),
     _configure_solver_advanced(app, steady_state, parallel_threads, gpus)
 
     # 4. 创建场监视器
-    #    频率点取频率范围的中心和几个关键点
-    freq_points = _get_monitor_frequencies(fmin, fmax, monitors)
+    #    显式频点优先；未给出时按频率范围取 5 个等分点
+    if monitor_frequencies is not None:
+        freq_points = [float(f) for f in monitor_frequencies]
+    else:
+        freq_points = _get_monitor_frequencies(fmin, fmax, monitors)
     for mon_type in monitors:
         if mon_type.upper() == 'FARFIELD':
             # Farfield 监视器需要特殊处理
@@ -91,7 +100,7 @@ def _configure_solver_advanced(app, steady_state, parallel_threads, gpus):
     """
     app.set_steady_state_limit(steady_state)
     app.set_parallel_threads(parallel_threads)
-    app.set_gpu_acceleration(gpus)
+    app.set_gpu_acceleration(gpus, enable=bool(gpus))
 
 
 def _get_monitor_frequencies(fmin, fmax, monitors):
