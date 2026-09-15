@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
+r"""
 UnitAntenna — 单元天线端到端模板
 ================================
 复现旧代码 Ant1_D_BA_120D / Ant3_epc 等单元天线的完整建模流程。
@@ -15,7 +15,7 @@ UnitAntenna — 单元天线端到端模板
   8. configure_solver（含 Farfield）
 
 用户使用：
-    >>> from templates import UnitAntenna
+    >>> from topo_templates import UnitAntenna
     >>> ant = UnitAntenna(bend_angle=120, straight_length=18, arm_length=14,
     ...                   output_path=r'D:\out\ant.cst')
     >>> ant.preview()

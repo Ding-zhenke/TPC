@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
+r"""
 StraightWaveguide — 直波导端到端模板
 ====================================
 第一个端到端模板，复现旧代码 AB_feed.ipynb / BA_feed.ipynb 的完整建模流程。
@@ -15,7 +15,7 @@ StraightWaveguide — 直波导端到端模板
   8. configure_solver
 
 用户使用（约 10 行）：
-    >>> from templates import StraightWaveguide
+    >>> from topo_templates import StraightWaveguide
     >>> wg = StraightWaveguide(topology='AB', length=18, output_path=r'D:\out\wg.cst')
     >>> wg.preview()
     >>> wg.build_all()

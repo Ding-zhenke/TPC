@@ -72,11 +72,18 @@ include = [
     "cst_solver*",
     "mesh_grid*",
     "topo_modeler*",
-    "templates*",
+    "topo_templates*",
+    # ⚠️ 旧包名 shim（templates/__init__.py → 转发到 topo_templates），
+    #    必须**一起分发**，否则装了包的人 `import templates` 会直接 ImportError。
+    #    约定保留一个版本周期；到期删除时连同这一行一起删。
+    "templates",
     "tpc_toolkit*",
 ]
 exclude = [
+    # 各包的 tests/ 目录都不是包（没有 __init__.py），这里显式排除以防将来被误加
     "mesh_grid.tri_grid.tests*",
+    "topo_modeler.tests*",
+    "cst_solver.tests*",
 ]
 
 [tool.setuptools]
@@ -89,6 +96,7 @@ cst_solver = ["py.typed", "*.pyi", "simulation/*.pyi"]
 # 测试
 # ============================================================
 [tool.pytest.ini_options]
-testpaths = ["tests", "mesh_grid/tri_grid/tests", "cst_solver/tests", "topo_modeler/tests"]
+testpaths = ["tests", "mesh_grid/tri_grid/tests", "cst_solver/tests",
+             "topo_modeler/tests", "topo_templates/tests"]
 python_files = ["test_*.py"]
 addopts = "-q"

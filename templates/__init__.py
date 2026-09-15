@@ -1,14 +1,38 @@
 # -*- coding: utf-8 -*-
 """
-templates — 拓扑光子晶体端到端模板
-==================================
-一键建模模板：直波导、单元天线、透镜天线等。
+templates — **已弃用的旧包名**（转发到 `topo_templates`）
+=======================================================
+
+本模块只是**一个版本的兼容 shim**：包名 `templates` 过于通用，装进 site-packages
+后有与第三方包重名的风险（`import templates` 命中谁取决于 `sys.path` 顺序），
+已于 2026-09-15 更名为 [`topo_templates`](../topo_templates/__init__.py)。
+
+请改用::
+
+    from topo_templates import StraightWaveguide, UnitAntenna   # ✅ 新名
+
+旧写法仍然可用，但会发 `DeprecationWarning`::
+
+    from templates import StraightWaveguide                    # ⚠️ 已弃用
+
+**移除计划**：下一个版本周期内删除本 shim（见
+`docs/next_plan/stages/08_阶段8_复杂结构与旧代码迁移.md` 的「包名风险到期」条目）。
 
 @author: PC
 """
 
-from templates.straight_waveguide import StraightWaveguide
-from templates.unit_antenna import UnitAntenna
+import warnings
+
+warnings.warn(
+    "包名 'templates' 已弃用，请改用 'topo_templates'：\n"
+    "    from topo_templates import StraightWaveguide, UnitAntenna\n"
+    "本 shim 只保留一个版本周期，之后会被删除。",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+from topo_templates.straight_waveguide import StraightWaveguide  # noqa: E402
+from topo_templates.unit_antenna import UnitAntenna              # noqa: E402
 
 __all__ = [
     "StraightWaveguide",

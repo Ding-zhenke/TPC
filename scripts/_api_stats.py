@@ -11,9 +11,10 @@ TARGETS = OrderedDict([
     ("cst_solver", "cst_solver"),
     ("mesh_grid", "mesh_grid"),
     ("topo_modeler", "topo_modeler"),
-    ("templates", "templates"),
+    ("topo_templates", "topo_templates"),
     ("tpc_toolkit", "tpc_toolkit"),
 ])
+# 注：旧包名 shim `templates/` 只做转发、不含任何定义，故不列入统计。
 
 
 def scan(path):

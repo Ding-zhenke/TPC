@@ -15,7 +15,7 @@ tpc_toolkit — TPC 独立工具层（不依赖 CST）
     cst_solver     → CST 会话封装（需要 CST 安装）
     mesh_grid      → 晶格/网格算法（纯计算）
     topo_modeler   → 建模引擎（依赖 cst_solver + mesh_grid）
-    templates      → 端到端模板（依赖 topo_modeler）
+    topo_templates → 端到端模板（依赖 topo_modeler；旧名 templates 已弃用）
     tpc_toolkit    → 数据与优化工具（本包，独立）
 
 快速开始:
