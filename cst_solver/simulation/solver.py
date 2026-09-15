@@ -20,10 +20,15 @@ class SolverMixin:
         保留原函数名以兼容旧代码
 
         配置 T-Solver（时域求解器）的基本参数：求解方法、精度
+
+        注意：``Solver.Method`` 只接受 ``"Hexahedral"`` 与
+        ``"Hexahedral TLM"`` 两个取值，写 ``"T-Solver"`` 会被 CST 拒绝并抛
+        ``Invalid method. Valid choices are: "Hexahedral" and "Hexahedral TLM"``。
+        时域求解器即六面体 FIT，故取 ``"Hexahedral"``。
         """
         f1 = """With Solver
      .Reset
-     .Method "T-Solver"
+     .Method "Hexahedral"
      .Accuracy "-60"
      .CalculateAllModes "True"
      .DetermineFreq "True"

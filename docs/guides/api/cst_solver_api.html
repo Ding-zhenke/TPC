@@ -423,7 +423,7 @@ body {
     <div class="header-stats">
         <span><i class="fas fa-code"></i> 219 个方法</span>
         <span><i class="fas fa-layer-group"></i> 23 个类别</span>
-        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-15 13:11:14</span>
+        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-15 13:37:27</span>
     </div>
     <div class="search-bar">
         <i class="fas fa-search"></i>
@@ -482,7 +482,11 @@ body {
                         <div class="signature">T_solver(self)</div>
                     </div>
                     <div class="desc-text"><p>时域求解器配置接口</p><p>保留原函数名以兼容旧代码
-配置 T-Solver（时域求解器）的基本参数：求解方法、精度</p></div>
+配置 T-Solver（时域求解器）的基本参数：求解方法、精度
+注意：``Solver.Method`` 只接受 ``&quot;Hexahedral&quot;`` 与
+``&quot;Hexahedral TLM&quot;`` 两个取值，写 ``&quot;T-Solver&quot;`` 会被 CST 拒绝并抛
+``Invalid method. Valid choices are: &quot;Hexahedral&quot; and &quot;Hexahedral TLM&quot;``。
+时域求解器即六面体 FIT，故取 ``&quot;Hexahedral&quot;``。</p></div>
                     
                 <div class="alias-info">
                     <i class="fas fa-info-circle"></i>
@@ -4874,7 +4878,10 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                         <div class="section-title">签名</div>
                         <div class="signature">paras(self, name, value, log_flag=0)</div>
                     </div>
-                    <div class="desc-text"><p>批量创建/修改全局仿真参数</p></div>
+                    <div class="desc-text"><p>批量创建/修改全局仿真参数</p><p>CST 的 ``StoreParameters`` 只接受**两个等长数组**
+（``string_array names, string_array values``），不接受字典，
+传入字典会报 ``type must be array, but is object``。
+本方法负责把字典形式归一化成两个数组再下发。</p></div>
                     
                 <div class="alias-info">
                     <i class="fas fa-info-circle"></i>
@@ -4887,7 +4894,7 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                     <table class="params-table">
                         <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
                         <tbody><tr><td class="param-name">name</td><td></td><td class="param-desc">list[str] 或 dict, 参数名称列表或参数字典 {名称: 值, ...}</td></tr>
-<tr><td class="param-name">value</td><td></td><td class="param-desc">list 或 None, 参数值列表（当 name 为 dict 时忽略）</td></tr>
+<tr><td class="param-name">value</td><td></td><td class="param-desc">list 或 None, 参数值列表（当 name 为 dict 时可传 None）</td></tr>
 <tr><td class="param-name">log_flag</td><td><span style="color:#f59e0b;font-size:12px">= 0</span></td><td class="param-desc">int, 0-不刷新 1-全量刷新工程历史</td></tr>
 </tbody>
                     </table>
@@ -6456,16 +6463,20 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                 <div class="method-details">
                     <div class="section">
                         <div class="section-title">签名</div>
-                        <div class="signature">save(self, filename=None)</div>
+                        <div class="signature">save(self, filename=None, include_results=True, allow_overwrite=False)</div>
                     </div>
-                    <div class="desc-text"><p>保存当前 CST 工程</p></div>
+                    <div class="desc-text"><p>保存当前 CST 工程</p><p>CST 的工程对象只提供 ``Project.save(path, include_results, allow_overwrite)``，
+**没有** ``save_as`` —— 早期实现误用 ``save_as``，带路径保存时必抛
+``AttributeError: '_cst_interface.Project' object has no attribute 'save_as'``。</p></div>
                     
                     
                 <div class="section">
                     <div class="section-title">参数</div>
                     <table class="params-table">
                         <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">filename</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">str 可选, 另存为路径，不传则覆盖保存</td></tr>
+                        <tbody><tr><td class="param-name">filename</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">str 可选, 另存为路径；不传则保存到当前工程路径</td></tr>
+<tr><td class="param-name">include_results</td><td><span style="color:#f59e0b;font-size:12px">= True</span></td><td class="param-desc">bool, 是否连同仿真结果一起保存，默认 True</td></tr>
+<tr><td class="param-name">allow_overwrite</td><td><span style="color:#f59e0b;font-size:12px">= False</span></td><td class="param-desc">bool, 目标文件已存在时是否覆盖，默认 False</td></tr>
 </tbody>
                     </table>
                 </div>
@@ -6487,7 +6498,7 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                 <div class="method-details">
                     <div class="section">
                         <div class="section-title">签名</div>
-                        <div class="signature">save_as(self, filename)</div>
+                        <div class="signature">save_as(self, filename, include_results=True, allow_overwrite=False)</div>
                     </div>
                     <div class="desc-text"><p>将当前 CST 工程另存为</p></div>
                     
@@ -6497,6 +6508,8 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                     <table class="params-table">
                         <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
                         <tbody><tr><td class="param-name">filename</td><td></td><td class="param-desc">str, 保存路径</td></tr>
+<tr><td class="param-name">include_results</td><td><span style="color:#f59e0b;font-size:12px">= True</span></td><td class="param-desc">bool, 是否连同仿真结果一起保存，默认 True</td></tr>
+<tr><td class="param-name">allow_overwrite</td><td><span style="color:#f59e0b;font-size:12px">= False</span></td><td class="param-desc">bool, 目标文件已存在时是否覆盖，默认 False</td></tr>
 </tbody>
                     </table>
                 </div>

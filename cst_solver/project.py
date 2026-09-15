@@ -52,22 +52,36 @@ class ProjectMixin:
         self.cst_file.close()
         self.project.close()
 
-    def save(self, filename=None):
+    def save(self, filename=None, include_results=True, allow_overwrite=False):
         """
         保存当前 CST 工程
-        :param filename: str 可选, 另存为路径，不传则覆盖保存
+
+        CST 的工程对象只提供 ``Project.save(path, include_results, allow_overwrite)``，
+        **没有** ``save_as`` —— 早期实现误用 ``save_as``，带路径保存时必抛
+        ``AttributeError: '_cst_interface.Project' object has no attribute 'save_as'``。
+
+        :param filename: str 可选, 另存为路径；不传则保存到当前工程路径
+        :param include_results: bool, 是否连同仿真结果一起保存，默认 True
+        :param allow_overwrite: bool, 目标文件已存在时是否覆盖，默认 False
         """
         if filename:
-            self.cst_file.save_as(os.path.abspath(filename))
+            self.cst_file.save(os.path.abspath(filename),
+                               include_results=include_results,
+                               allow_overwrite=allow_overwrite)
         else:
             self.cst_file.save()
 
-    def save_as(self, filename):
+    def save_as(self, filename, include_results=True, allow_overwrite=False):
         """
         将当前 CST 工程另存为
+
         :param filename: str, 保存路径
+        :param include_results: bool, 是否连同仿真结果一起保存，默认 True
+        :param allow_overwrite: bool, 目标文件已存在时是否覆盖，默认 False
         """
-        self.save(filename)
+        self.save(filename,
+                  include_results=include_results,
+                  allow_overwrite=allow_overwrite)
 
     def new_project(self, project_type=None):
         """

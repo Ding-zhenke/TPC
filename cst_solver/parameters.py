@@ -65,11 +65,32 @@ class ParametersMixin:
         """
         批量创建/修改全局仿真参数
 
+        CST 的 ``StoreParameters`` 只接受**两个等长数组**
+        （``string_array names, string_array values``），不接受字典，
+        传入字典会报 ``type must be array, but is object``。
+        本方法负责把字典形式归一化成两个数组再下发。
+
         :param name: list[str] 或 dict, 参数名称列表或参数字典 {名称: 值, ...}
-        :param value: list 或 None, 参数值列表（当 name 为 dict 时忽略）
+        :param value: list 或 None, 参数值列表（当 name 为 dict 时可传 None）
         :param log_flag: int, 0-不刷新 1-全量刷新工程历史
+        :raises ValueError: name 为 list 时 value 缺失或与 name 长度不一致
         """
-        self.cst_file.model3d.StoreParameters(name, value)
+        if isinstance(name, dict):
+            names = [str(k) for k in name.keys()]
+            values = [str(name[k]) for k in name.keys()]
+        else:
+            names = [str(k) for k in name]
+            if value is None:
+                raise ValueError(
+                    "paras() 的 name 为列表时必须同时给出等长的 value 列表；"
+                    "若要按 {名称: 值} 形式传参，请把字典直接传给 name")
+            values = [str(v) for v in value]
+            if len(values) != len(names):
+                raise ValueError(
+                    f"paras() 的 name 与 value 长度不一致："
+                    f"{len(names)} 个名称 vs {len(values)} 个值")
+
+        self.cst_file.model3d.StoreParameters(names, values)
         if log_flag == 1:
             self.cst_file.model3d.full_history_rebuild()
 
