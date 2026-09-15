@@ -25,6 +25,19 @@ from topo_modeler.builders import (
 )
 
 
+def _guard_state(app):
+    """
+    取 ``cst_solver`` 守卫状态（方案 A：零侵入 ``cst_solver`` 的接线）。
+
+    ``app`` 为 None（无 CST 环境）时返回一个一次性状态，调用方无需分支判断。
+
+    :param app: cst_solver.setup 实例或 None
+    :return: cst_solver._guards.GuardState
+    """
+    from cst_solver._guards import get_guard_state
+    return get_guard_state(app)
+
+
 class TopoModeler:
     """
     拓扑光子晶体核心建模器。
@@ -172,6 +185,15 @@ class TopoModeler:
     # 流水线方法（按顺序调用 builders）
     # ================================================================
 
+    def _mark_geometry(self):
+        """
+        告诉守卫层「几何刚建过」—— 此后**再改已存在的参数**会被判为需重建。
+
+        这是阶段 5 守卫层的方案 A 接线：``cst_solver`` 源码不做改动，
+        由 ``topo_modeler`` 在每个 builder 之后显式标记。
+        """
+        _guard_state(self.app).mark_geometry_built()
+
     def build_substrate(self, name='substrate', height='h',
                         material='Silicon (lossy)', y_margin='e2'):
         """
@@ -187,6 +209,7 @@ class TopoModeler:
         cst_name = build_substrate(self.app, self.path, name=name, height=height,
                                     material=material, y_margin=y_margin)
         self._built_parts['substrate'] = cst_name
+        self._mark_geometry()
         return cst_name
 
     def build_vpc_regions(self, name_prefix='vpc', height='h',
@@ -205,6 +228,7 @@ class TopoModeler:
                                          height=height, material=material, y_margin=y_margin)
         self._built_parts['vpca'] = vpca
         self._built_parts['vpcb'] = vpcb
+        self._mark_geometry()
         return vpca, vpcb
 
     def build_crystal(self, topology=None, lattice='a', height='h',
@@ -228,6 +252,7 @@ class TopoModeler:
                                             y_margin=y_margin)
         self._built_parts['crystal_a'] = ca
         self._built_parts['crystal_b'] = cb
+        self._mark_geometry()
         return ca, cb
 
     def build_feed(self, feed_type=None, name=None, **params):
@@ -246,6 +271,7 @@ class TopoModeler:
             feed_type = 'ab_elliptical' if self.model_type == 'waveguide' else 'ba_tapered'
         cst_name = _build_feed_func(self.app, feed_type=feed_type, name=name, **params)
         self._built_parts['feed'] = cst_name
+        self._mark_geometry()
         return cst_name
 
     def build_waveguide(self, name='wg1', material='Copper (annealed)', **params):
@@ -260,17 +286,19 @@ class TopoModeler:
         self._check_path()
         cst_name = _build_waveguide_func(self.app, name=name, material=material, **params)
         self._built_parts['waveguide'] = cst_name
+        self._mark_geometry()
         return cst_name
 
     def build_lens(self, lens_type='grin', method='hexagon', **params):
         """
         构建 GRIN 透镜。
 
-        注意：阶段 2 暂未实现，将在阶段 4 完成。
+        注意：本方案阶段编号下属于**阶段 6（复杂模板层）**，当前未实现。
+        （旧文档里写作「阶段 4」—— 编号对照见 `docs/next_plan/README.md` §3）
 
-        :raises NotImplementedError: 阶段 2 未实现
+        :raises NotImplementedError: 阶段 6 未实现
         """
-        raise NotImplementedError("build_lens 将在阶段 4 实现")
+        raise NotImplementedError("build_lens 将在阶段 6（复杂模板层）实现")
 
     def add_ports(self, auto=True, waveguide_name=None, **params):
         """
@@ -365,11 +393,56 @@ class TopoModeler:
         """
         运行仿真。
 
+        ⚠️ ``cst_solver`` 的守卫层会在这里拦截「参数改过但工程历史没重建」的情况
+        （陷阱 T2）：``mode='strict'`` 抛 ``CstGuardError``，``mode='warn'`` 只警告。
+        正确的改参姿势是先 ``self.app.update()``（或 ``para(..., log_flag=1)``）。
+
         :return: self
         """
         if self.app is not None:
             self.app.run()
         return self
+
+    def validate(self):
+        """
+        结构化验收：读 CST 消息 + 跑 ``Rebuild()``。
+
+        等价于 ``self.app.validate_model()``；无 CST 环境时返回一个
+        说明性的 error 结果而不是抛异常，方便在无 CST 的机器上做流程编排。
+
+        :return: dict, 见 ``cst_solver.validation.ValidationMixin.validate_model``
+        """
+        if self.app is None:
+            return {'status': 'error', 'messages': ['无 CST 环境，app 为 None'],
+                    'rebuild_ok': False, 'before': [], 'guard': {}}
+        return self.app.validate_model()
+
+    def close(self):
+        """
+        关闭 CST 工程与设计环境，释放资源（阶段 5.7.1）。
+
+        ⚠️ **先 save() 再 close()** —— 关闭之后 ``save()`` 不会写出任何东西，
+        守卫层会直接报错。有未保存改动时 ``close()`` 会给一条 warning。
+
+        :return: self
+        """
+        if self.app is not None:
+            self.app.close()
+        self._cst_path = None
+        return self
+
+    def __enter__(self):
+        """支持 with 语句（保证工程一定被关闭）。"""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """退出时关闭工程；关闭本身出错不掩盖原始异常。"""
+        try:
+            self.close()
+        except Exception:
+            if exc_type is None:
+                raise
+        return False
 
     def preview(self, ax=None, show_grid=True):
         """
@@ -386,21 +459,21 @@ class TopoModeler:
         """
         读取仿真结果。
 
-        注意：阶段 2 暂未实现，将在阶段 5（工具层）完成。
+        注意：属于**阶段 7（工具层）**，当前未实现。
 
-        :raises NotImplementedError: 阶段 2 未实现
+        :raises NotImplementedError: 阶段 7 未实现
         """
-        raise NotImplementedError("read_results 将在阶段 5 实现（ResultReader）")
+        raise NotImplementedError("read_results 将在阶段 7（工具层）实现（ResultReader）")
 
     def plot_results(self):
         """
         自动绘制结果图。
 
-        注意：阶段 2 暂未实现，将在阶段 5 完成。
+        注意：属于**阶段 7（工具层）**，当前未实现。
 
-        :raises NotImplementedError: 阶段 2 未实现
+        :raises NotImplementedError: 阶段 7 未实现
         """
-        raise NotImplementedError("plot_results 将在阶段 5 实现")
+        raise NotImplementedError("plot_results 将在阶段 7（工具层）实现")
 
     # ================================================================
     # 工具方法

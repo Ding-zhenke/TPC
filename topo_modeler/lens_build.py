@@ -82,10 +82,10 @@ lens_col_max = int(np.ceil((lens_shift + lens_ec_a) / lens_a2)) + 1
 lens_d_out = lens_ec_a                                  # ← 想全长度渐变就改成 lens_shift + lens_ec_a
 
 print(f'GRIN 透镜 : 椭圆半轴 {lens_ec_a:.4f} × {lens_ec_b:.4f} mm，离心率 {lens_ecc:.4f}，'
-      f'焦距 ec_c = {lens_shift:.4f} mm，孔半径 {lens_r[0] * 1e3:.2f} → {lens_r[1] * 1e3:.2f} µm')
+      f'焦距 ec_c = {lens_shift:.4f} mm，孔半径 {lens_r[0] * 1e3:.2f} → {lens_r[1] * 1e3:.2f} um')
 print(f'            近焦点 ρ = {lens_rho:.4f} mm（= 顶点），椭圆中心 ρ = {lens_rho + lens_shift:.4f} mm，'
       f'远焦点 ρ = {lens_rho + 2 * lens_shift:.4f} mm')
-print(f'孔网格    : 列 {lens_col_min} ~ {lens_col_max}（格距 {lens_a2:.4f} mm）⇒ '
+print(f'孔网格    : 列 {lens_col_min} ~ {lens_col_max}（格距 {lens_a2:.4f} mm）=> '
       f'x ∈ [{(lens_col_min - 0.5) * lens_a2:+.3f}, {(lens_col_max + 0.5) * lens_a2:+.3f}] mm，'
       f'必须覆盖椭圆 x ∈ [{lens_shift - lens_ec_a:+.4f}, {lens_shift + lens_ec_a:+.4f}] mm')
 
@@ -127,7 +127,7 @@ _polys_dxf = [create_hex_polygon(center=(float(x), float(y)), cell_width=float(r
 save_to_dxf(_polys_dxf, lens_dxf, layer_name='gridlens', precision=lens_dxf_precision)
 print(f'孔阵列   : 网格 {len(_xs)} 个 → 椭圆内 {len(_polys)} 个；'
       f'DXF 只写 y≥0 的 {len(_polys_dxf)} 个'
-      f'（坐标保留 {lens_dxf_precision} 位小数 ⇒ {0.5 * 10 ** (-lens_dxf_precision) * 1e3:.1f} µm，'
+      f'（坐标保留 {lens_dxf_precision} 位小数 => {0.5 * 10 ** (-lens_dxf_precision) * 1e3:.1f} um，'
       f'文件 {os.path.getsize(lens_dxf) / 1024:.0f} KB；另一半在 CST 里镜像复制）')
 
 # ---- ③ 预览图（只画几何，方便单独调节；不涉及 CST）----
@@ -192,8 +192,8 @@ _wedge = _ShpPoly([(lens_rho, 0.0),                                       # 楔�
 _lens_region = _ell_poly.difference(_wedge)                               # 裁剪后的透镜（全局）
 _hex_poly = _ShpPoly(hex_pts(R_big, 0))                                   # 大六边形（顶点在 0°）
 _ov = _lens_region.intersection(_hex_poly).area
-print(f'裁剪自查 : 透镜与大六边形的重叠面积 = {_ov:.8f} mm² '
-      + ('✓ 无重叠（重叠部分已全部剪掉）' if _ov < 1e-3 else '✗ 仍有重叠，需要检查裁剪角'))
+print(f'裁剪自查 : 透镜与大六边形的重叠面积 = {_ov:.8f} mm^2 '
+      + ('[OK] 无重叠（重叠部分已全部剪掉）' if _ov < 1e-3 else '[x] 仍有重叠，需要检查裁剪角'))
 
 # ---- ⑤ 纯几何自查：孔阵列是否**遍布整个椭圆**（无成片实心区）----
 #   判据：透镜内任一点到**最近孔心**的最远距离 d_max
@@ -219,8 +219,8 @@ except ImportError:                                     # 退回分块 numpy（�
 _dmax, _d_theory = _dmin.max(), lens_a2 / np.sqrt(3)
 print(f'孔阵覆盖自查 : 透镜内 {_PX2.size} 个采样点到最近孔心的最远距离 = {_dmax:.4f} mm，'
       f'完好三角格子的理论值 格距/√3 = {_d_theory:.4f} mm（{_dmax / _d_theory:.2f}×）')
-print('              ' + ('✓ 孔阵列遍布整个椭圆，无成片实心区' if _dmax <= 1.05 * _d_theory else
-      f'✗ 有孔铺不到的区域：最远点在 x = {_PX2[_dmin.argmax()]:+.3f}, y = {_PY2[_dmin.argmax()]:+.3f} mm'))
+print('              ' + ('[OK] 孔阵列遍布整个椭圆，无成片实心区' if _dmax <= 1.05 * _d_theory else
+      f'[x] 有孔铺不到的区域：最远点在 x = {_PX2[_dmin.argmax()]:+.3f}, y = {_PY2[_dmin.argmax()]:+.3f} mm'))
 
 # ---- ⑥ 纯几何自查：上半 + y 镜像 == 完整孔阵列（保证 DXF 只写一半不漏孔）----
 from shapely.affinity import scale as _scale
@@ -228,9 +228,9 @@ _half_u = unary_union(_polys_dxf)                                    # DXF 里�
 _rebuilt = unary_union([_half_u, _scale(_half_u, yfact=-1, origin=(0, 0))])   # 镜像拼回整体
 _full_u = unary_union(_polys)
 _diff = _rebuilt.symmetric_difference(_full_u).area
-print(f'镜像自查 : 上半 {len(_polys_dxf)} 个 ∪ y镜像  vs  完整 {len(_polys)} 个 ⇒ '
-      f'差异面积 = {_diff:.3e} mm² '
-      + ('✓ 完全一致（DXF 只写一半即可）' if _diff < 1e-6 else '✗ 不一致，不能用镜像简化！'))
+print(f'镜像自查 : 上半 {len(_polys_dxf)} 个 ∪ y镜像  vs  完整 {len(_polys)} 个 => '
+      f'差异面积 = {_diff:.3e} mm^2 '
+      + ('[OK] 完全一致（DXF 只写一半即可）' if _diff < 1e-6 else '[x] 不一致，不能用镜像简化！'))
 
 # ============================================================
 # 9b-② 渐变折射率椭圆透镜：CST 建模（消费上一个单元生成的 DXF）
@@ -270,7 +270,7 @@ _t0 = _time.perf_counter()
 app.dxf_import(lens_dxf, add='True', component='gridlens', height='h')
 _dt_dxf = _time.perf_counter() - _t0
 cst_log('DXF 导入（孔阵列：DXF 里只有 y≥0 的一半）')
-print(f'⏱ DXF 导入耗时 = {_dt_dxf:.1f} s'
+print(f'[t] DXF 导入耗时 = {_dt_dxf:.1f} s'
       f'（{len(_polys_dxf)} 条多段线，{os.path.getsize(lens_dxf) / 1024:.0f} KB，'
       f'precision={lens_dxf_precision}）')
 
@@ -281,7 +281,7 @@ _t0 = _time.perf_counter()
 app.mirror('import_1', [0, 0, 0], [0, 1, 0], component='gridlens', copy=True, unite=True)
 _dt_mir = _time.perf_counter() - _t0
 cst_log('孔阵列 y 镜像复制（补齐下半）')
-print(f'⏱ y 镜像复制耗时 = {_dt_mir:.1f} s（{len(_polys_dxf)} → {len(_polys)} 个孔）')
+print(f'[t] y 镜像复制耗时 = {_dt_mir:.1f} s（{len(_polys_dxf)} → {len(_polys)} 个孔）')
 
 # ---- ② 登记椭圆相关的 CST 参数（全部由 a 与孔网格格距推出，无硬编码数值）----
 app.para('ratio', lens_ratio, expression='透镜孔网格细化倍率：格距 a2 = a/ratio')
@@ -305,7 +305,7 @@ _t0 = _time.perf_counter()
 app.subtract('lens_epc', 'import_1', component2='gridlens')         # 椭圆硅片 − 孔阵列 = GRIN 透镜
 _dt_sub = _time.perf_counter() - _t0
 cst_log('椭圆包络 − 孔阵列')
-print(f'⏱ 椭圆 − 孔阵列（布尔减）耗时 = {_dt_sub:.1f} s')
+print(f'[t] 椭圆 - 孔阵列（布尔减）耗时 = {_dt_sub:.1f} s')
 
 # ---- ③ 剪掉与正六边形重叠的部分（顶点内角 120°，内部为 120°→240° 的楔形）----
 _lens_cut_pts = [[0, 0],
@@ -320,7 +320,7 @@ _t0 = _time.perf_counter()
 app.subtract('lens_epc', 'lens_hex_cut')                            # 只去掉落在六边形内的那一块
 _dt_cut = _time.perf_counter() - _t0
 cst_log('剪掉与正六边形重叠的部分')
-print(f'⏱ 楔形裁剪耗时 = {_dt_cut:.1f} s')
+print(f'[t] 楔形裁剪耗时 = {_dt_cut:.1f} s')
 
 # ---- ④ 移到 0° 顶点（此时局部原点就是近焦点）----
 _t0 = _time.perf_counter()
@@ -328,7 +328,7 @@ app.translate('lens_epc', ['0', '0', '-h/2'], copy=False, unite=False, log_flag=
 app.translate('lens_epc', ['Rbig', '0', '0'], copy=False, unite=False, log_flag=1)   # 近焦点 → 顶点
 _dt_tr = _time.perf_counter() - _t0
 cst_log('透镜移到 0° 顶点（近焦点在顶点）')
-print(f'⏱ 平移耗时 = {_dt_tr:.1f} s')
+print(f'[t] 平移耗时 = {_dt_tr:.1f} s')
 
 # ---- ⑤ 旋转复制 ×5 ⇒ 6 个顶点各 1 个 ----
 #       ★ unite=False：6 个互不接触的独立实体（网格/求解与合并等价）
@@ -337,11 +337,11 @@ _t0 = _time.perf_counter()
 app.rotation('lens_epc', [0, 0, 60], repetition=5, copy=True, unite=False)
 _dt_rot = _time.perf_counter() - _t0
 cst_log('透镜 旋转复制 ×6（unite=False）')
-print(f'⏱ 旋转复制 ×6 耗时 = {_dt_rot:.1f} s（unite=False ⇒ 不做布尔并）')
+print(f'[t] 旋转复制 ×6 耗时 = {_dt_rot:.1f} s（unite=False => 不做布尔并）')
 print(f'已建 6 个 GRIN 椭圆透镜：近焦点 ρ = {lens_rho:.4f} mm（= 大六边形顶点），'
       f'椭圆中心 ρ = {lens_rho + lens_shift:.4f} mm，远焦点 ρ = {lens_rho + 2 * lens_shift:.4f} mm；'
       f'与六边形重叠的部分已剪掉；孔阵列 = DXF 上半 {len(_polys_dxf)} 个 + y 镜像')
-print(f'⏱ 本单元总耗时 = {_time.perf_counter() - _t_all:.1f} s'
+print(f'[t] 本单元总耗时 = {_time.perf_counter() - _t_all:.1f} s'
       f'（DXF 导入 {_dt_dxf:.1f} + 镜像 {_dt_mir:.1f} + 减孔 {_dt_sub:.1f}')
 print(f'   + 楔形裁剪 {_dt_cut:.1f} + 平移 {_dt_tr:.1f} + 旋转复制 {_dt_rot:.1f}）')
 print('CST 参数个数 =', _m3.GetNumberOfParameters())
