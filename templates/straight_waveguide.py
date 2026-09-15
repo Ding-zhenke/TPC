@@ -32,9 +32,9 @@ from mesh_grid.tri_grid import TopoPath
 from topo_modeler import TopoModeler, NameManager
 from topo_modeler.builders import (
     build_materials,
-    build_substrate,
     build_vpc_regions,
     build_topological_crystal,
+    intersect_crystal_with_vpc,
     build_feed,
     build_waveguide,
     add_ports_for_straight_waveguide,
@@ -189,7 +189,7 @@ class StraightWaveguide:
 
     def build_all(self):
         """
-        端到端建模：参数定义 → 材料 → 基板 → VPC → 晶体 → feed → waveguide → mirror → ports → 整合 → 求解器。
+        端到端建模：参数定义 → 材料 → 基板 → VPC → 晶体 → 晶体∩VPC → feed → waveguide → mirror → ports → 整合 → 求解器。
         """
         if self.app is None:
             raise RuntimeError("CST 初始化失败，无法建模。请检查 template_cst 路径。")
@@ -204,37 +204,55 @@ class StraightWaveguide:
         #    不带材料，缺了这一步第一条 extrude 就会报材料不存在）
         build_materials(app)
 
-        # 3. 基板
-        build_substrate(app, self.path, name='substrate')
+        # 3. VPC 区域的**半宽**必须覆盖整个晶体阵列
+        #    参考工程 AB_feed.cst 的 ymax_up = e2*y1 = 14*e2 ≈ 2.94（14 行晶格），
+        #    而 y_margin 默认值 'e2' 只有 1 行宽（0.21）—— 会让 14 行的晶体阵列
+        #    远远落在基板之外。故按 width（= 旧代码 y1）取值。
+        y_margin = f'{self.width}*e2'
 
-        # 4. VPC 区域（A + B）
-        #    注意：AB/BA 的大孔小孔分配由 build_topological_crystal 负责，
-        #    build_vpc_regions 只按路径上/下半区生成区域，不接受 topology 参数。
-        vpca_name, vpcb_name = build_vpc_regions(app, self.path)
+        # 4. VPC 区域（A=下半区 / B=上半区，语义对齐参考工程，见 build_vpc_regions）
+        #
+        #    ⚠️ 这里**不再单独建 substrate**（2026-09-15，对齐参考工程）：
+        #    参考工程 `AB_feed.cst` 的实体清单里**没有 substrate**，它的硅就是
+        #    `vpca`（= 下半区∩晶体A + feed1 + 上半区∩晶体B）；晶体阵列经
+        #    `vpca intersect g1A` / `vpcb intersect g1B` 裁剪成**图形化**的硅。
+        #    若本库额外保留一块整幅未图形化的 substrate（同为 Silicon (lossy)），
+        #    它与图形化区域求并会**把光子晶体的孔洞全部填平**，器件失去周期性。
+        #    build_substrate() 仍保留在库中（unit_antenna 等其它器件可能仍需要），
+        #    只是本模板用参考工程的做法：两个 VPC 区域即硅本体。
+        vpca_name, vpcb_name = build_vpc_regions(app, self.path, y_margin=y_margin)
 
         # 5. 光子晶体阵列
-        build_topological_crystal(app, self.path, topology=self.topology,
-                                   xup=self.xup, yup=self.yup, ydn=self.ydn)
+        crystal_a_name, crystal_b_name = build_topological_crystal(
+            app, self.path, topology=self.topology,
+            xup=self.xup, yup=self.yup, ydn=self.ydn)
 
-        # 6. 馈源（AB 型椭圆探针）
+        # 6. 晶体阵列与 VPC 区域求交
+        #    参考工程：vpca intersect g1A / vpcb intersect g1B
+        #    （Intersect 结果留第一个操作数，故 VPC 区域名被保留，晶体名被消耗）
+        intersect_crystal_with_vpc(app, crystal_a_name, crystal_b_name,
+                                   vpca_name, vpcb_name)
+
+        # 7. 馈源（AB 型椭圆探针）
         feed_name = build_feed(app, feed_type=self.feed_type, name='feed1')
 
-        # 7. 空心矩形波导
+        # 8. 空心矩形波导
         wg_name = build_waveguide(app, name='wg1')
 
-        # 8. mirror feed + waveguide 到右端（中心点 p2x/2，法向量 x）
+        # 9. mirror feed + waveguide 到右端（中心点 p2x/2，法向量 x）
+        #     注：参考写 x1*a/2，与本库 p2x/2 数值相同（均为 4.365/2 = 2.1825）
         mirror_center = ['p2x/2', '0', '0']
         app.mirror(feed_name, mirror_center, ['1', '0', '0'], copy=True, unite=True)
         app.mirror(wg_name, mirror_center, ['1', '0', '0'], copy=True, unite=True)
 
-        # 9. 端口（2 个：入口 + 出口）
+        # 10. 端口（2 个：入口 + 出口）
         add_ports_for_straight_waveguide(app, waveguide_name=wg_name)
 
-        # 10. 整合：vpca + feed + vpcb
+        # 11. 整合：vpca + feed + vpcb
         app.add(vpca_name, feed_name)
         app.add(vpca_name, vpcb_name)
 
-        # 11. 求解器配置
+        # 12. 求解器配置
         configure_solver(app, freq_range=self.freq_range, monitors=self.monitors)
 
         self._built = True
