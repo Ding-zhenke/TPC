@@ -46,7 +46,8 @@ BOX_COMPONENT = 'component1'
 TOP_CENTER = (0.5, 0.5, 1.0)
 
 _results = []
-_app = None          # 模块级持有，供 __main__ 的 finally 统一清理
+_app = None                 # 模块级持有，供收尾统一清理
+_baseline_de_pids = set()   # 开跑前已存在的 DE，收尾时绝不触碰
 
 
 def record(item, status, detail):
@@ -76,9 +77,21 @@ def main():
 
     # ---- 建空白工程 + 一个方块 ----
     global _app
+    # 先记录基线：收尾只关本次新增的 DE，不碰用户既有的 CST 会话
+    try:
+        from cst.interface import running_design_environments
+        _baseline_de_pids.update(running_design_environments())
+        print(f'开跑前已存在的 DE：{sorted(_baseline_de_pids) or "（无）"}')
+    except Exception as exc:
+        print(f'读取 DE 基线失败（收尾将只依赖 app.close()）：{exc!r}')
+
     app = setup()                 # 只初始化设计环境，不打开既有工程
-    _app = app                    # 交给 __main__ 的 finally 清理
+    _app = app                    # 交给收尾统一清理
     app.new_project()             # 新建空白工程，避免污染任何正式工程
+    if getattr(app, 'cst_file', None) is None:
+        record('前置：新建空白工程', 'FAIL',
+               'new_project() 没抛异常但没有得到 cst_file，后续无法继续')
+        return
 
     app.square(BOX['x1'], BOX['x2'], BOX['y1'], BOX['y2'],
                BOX['z1'], BOX['z2'], BOX_NAME, BOX_COMPONENT, 'PEC')
@@ -233,16 +246,45 @@ def main():
     print('  · Rebuild FAIL→ 上述 VBA 拼写必须修正后才能入库')
 
 
+def _cleanup():
+    """
+    收尾：关闭本次核验产生的工程与设计环境。
+
+    两级策略，绝不触碰既有 CST 会话：
+      1. 优先 ``app.close()``（正常路径）；
+      2. 若 ``cst_file`` 尚未建立（例如 new_project 就失败了），
+         兜底关闭**基线之外**新出现的 DE。
+    """
+    if _app is not None:
+        try:
+            if getattr(_app, 'cst_file', None) is not None:
+                _app.close()
+                print('\n工程与设计环境已关闭。')
+                return
+        except Exception as exc:
+            print(f'\napp.close() 出错：{exc!r}')
+
+    try:
+        from cst.interface import running_design_environments, DesignEnvironment
+        leftovers = [p for p in running_design_environments()
+                     if p not in _baseline_de_pids]
+        if not leftovers:
+            print('\n没有需要兜底关闭的 DE。')
+            return
+        for pid in leftovers:
+            try:
+                DesignEnvironment.connect(pid).close()
+                print(f'已兜底关闭本次新建的 DE：{pid}')
+            except Exception as exc:
+                print(f'兜底关闭 DE {pid} 失败，请手动关掉该 CST 窗口：{exc!r}')
+    except Exception as exc:
+        print(f'兜底清理失败：{exc!r}')
+
+
 if __name__ == '__main__':
     try:
         main()
     except Exception:
         traceback.print_exc()
     finally:
-        # 清理：关闭工程与设计环境，避免留下悬挂的 CST 进程
-        if _app is not None:
-            try:
-                _app.close()
-                print('\n工程与设计环境已关闭。')
-            except Exception as exc:
-                print(f'\n关闭工程/设计环境时出错：{exc!r}')
+        _cleanup()
