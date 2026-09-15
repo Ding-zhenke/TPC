@@ -31,6 +31,7 @@ from typing import Optional, Tuple
 from mesh_grid.tri_grid import TopoPath
 from topo_modeler import TopoModeler, NameManager
 from topo_modeler.builders import (
+    build_materials,
     build_substrate,
     build_vpc_regions,
     build_topological_crystal,
@@ -117,8 +118,17 @@ class StraightWaveguide:
                      .move(length + 1, 'c')
                      .build())
 
-        # 阵列范围
-        self.xup, self.yup, self.ydn = self.path.get_array_range()
+        # 阵列范围：必须覆盖**整个基板**（ARCHITECTURE 第 6 节硬约定 3）
+        #
+        # 不能只按路径推断：直线路径下 path.get_array_range() 只给出
+        # xup=19 / yup=1 / ydn=1，而晶体阵列的 Y 向复制次数是 int(yup/2)，
+        # 取整后为 0，CST 会直接报 "Invalid number of repetitions"。
+        #
+        # 参考工程 AB_feed.cst 的取值为 xup=25 / yup=14 / ydn=14，
+        # 即 xup = length + int(width/2)、yup = ydn = width（width 对应旧代码 y1）。
+        self.xup = self.length + int(self.width / 2)
+        self.yup = self.width
+        self.ydn = self.width
 
         # TopoModeler（智能推断 + 流水线）
         self.modeler = TopoModeler(template_cst=template_cst)
@@ -179,7 +189,7 @@ class StraightWaveguide:
 
     def build_all(self):
         """
-        端到端建模：参数定义 → 基板 → VPC → 晶体 → feed → waveguide → mirror → ports → 整合 → 求解器。
+        端到端建模：参数定义 → 材料 → 基板 → VPC → 晶体 → feed → waveguide → mirror → ports → 整合 → 求解器。
         """
         if self.app is None:
             raise RuntimeError("CST 初始化失败，无法建模。请检查 template_cst 路径。")
@@ -189,37 +199,42 @@ class StraightWaveguide:
         # 1. 定义所有 CST 参数
         self._define_all_params()
 
-        # 2. 基板
+        # 2. 材料（参考工程 AB_feed.cst 的历史里，Silicon (lossy) 与
+        #    Copper (annealed) 是两条最早的显式记录；模板 tmp.cst 本身
+        #    不带材料，缺了这一步第一条 extrude 就会报材料不存在）
+        build_materials(app)
+
+        # 3. 基板
         build_substrate(app, self.path, name='substrate')
 
-        # 3. VPC 区域（A + B）
+        # 4. VPC 区域（A + B）
         #    注意：AB/BA 的大孔小孔分配由 build_topological_crystal 负责，
         #    build_vpc_regions 只按路径上/下半区生成区域，不接受 topology 参数。
         vpca_name, vpcb_name = build_vpc_regions(app, self.path)
 
-        # 4. 光子晶体阵列
+        # 5. 光子晶体阵列
         build_topological_crystal(app, self.path, topology=self.topology,
                                    xup=self.xup, yup=self.yup, ydn=self.ydn)
 
-        # 5. 馈源（AB 型椭圆探针）
+        # 6. 馈源（AB 型椭圆探针）
         feed_name = build_feed(app, feed_type=self.feed_type, name='feed1')
 
-        # 6. 空心矩形波导
+        # 7. 空心矩形波导
         wg_name = build_waveguide(app, name='wg1')
 
-        # 7. mirror feed + waveguide 到右端（中心点 p2x/2，法向量 x）
+        # 8. mirror feed + waveguide 到右端（中心点 p2x/2，法向量 x）
         mirror_center = ['p2x/2', '0', '0']
         app.mirror(feed_name, mirror_center, ['1', '0', '0'], copy=True, unite=True)
         app.mirror(wg_name, mirror_center, ['1', '0', '0'], copy=True, unite=True)
 
-        # 8. 端口（2 个：入口 + 出口）
+        # 9. 端口（2 个：入口 + 出口）
         add_ports_for_straight_waveguide(app, waveguide_name=wg_name)
 
-        # 9. 整合：vpca + feed + vpcb
+        # 10. 整合：vpca + feed + vpcb
         app.add(vpca_name, feed_name)
         app.add(vpca_name, vpcb_name)
 
-        # 10. 求解器配置
+        # 11. 求解器配置
         configure_solver(app, freq_range=self.freq_range, monitors=self.monitors)
 
         self._built = True

@@ -32,6 +32,7 @@ from typing import Optional, Tuple
 from mesh_grid.tri_grid import TopoPath
 from topo_modeler import TopoModeler, NameManager
 from topo_modeler.builders import (
+    build_materials,
     build_substrate,
     build_vpc_regions,
     build_topological_crystal,
@@ -186,25 +187,29 @@ class UnitAntenna:
         # 1. 定义所有 CST 参数
         self._define_all_params()
 
-        # 2. 基板
+        # 2. 材料（模板 tmp.cst 不带材料，缺了这一步第一条 extrude
+        #    就会报 The specified material does not exist）
+        build_materials(app)
+
+        # 3. 基板
         build_substrate(app, self.path, name='substrate')
 
-        # 3. VPC 区域
+        # 4. VPC 区域
         #    注意：AB/BA 的大孔小孔分配由 build_topological_crystal 负责，
         #    build_vpc_regions 只按路径上/下半区生成区域，不接受 topology 参数。
         vpca_name, vpcb_name = build_vpc_regions(app, self.path)
 
-        # 4. 光子晶体阵列
+        # 5. 光子晶体阵列
         build_topological_crystal(app, self.path, topology=self.topology,
                                    xup=self.xup, yup=self.yup, ydn=self.ydn)
 
-        # 5. 馈源（BA 型对称渐变）
+        # 6. 馈源（BA 型对称渐变）
         feed_name = build_feed(app, feed_type=self.feed_type, name='feed2')
 
-        # 6. 空心矩形波导
+        # 7. 空心矩形波导
         wg_name = build_waveguide(app, name='wg1')
 
-        # 7. 可选辐射体（圆柱）
+        # 8. 可选辐射体（圆柱）
         if self.radiator == 'cylinder':
             # 辐射体位于路径末端
             end_xy = self.path.xy[-1]
@@ -214,14 +219,14 @@ class UnitAntenna:
             )
             app.add(vpca_name, cyl_name)
 
-        # 8. 端口（仅 1 个入口）
+        # 9. 端口（仅 1 个入口）
         add_port_for_antenna(app, waveguide_name=wg_name)
 
-        # 9. 整合
+        # 10. 整合
         app.add(vpca_name, feed_name)
         app.add(vpca_name, vpcb_name)
 
-        # 10. 求解器（含 Farfield）
+        # 11. 求解器（含 Farfield）
         configure_solver(app, freq_range=self.freq_range, monitors=self.monitors)
 
         self._built = True
