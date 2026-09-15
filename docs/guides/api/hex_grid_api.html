@@ -212,8 +212,8 @@
                 <span class="item-name">save_multi_dxf</span>
                 <span class="item-type type-function">function</span>
             </div>
-            <div class="item-signature">save_multi_dxf(hex_groups, filename=&#x27;hex_grid.dxf&#x27;, layer_name=&#x27;hexgrid&#x27;)</div>
-            <div class="item-doc">将多组六边形分别导出为 DXF 文件（每组独立图层）<br><br>适用于多组六边形需在不同图层导出的场景。<br>每组先通过 unary_union 合并再导出到对应图层。<br><br><b>Args:</b><br>    hex_groups: list[list[shapely.geometry.Polygon]]，多组六边形多边形列表<br>    filename: str，输出 DXF 文件名<br>    layer_name: str，DXF 图层名前缀</div>
+            <div class="item-signature">save_multi_dxf(hex_groups, filename=&#x27;hex_grid.dxf&#x27;, layer_name=&#x27;hexgrid&#x27;, precision=6)</div>
+            <div class="item-doc">将多组六边形分别导出为 DXF 文件（每组独立图层）<br><br>适用于多组六边形需在不同图层导出的场景。<br>每组先通过 unary_union 合并再导出到对应图层。<br><br><b>Args:</b><br>    hex_groups: list[list[shapely.geometry.Polygon]]，多组六边形多边形列表<br>    filename: str，输出 DXF 文件名<br>    layer_name: str，DXF 图层名前缀<br>    precision: int，坐标保留小数位数（默认 6）</div>
         </div>
         
         <div class="item" id="save_to_dxf">
@@ -221,8 +221,8 @@
                 <span class="item-name">save_to_dxf</span>
                 <span class="item-type type-function">function</span>
             </div>
-            <div class="item-signature">save_to_dxf(hex_all, filename=&#x27;hex_grid.dxf&#x27;, layer_name=&#x27;hexgrid&#x27;)</div>
-            <div class="item-doc">将六边形网格合并后导出为 DXF 文件<br><br>多个六边形先通过 unary_union 合并再导出，<br>适用于六边形连成一片的场景。<br><br><b>Args:</b><br>    hex_all: list[shapely.geometry.Polygon]，六边形多边形列表<br>    filename: str，输出 DXF 文件名<br>    layer_name: str，DXF 图层名</div>
+            <div class="item-signature">save_to_dxf(hex_all, filename=&#x27;hex_grid.dxf&#x27;, layer_name=&#x27;hexgrid&#x27;, precision=6)</div>
+            <div class="item-doc">将六边形网格合并后导出为 DXF 文件<br><br>多个六边形先通过 unary_union 合并再导出，<br>适用于六边形连成一片的场景。<br><br><b>Args:</b><br>    hex_all: list[shapely.geometry.Polygon]，六边形多边形列表<br>    filename: str，输出 DXF 文件名<br>    layer_name: str，DXF 图层名<br>    precision: int，坐标保留小数位数（默认 6），<br>               设为较小值（如 3~4）可降低文件大小、加速 CST 导入</div>
         </div>
         
         <div class="item" id="tqdm">
@@ -236,7 +236,7 @@
         
 
     <footer>
-        <p>自动生成于 2026-06-23 21:41</p>
+        <p>自动生成于 2026-09-15 23:39</p>
         <p>TPC Project — mesh_grid 文档</p>
     </footer>
 </body>

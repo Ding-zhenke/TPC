@@ -130,11 +130,51 @@ def test_cst_expr_0_18():
 # 测试 6：CST 表达式 (14,4)
 # ============================================================
 def test_cst_expr_14_4():
-    """lattice_to_cst_expr(14,4) → ('4*a+14*a/2', '14*a/2*sqr(3)')"""
+    """lattice_to_cst_expr(14,4) → ('11*a', '14*a/2*sqr(3)')（阶段 5.6 合并同类项）"""
     px, py = TopoPath.lattice_to_cst_expr(14, 4)
-    assert px == '4*a+14*a/2', f"px 错误: {px}, 期望 '4*a+14*a/2'"
+    assert px == '11*a', f"px 错误: {px}, 期望 '11*a'"
     assert py == '14*a/2*sqr(3)', f"py 错误: {py}, 期望 '14*a/2*sqr(3)'"
     print(f"[OK] 测试6: CST表达式(14,4) → ({px},{py})")
+
+
+# ============================================================
+# 测试 6b：表达式规范化（阶段 5.6）
+# ============================================================
+def test_cst_expr_normalization():
+    """去零项 / 合并同类项 / 省略 1 系数 / sqr(3) 拼写。"""
+    # 去零项：不再产出 '0*a'
+    assert TopoPath.lattice_to_cst_expr(0, 0) == ('0', '0')
+    assert TopoPath.lattice_to_cst_expr(0, 0.0) == ('0', '0')
+    assert TopoPath.lattice_to_cst_expr('0', '0') == ('0', '0')
+
+    # 单项：系数 1 不写出来
+    assert TopoPath.lattice_to_cst_expr(0, 1) == ('a', '0')
+    assert TopoPath.lattice_to_cst_expr(0, -1) == ('-a', '0')
+    assert TopoPath.lattice_to_cst_expr(1, 0) == ('a/2', 'a/2*sqr(3)')
+
+    # 合并同类项：整数坐标只出一个系数
+    assert TopoPath.lattice_to_cst_expr(14, 4) == ('11*a', '14*a/2*sqr(3)')
+    assert TopoPath.lattice_to_cst_expr(2, 0) == ('a', '2*a/2*sqr(3)')
+    assert TopoPath.lattice_to_cst_expr(-2, 0) == ('-a', '-2*a/2*sqr(3)')
+
+    # 整值浮点按整数处理，不留浮点尾数
+    assert TopoPath.lattice_to_cst_expr(14.0, 4.0) == ('11*a', '14*a/2*sqr(3)')
+
+    # 平方根只用 sqr(3)，不能用 Python 的 sqrt
+    for rr, cc in ((0, 18), (14, 4), (1, 0), (-2, 3)):
+        expr_x, expr_y = TopoPath.lattice_to_cst_expr(rr, cc)
+        assert 'sqrt' not in expr_x and 'sqrt' not in expr_y
+        assert (expr_y == '0') == (rr == 0), f"py={expr_y} 与 r={rr} 不符"
+        assert expr_y == '0' or 'sqr(3)' in expr_y, f"py={expr_y} 缺少 sqr(3)"
+    print("[OK] 测试6b: 表达式规范化（去零项 / 合并同类项 / sqr(3)）")
+
+
+def test_cst_expr_symbolic_unchanged():
+    """符号路径的写法保持与参考工程一致（不受规范化影响）。"""
+    assert TopoPath.lattice_to_cst_expr(0, 'x1') == ('x1*a', '0')
+    assert TopoPath.lattice_to_cst_expr('y1', 'x1-y1') == \
+        ('(x1-y1)*a+y1*a/2', 'y1*a/2*sqr(3)')
+    assert TopoPath.lattice_to_cst_expr('y1', 0) == ('y1*a/2', 'y1*a/2*sqr(3)')
 
 
 # ============================================================
@@ -415,8 +455,8 @@ def test_symbolic_vs_old_code():
     # px 应完全一致
     assert abs(new_px2 - old_px2) < 1e-10, f"px2 不一致: new={new_px2}, old={old_px2}"
     assert abs(new_px3 - old_px3) < 1e-10, f"px3 不一致: new={new_px3}, old={old_px3}"
-    print(f"  px2: TopoPath={new_px2:.6f}, 旧代码={old_px2:.6f} ✓")
-    print(f"  px3: TopoPath={new_px3:.6f}, 旧代码={old_px3:.6f} ✓")
+    print(f"  px2: TopoPath={new_px2:.6f}, 旧代码={old_px2:.6f} [OK]")
+    print(f"  px3: TopoPath={new_px3:.6f}, 旧代码={old_px3:.6f} [OK]")
 
     # py3 符号相反（旧代码用 -y1*e2，TopoPath 120°方向 dy 为正）
     # 这是拐弯方向定义的差异，用户可用 turn(240) 得到旧代码方向
@@ -429,7 +469,7 @@ def test_symbolic_vs_old_code():
                .build(param_values={'x1': x1_val, 'y1': y1_val}))
     assert abs(path240.xy[2, 1] - old_py3) < 1e-10, \
         f"turn(240) 的 py3 应与旧代码一致: {path240.xy[2,1]} vs {old_py3}"
-    print(f"  turn(240) py3={path240.xy[2,1]:.6f} 与旧代码完全一致 ✓")
+    print(f"  turn(240) py3={path240.xy[2,1]:.6f} 与旧代码完全一致 [OK]")
 
     print("[OK] 测试14: 符号路径与旧代码参数化方式一致")
 

@@ -386,10 +386,30 @@ class TopoPath:
     def lattice_to_cst_expr(r, c):
         """
         (r,c) -> CST 表达式字符串 (px, py)。
-        支持 r/c 为数值（int）或符号（str，CST参数表达式）。
+        支持 r/c 为数值（int/float）或符号（str，CST 参数表达式）。
 
-        简化规则：r=0 时 py='0'，r=0 时 px 不含 r 项。
-        含运算符的符号表达式自动加括号（如 'x1-y1' -> '(x1-y1)*a'）。
+        数学背景（与 ``path_loc_to_xy`` 一致）::
+
+            x = c*a + r*a/2 = (2c + r) * a / 2
+            y = r*a/2*sqr(3)
+
+        规范化规则（阶段 5.6）
+        ----------------------
+        1. **去零项**：``(0,0)`` 返回 ``('0','0')``，不再产出 ``'0*a'``；
+           ``r=0`` 时 px 不含 r 项，``c=0`` 时 px 不含 c 项。
+        2. **合并同类项**：``r``、``c`` 同为整数时按 ``(2c+r)*a/2`` 精确合并 ——
+           ``(14,4)`` 得 ``'11*a'``，而不是 ``'4*a+14*a/2'``。
+           （py 只有一项，不存在可合并的同类项，故保持 ``r*a/2*sqr(3)`` 的写法，
+           **与符号式及参考工程的 ``y1*a/2*sqr(3)`` 写法一致**，便于逐条对照。）
+        3. **避免浮点尾数**：整值浮点先转 int（``2.0`` 当作 ``2``）；
+           非整数用 ``%g`` 格式化，不产出 ``'0.30000000000000004'`` 这类尾巴。
+        4. **平方根一律写 ``sqr(3)``** —— 是 CST 语法，**不是** Python 的 ``sqrt(3)``。
+        5. 系数 1 / -1 不写出来：``'a'`` 而不是 ``'1*a'``，``'-a'`` 而不是 ``'-1*a'``。
+        6. 含运算符的符号表达式自动加括号（``'x1-y1'`` → ``'(x1-y1)*a'``）。
+
+        :param r: int/float/str, 晶格行坐标（沿 60° 方向）
+        :param c: int/float/str, 晶格列坐标（沿 0° 方向）
+        :return: tuple[str, str], (px, py) CST 表达式
         """
         def _wrap(s):
             """如果字符串包含 + 或 -（非开头负号），则加括号确保运算优先级。"""
@@ -400,16 +420,64 @@ class TopoPath:
                     return f'({s})'
             return s
 
+        def _int_of(x):
+            """能精确转成 int 就返回 int，否则返回 None（符号 / 非整数）。"""
+            if isinstance(x, str):
+                return None
+            if _is_numeric(x) and float(x).is_integer():
+                return int(x)
+            return None
+
+        def _is_zero_like(x):
+            """数值 0，或字符串 '0' / '0.0'。"""
+            if _is_zero(x):
+                return True
+            if isinstance(x, str) and x.strip() in ('0', '0.0', '0.00'):
+                return True
+            return False
+
+        def _fmt(x):
+            """数值的紧凑写法（避免浮点尾数）。"""
+            return f'{x:g}' if isinstance(x, float) else str(x)
+
+        def _coef(k, unit):
+            """``k*unit``，省略 1 / -1 系数。"""
+            if k == 1:
+                return unit
+            if k == -1:
+                return f'-{unit}'
+            return f'{_fmt(k)}*{unit}'
+
+        rn, cn = _int_of(r), _int_of(c)
+        if rn is not None and cn is not None:
+            # 两个坐标都是整数 —— 可以精确合并且不产生任何浮点尾数
+            num = 2 * cn + rn            # x = num * a / 2
+            if num == 0:
+                px = '0'
+            elif num % 2 == 0:
+                px = _coef(num // 2, 'a')
+            else:
+                px = _coef(num, 'a/2')
+            py = '0' if rn == 0 else _coef(rn, 'a/2*sqr(3)')
+            return px, py
+
+        # 至少一侧是符号（或非整数）—— 走字符串拼接路径
         c_w = _wrap(c)
         r_w = _wrap(r)
 
-        if _is_zero(r):
+        r_zero = _is_zero_like(r)
+        c_zero = _is_zero_like(c)
+
+        if r_zero and c_zero:
+            px = '0'
+        elif r_zero:
             px = f'{c_w}*a'
-        elif _is_zero(c):
+        elif c_zero:
             px = f'{r_w}*a/2'
         else:
             px = f'{c_w}*a+{r_w}*a/2'
-        py = '0' if _is_zero(r) else f'{r_w}*a/2*sqr(3)'
+
+        py = '0' if r_zero else f'{r_w}*a/2*sqr(3)'
         return px, py
 
     # ---- 属性 ----

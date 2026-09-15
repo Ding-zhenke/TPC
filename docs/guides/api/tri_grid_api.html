@@ -176,8 +176,8 @@
                 <span class="item-name">plot_triangle_grid</span>
                 <span class="item-type type-function">function</span>
             </div>
-            <div class="item-signature">plot_triangle_grid(row_range: Tuple[int, int], col_range: Tuple[int, int], a: float = 1.0, offset: Tuple[float, float] = (0.0, 0.0), theta: float = 0.0, show_labels: bool = True, show_points: bool = True, fill_colors_up: Optional[list] = None, fill_colors_down: Optional[list] = None, coord_auto_hide_threshold: int = 500, edgecolor: str = &#x27;black&#x27;, linewidth: float = 1.0) -&gt; Tuple[matplotlib.figure.Figure, matplotlib.axes._axes.Axes]</div>
-            <div class="item-doc">向量化绘制三角形网格 — 使用 PolyCollection 替代逐格 Polygon<br><br>性能提升：从 O(N) 个独立 Polygon 对象降为 O(1) 个 PolyCollection。<br><br><b>参数:</b><br>    row_range: 行号范围 (start_row, end_row)<br>    col_range: 列号范围 (start_col, end_col)<br>    a: 三角形边长<br>    offset: 网格偏移量<br>    theta: 旋转角度（度）<br>    show_labels: 是否显示位置坐标标签<br>    show_points: 是否显示中心标记点<br>    fill_colors_up: 朝上三角形颜色数组（长度 = 朝上三角形数），None 表示不填充<br>    fill_colors_down: 朝下三角形颜色数组，None 表示不填充<br>    coord_auto_hide_threshold: 网格数超过此阈值时自动隐藏坐标标签<br>    edgecolor: 边框颜色<br>    linewidth: 边框线宽<br><br><b>返回:</b><br>    fig: 图形对象<br>    ax: 坐标轴对象</div>
+            <div class="item-signature">plot_triangle_grid(row_range: Tuple[int, int], col_range: Tuple[int, int], a: float = 1.0, offset: Tuple[float, float] = (0.0, 0.0), theta: float = 0.0, show_labels: bool = True, show_points: bool = True, fill_colors_up: Optional[list] = None, fill_colors_down: Optional[list] = None, coord_auto_hide_threshold: int = 500, edgecolor: str = &#x27;black&#x27;, linewidth: float = 1.0, ax: Optional[matplotlib.axes._axes.Axes] = None) -&gt; Tuple[matplotlib.figure.Figure, matplotlib.axes._axes.Axes]</div>
+            <div class="item-doc">向量化绘制三角形网格 — 使用 PolyCollection 替代逐格 Polygon<br><br>性能提升：从 O(N) 个独立 Polygon 对象降为 O(1) 个 PolyCollection。<br><br><b>参数:</b><br>    row_range: 行号范围 (start_row, end_row)<br>    col_range: 列号范围 (start_col, end_col)<br>    a: 三角形边长<br>    offset: 网格偏移量<br>    theta: 旋转角度（度）<br>    show_labels: 是否显示位置坐标标签<br>    show_points: 是否显示中心标记点<br>    fill_colors_up: 朝上三角形颜色数组（长度 = 朝上三角形数），None 表示不填充<br>    fill_colors_down: 朝下三角形颜色数组，None 表示不填充<br>    coord_auto_hide_threshold: 网格数超过此阈值时自动隐藏坐标标签<br>    edgecolor: 边框颜色<br>    linewidth: 边框线宽<br>    ax: 已有坐标轴对象；None 时新建 figure（供 TopoPath.preview 等叠加绘制）<br><br><b>返回:</b><br>    fig: 图形对象<br>    ax: 坐标轴对象</div>
         </div>
         
         <div class="item" id="point_in_polygon">
@@ -263,7 +263,7 @@
         
 
     <footer>
-        <p>自动生成于 2026-06-23 21:41</p>
+        <p>自动生成于 2026-09-15 23:39</p>
         <p>TPC Project — mesh_grid 文档</p>
     </footer>
 </body>
