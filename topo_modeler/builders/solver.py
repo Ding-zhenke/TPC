@@ -66,19 +66,23 @@ def configure_solver(app, freq_range=(300, 380), monitors=('E',),
     #    通过 VBA 历史命令设置，与旧代码保持一致
     _configure_solver_advanced(app, steady_state, parallel_threads, gpus)
 
-    # 4. 创建场监视器
+    # 4. 创建监视器
     #    显式频点优先；未给出时按频率范围取 5 个等分点
     if monitor_frequencies is not None:
         freq_points = [float(f) for f in monitor_frequencies]
     else:
         freq_points = _get_monitor_frequencies(fmin, fmax, monitors)
+
+    #    E / H / Farfield 走**同一个** cst_solver 入口：`define_monitor()` 的
+    #    `_FIELD_CONFIG` 里本就有 'Farfield'，会正确用 Monitor 对象下发
+    #    `.FieldType "Farfield"`（官方 Monitor 的 FieldType 枚举含 "Farfield"）。
+    #
+    #    历史实现曾对 Farfield 单独手写 `With Farfield ... .Type "Broadband"`：
+    #    - 违反 WORKFLOW 第 2 节（builder 里不该手写 VBA）；
+    #    - 且 `Farfield` 是**后处理对象**（FarfieldPlot / FarfieldCalculator），
+    #      不是建监视器的对象，写法本身也不对。
     for mon_type in monitors:
-        if mon_type.upper() == 'FARFIELD':
-            # Farfield 监视器需要特殊处理
-            _create_farfield_monitor(app, freq_points)
-        else:
-            # E/H/Powerflow 场监视器
-            app.create_field_monitor(mon_type, freq_points)
+        app.create_field_monitor(mon_type, freq_points)
 
 
 def _configure_solver_advanced(app, steady_state, parallel_threads, gpus):
@@ -119,19 +123,3 @@ def _get_monitor_frequencies(fmin, fmax, monitors):
         fmax,
     ]
     return freqs
-
-
-def _create_farfield_monitor(app, frequencies):
-    """
-    创建 Farfield 远场监视器。
-
-    Farfield 监视器与普通场监视器不同，需要单独配置。
-    """
-    for freq in frequencies:
-        vba = f"""With Farfield
-    .Reset
-    .Frequency "{freq}"
-    .Type "Broadband"
-    .Create
-End With"""
-        app.cst_file.model3d.add_to_history(f"Farfield Monitor {freq}GHz", vba)

@@ -8,9 +8,16 @@ PortBuilder — 端口构建器
   pick_face('wg1', '10') + add_port(1)
   pick_face('wg1', '22') + add_port(2)
 
-注意：pick_face 的面编号（如 '10', '22'）是 CST 内部编号，
-与实体几何相关。阶段 3 先硬编码（从旧 notebook 提取），
-后续优化为按法向量自动查找。
+面编号（'10' / '22'）是 CST 内部编号，与实体几何和构建顺序强相关。
+**经与参考工程 `AB_feed.cst` 逐条核对（2026-09-15）：参考工程用的正是
+同样的 '10' / '22'，且端口定义块与本库逐字相同** —— 原因是 `wg1` 这个
+brick 两边几何一致，面编号自然一致。所以保留编号做法是**与参考一致**的
+选择，不是遗留缺陷。
+
+但编号做法有一个真实风险：**几何或构建顺序一变，编号会静默指错面**
+（CST 不保证把这种错误抛出来）。故 `add_waveguide_port()` 在建端口前用
+`get_picked_count('face')` 校验「确实选中了 1 个面」，选不中时抛
+`RuntimeError`，而不是让端口悄悄建错位置。
 
 用法:
     >>> from topo_modeler.builders import add_waveguide_port
@@ -36,8 +43,21 @@ def add_waveguide_port(app, solid_name, port_number, face_id,
     :param orientation: str, 'positive' 或 'negative'，端口法向朝向
     :param shield: str, 端口屏蔽类型 'electric'/'magnetic'/''，默认 ''
     :return: int, 端口编号
+    :raises RuntimeError: 该面编号没选中任何面（几何或构建顺序已变，编号失效）
     """
     app.pick_face(solid_name, face_id)
+
+    # 校验：面编号失效时 CST 不一定报错，端口会静默建在错误位置。
+    # get_picked_count() 已在真实 CST 会话实测可用（见 stages/04 §2.4）。
+    # 返回 None 表示该查询接口不可用，此时跳过校验（不误报）。
+    picked = app.get_picked_count('face')
+    if picked is not None and picked != 1:
+        raise RuntimeError(
+            f"pick_face('{solid_name}', '{face_id}') 之后已选面数为 {picked}"
+            f"（期望 1）—— 面编号已失效，端口会建在错误位置。"
+            f"请核对该实体在当前几何下的面编号；"
+            f"轴对齐的矩形端面可改用 create_waveguide_port_free() 直接给范围。")
+
     app.add_port(port_number, orientation=orientation, shield=shield)
     return port_number
 

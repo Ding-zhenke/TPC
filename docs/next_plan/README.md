@@ -90,13 +90,11 @@
 
 ### 4.1 待执行：不需要求解器
 
-- [ ] **T4 核验 `_create_farfield_monitor()`** —— `topo_modeler/builders/solver.py` 里它仍**手写
-      `With Farfield` VBA**（违反 WORKFLOW §2），正确性未验证 —— 默认 `monitors=('E',)` 不走该分支。
-      核验后用 `cst_solver` 补封装，再回来改 builder。
 - [ ] **T5 `unit_antenna` 阵列范围** —— `unit_antenna.py:122` 用 `path.get_array_range()`
-      推导（与已修的 `StraightWaveguide` 同源）。**参考基准已找到**（见下），可直接开工。
-- [ ] **T9 面编号方案落地** —— 方案已定（双通道）、事实已验（V2/V3/V4 全通过），
-      剩下的是把 `builders/port.py` 的硬编码 `'10'` / `'22'` 替换掉。
+      推导（与已修的 `StraightWaveguide` 同源）。**参考基准已找到**（见下），
+      但改动前需先理清 TPC 的 `straight_length`/`arm_length`/`bend_angle`
+      与参考 `x1/y1/x2/y2` 的对应关系（`xup` 随拓扑变，25(AB)/26(BA)）；
+      **且无法用 CST 验证时不宜动几何**，故暂缓。
 - [ ] **T10 `templates` 包名风险** —— 顶层包名过于通用，改名 `topo_templates` 并保留一个版本周期的 shim。
 
 **T5 参考基准（已查明，2026-09-15）**：`拓扑光子晶体模型\硅基\普通单元天线\` 下三个工程
@@ -129,6 +127,8 @@
 | **T8** VPC 区域语义 | ✅ 已决**以参考工程为准**并实施（三处改动） | `stages/04` T8/T11 |
 | **T11** 缺失的布尔运算 | ✅ 晶体∩VPC 求交已补，布尔序列 13→**15** 条（参考 17 条，差 2 条属构造路径不同、结果等价） | `stages/04` T8/T11 |
 | **T6-prep** 显式监视器频点 | ✅ `configure_solver()` 已支持 `monitor_frequencies` | `topo_modeler/builders/solver.py` |
+| **T4** 远场监视器 | ✅ **已修**（代码；CST 验证待后续）—— 远场监视器应走 `create_field_monitor('Farfield', ...)`，删除了手写的 `With Farfield … .Type "Broadband"` | 见 §4.4 第 11 条 |
+| **T9** 面编号 | ✅ **已重新定性并完成** —— 硬编码 `'10'`/`'22'` **与参考工程完全一致**（参考用的就是这两个编号，端口定义块逐字相同），故**不替换**；改为在建端口前用 `get_picked_count('face')` 校验，编号失效时抛 `RuntimeError` 而非静默建错 | 见 §4.4 第 12 条 |
 
 > **几何至此与参考等价** —— 剩余可比差异只有实体**命名与 VPC 构造路径**（已核对多边形等价）。
 
@@ -146,6 +146,8 @@
 | 8 | **参考工程没有可复用的结果** —— `AB_feed` 的 `Result/` 仅 0.3 MB/8 文件；全盘只有两个无关 `.s2p`；两个 `AB_feed.ipynb` 也没有 S 参数输出 → **两边都得算** | 记入 §4.2 与 `stages/04` |
 | 9 | **时域求解器无法"只算几个点"** —— 它一次算完整个频段；"只挑几个点"只能指**只比较几个点**。要真"只算几个点"须换频域求解器（FDSolver） | 记入 `stages/04` §5 成本方案 |
 | 10 | **文档生成器在 GBK 控制台直接崩** —— `print("🔍 …")` 抛 `UnicodeEncodeError` | 已去 emoji（实测 GBK 下 exit=0） |
+| 11 | **远场监视器一直写错了对象** —— `topo_modeler` 手写 `With Farfield … .Type "Broadband"`。但 `Farfield` 是**后处理对象**（FarfieldPlot / FarfieldCalculator），不是建监视器的对象；官方 `Monitor` 的 **FieldType 枚举里本就含 `"Farfield"`**。而 `cst_solver` 的 `define_monitor` 早已正确实现该路径（`_FIELD_CONFIG['Farfield']`） | 删除该函数，统一走 `create_field_monitor()`；**代码已改，CST 验证待后续** |
+| 12 | **面编号"缺陷"其实不是缺陷** —— 我与参考工程逐条核对后发现：参考用的正是 `'10'`/`'22'`，端口定义块与本库**逐字相同**（因为 `wg1` 的 brick 两边几何一致）。原计划"替换成坐标方案"会**偏离参考** | 不替换；改为加校验（`get_picked_count` 兜住编号失效） |
 
 ### 4.5 阶段 4 出口判据（什么时候算做完）
 
