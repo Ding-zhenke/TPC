@@ -161,10 +161,65 @@ wg.save()
 本轮修 CCW 绕向时顺带把拐弯路径的带状区域改成了「真正沿路径的带」（顶点数 `N+3 → 2N+1`），
 **这使差异更明确**。必须在阶段 4 之前做一次显式决策：以参考工程为准复刻旧造法，还是以新带状语义为准并重新定基线。
 
-### 6.3 端口面编号硬编码
+### 6.3 端口面编号硬编码（方案已确定，实现待阶段 4）
 
 `builders/port.py` 的 `'10'` / `'22'` 是从旧 notebook 抄来的 CST 内部面编号。
-波导尺寸/朝向/构建顺序一变就会指错面。06 里提到的 `get_face_id_by_normal()` 从未被排进任何阶段，现登记为阶段 4 的前置项。
+波导尺寸/朝向/构建顺序一变就会指错面。
+
+#### 6.3.1 先修正一个做不到的假设
+
+06 / 04 登记的 `get_face_id_by_normal()` 隐含「遍历模型里已有的面、按法向量挑出目标面」。
+**这条路走不通**：CST 的 VBA 接口**没有**任何面法向/面中心/面面积的查询 API
+（`Solid.GetArea(solidname)` 返回的是**实体**表面积，不是面的）。
+
+正确表述是**反过来**做：
+
+> 由**参数化几何正算出**目标面上的一个点（法向与位置本来就已知）
+> → 反查该点所在面的编号 → 拾取。
+
+对 TPC 反而更合适：几何全部源自 `TopoPath` 与波导参数，点是解析已知的，不需要"猜"。
+
+#### 6.3.2 已就位的原语（`cst_solver`，已提交）
+
+| 接口 | 支撑的 VBA | 作用 |
+|---|---|---|
+| `pick_face_at(name, x, y, z)` | `Pick.PickFaceFromPoint` | 按坐标直接拾取面，**绕开编号** |
+| `pick_edge_at(name, x, y, z)` | `Pick.PickEdgeFromPoint` | 同上，用于棱边 |
+| `pick_point_at(x, y, z)` | `Pick.PickPointFromCoordinates` | 按坐标选点 |
+| `get_face_id_from_point(name, x, y, z)` | `Pick.GetFaceIdFromPoint` | **按坐标反查面编号** |
+| `get_edge_id_from_point(name, x, y, z)` | `Pick.GetEdgeIdFromPoint` | 同上，用于棱边 |
+| `get_picked_count(kind='face')` | `GetNumberOfPickedFaces/Edges/Points` | **校验拾取是否真的生效** |
+
+#### 6.3.3 方案决策：双通道，按端口面朝向分流
+
+| 端口面类型 | 方案 | 理由 |
+|---|---|---|
+| **轴对齐矩形面**（直波导两端、单元天线入口） | `create_waveguide_port_free(...)`（`Coordinates "Free"` + `Xrange/Yrange/Zrange`） | 零拾取、零编号，不产生拾取状态，可复现性最好 |
+| **非轴对齐面**（拐弯 / 扭转后的端面） | 正算出面上一点 → `get_face_id_from_point()` → `pick_face()` + `add_port()` | `Port.Orientation` 只有轴方向，Free 模式覆盖不了斜置面 |
+
+`create_waveguide_port_free()` 已在 `cst_solver/simulation/ports.py` 落地（纯新增，
+未改动旧的 `add_port` / `create_waveguide_port`）。
+
+#### 6.3.4 仍未核验的事实（进阶段 4 之前必须验）
+
+| 编号 | 待验 | 影响 |
+|---|---|---|
+| V2 | `Coordinates "Free"` + `Xrange/Yrange/Zrange` 能否真正建出端口 | 决定 §6.3.3 第一行是否成立 |
+| V3 | `model3d.Pick` 是否暴露、查询能否把值返回 Python | 决定 `get_face_id_from_point` / `get_picked_count` 是否可用 |
+| V4 | 反查出的编号喂回 `pick_face()` 能否真的选中面 | 决定 §6.3.3 第二行是否闭环 |
+
+核验脚本：`scripts/verify_port_face_api.py`（新建空白工程，不触碰任何既有工程；
+逐项打印 V2/V3/V4 并汇总）。结论出来后回填本节，并把 `builders/port.py` 的
+硬编码编号替换排进阶段 4。
+
+> **依据**：[bbl21/cst-runtime-cli](https://github.com/bbl21/cst-runtime-cli)（MIT）
+> 随包的 `devkit/references/vba-official-reference.md` §9 Pick / §16 Port。
+> 该仓库本机已 clone 到**本仓库之外**的 `D:\成电博士生涯\自动建模算法尝试\cst-runtime-cli\`，
+> 尚未纳入本仓库，故此处不给仓库内相对链接。
+
+> **不在本议题范围**：`Port.Coordinates` 的取值究竟认 `"Picks"` 还是 `"Picked"`，暂不核验。
+> 注意它**不影响**本节方案 —— Free 通道用的是 `"Free"`（官方参考与第三方实现两处一致），
+> 拾取通道沿用现有代码原样取值，两者都不依赖该判定。
 
 ### 6.4 `templates` 包名风险
 
@@ -177,7 +232,7 @@ wg.save()
 
 | 阶段 | 名称 | 前置条件 | 预估 |
 |---|---|---|---|
-| 4 | 复杂模板层（GRIN 透镜 builder + 透镜天线模板） | **§6.1 几何验收通过**、§6.2 语义决策完成、§6.3 面编号方案确定 | 3 天 |
+| 4 | 复杂模板层（GRIN 透镜 builder + 透镜天线模板） | **§6.1 几何验收通过**、§6.2 语义决策完成、§6.3 方案已定 **且 V2/V3/V4 已核验** | 3 天 |
 | 5 | 工具层（ResultReader / YAML 配置 / 参数扫描 / 批量建模 / GA 优化可选） | 阶段 4 的模板可用（ResultReader 需要有结果产出） | 2 天 |
 | 6 | 复杂结构 + 旧代码迁移（多路径、多端口、功分器、MZI、87 个 notebook 迁移） | 阶段 5 完成 | 3 天 |
 
