@@ -153,16 +153,26 @@ def intersect_crystal_with_vpc(app, crystal_a_name, crystal_b_name,
     """
     将光子晶体阵列与 VPC 区域相交裁剪。
 
+    ⚠️ **操作数顺序以参考工程 `AB_feed.cst` 为准（2026-09-15 修正）**
+
+    参考工程执行的是 ``vpca intersect g1A`` / ``vpcb intersect g1B``；
+    而 CST 的 ``Intersect`` **结果留在第一个操作数**、第二个被消耗，
+    因此参考中**保留下来的是 VPC 区域名**，晶体阵列名被消耗。
+
+    本函数原先写成 ``intersect(crystal_a, vpca)``，几何相同但**保留的是晶体名**，
+    与参考不符，且会使后续 ``vpc_A add feed1`` 落到一个已被消耗的名字上。
+    现改为与参考一致：结果留在 VPC 区域名上。
+
     :param app: cst_solver.setup 实例
-    :param crystal_a_name: str, VPC-A 晶体阵列名称
-    :param crystal_b_name: str, VPC-B 晶体阵列名称
-    :param vpca_name: str, VPC-A 区域名称
-    :param vpcb_name: str, VPC-B 区域名称
+    :param crystal_a_name: str, VPC-A 晶体阵列名称（会被消耗）
+    :param crystal_b_name: str, VPC-B 晶体阵列名称（会被消耗）
+    :param vpca_name: str, VPC-A 区域名称（保留，承载交集结果）
+    :param vpcb_name: str, VPC-B 区域名称（保留，承载交集结果）
     :param component: str, 归属组件
-    :return: tuple, (crystal_a_name, crystal_b_name)（相交后名称不变）
+    :return: tuple, (vpca_name, vpcb_name)（相交后由 VPC 区域承载结果）
     """
-    app.intersect(crystal_a_name, vpca_name,
+    app.intersect(vpca_name, crystal_a_name,
                   component1=component, component2=component)
-    app.intersect(crystal_b_name, vpcb_name,
+    app.intersect(vpcb_name, crystal_b_name,
                   component1=component, component2=component)
-    return crystal_a_name, crystal_b_name
+    return vpca_name, vpcb_name
