@@ -18,7 +18,7 @@
 
 **公开 API 规模**（AST 统计，2026-09-16）：`TopoModeler` 22 个公开方法，`NameManager` 8 个公开方法，
 另有 `builders/` 与两个透镜脚本中的模块级函数（`builders/` 见第 3 节的表）。
-阶段 7 工具层见 §11。
+阶段 7 工具层（7 个模块）见 §11。
 `tests/test_lens.py`（36 项）是透镜构建器的**等价性护栏**：把原脚本
 `lens_build.py` 原样跑一遍，与库函数逐点/逐条比对。
 
@@ -85,6 +85,10 @@ topo_modeler/                    建模引擎层（本包）
 ├── result_reader.py             阶段7：ResultReader（cst_solver.Result 的批量+出图外壳）
 ├── report.py                    阶段7：自包含 HTML 报告引擎（零 CDN / 零 JS）
 ├── audit.py                     阶段7：审计落盘（tool_calls.jsonl / production_chain.md）
+├── scanner.py                   阶段7：ParameterScan（执行器注入）
+├── batch.py                     阶段7：BatchModeler（强制串行 + DE 基线清理）
+├── optimizer.py                 阶段7：GeneticOptimizer（目标函数注入，两种基因型）
+├── tests/                       阶段7：config / report_audit / result_reader / scanner / batch_optimizer
 ├── lens_build.py                GRIN 透镜建模**脚本**（notebook 用 exec 复用；库侧已收编为 builders/lens.py）
 └── lens_build_standalone.py     GRIN 透镜工程的独立驱动脚本（实验沙盒，供 subprocess 启动）
 ```
@@ -1017,16 +1021,25 @@ app.save(r'D:\out\manual.cst')
 | `result_reader.py` | `ResultReader` | `cst_solver.Result` 的**批量化 + 出图**外壳；频率强转 float、S 值保持 complex；含 `peak_position()` / `peak_shift()`（把「谐振峰偏差 < 1 GHz」变成 API） |
 | `report.py` | `HtmlReport`、`svg_line_chart`、`svg_heatmap`、`svg_polar`、`svg_timeline` | **自包含 HTML 报告**：零 CDN、零 JS，全部内联 SVG |
 | `audit.py` | `AuditLog`、`record_call`、`default_audit_dir` | **审计落盘**：`tool_calls.jsonl` + `production_chain.md` + 参数存档（不覆盖） |
+| `scanner.py` | `ParameterScan`、`ScanPoint`、`value_metric`、`peak_metric`、`band_min_metric` | **参数扫描**：枚举组合 → 注入的执行器 → 聚合/热力图/曲线/CSV/报告。`combinations()` 是纯函数，轴取值非法在**枚举阶段**就报错 |
+| `batch.py` | `BatchModeler`、`BatchEntry`、`design_environment_baseline`、`close_extra_design_environments` | **批量建模**：`from_config()` 读批量 YAML；**强制串行**（`parallel>1` 直接报错）；进循环前记 DE 基线、结束只关自己开的 |
+| `optimizer.py` | `GeneticOptimizer`、`OptResult`、`continuous_variables`、`binary_variables` | **GA 桥接**：连续模式（实数基因）与二值模式（**完整复用** `tpc_toolkit.ga_optimizer` 的算子）。目标函数注入 ⇒ 可离线验收 |
 
-**四条硬约定**：
+**执行器是注入的**（这是能在没有 CST 的机器上验收整条链路的关键）::
+
+    runner(point / entry) -> .cst 路径 | ResultReader | 指标字典
+
+**六条硬约定**：
 
 1. **报告自包含** —— 生成的 HTML 里不得出现任何 `http(s)://`、`<script>`、`<link>`；
-   有测试逐条守着。这样断网能开、十年后能开、能直接进 git / 邮件。
-2. **审计不拖垮主流程** —— 默认 `strict=False`：写盘失败只记 `AuditLog.last_error`；
-   `strict=True` 才抛。
-3. **参数存档不覆盖** —— 文件名带微秒 + 冲突兜底（`-2`/`-3`…）。
-4. **报告的零 JS 是刻意的** —— 计划里的「3D 远场 WebGL」**明确不做**（必须内联 JS，
-   且无法离线验收）；远场改用二维极坐标（`add_polar`，自动标出主瓣峰值方向）。
+   有测试逐条守着。
+2. **审计不拖垮主流程** —— 默认 `strict=False`：写盘失败只记 `AuditLog.last_error`。
+3. **参数存档不覆盖** —— 文件名带微秒 + 冲突兜底。
+4. **报告的零 JS 是刻意的** —— 计划里的「3D 远场 WebGL」**明确不做**；远场用二维极坐标。
+5. **批量只串行** —— `parallel>1` **直接报错**、不静默降级；DE 清理**只关自己开的**
+   （`close_extra_design_environments` 必须收到基线）。
+6. **不静默忽略** —— runner 返回字典时 `metric_specs` 不会被执行，这件事会记进
+   `last_errors['_contract']`。
 
 **典型链条**（阶段 5 → 阶段 7 打通）::
 
