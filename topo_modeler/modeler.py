@@ -500,25 +500,60 @@ class TopoModeler:
         self._check_path()
         return self.path.preview(ax=ax, show_grid=show_grid)
 
-    def read_results(self):
+    def read_results(self, path=None, names=None, run_id=0):
         """
-        读取仿真结果。
+        读取仿真结果（阶段 7 模块 5.1）。
 
-        注意：属于**阶段 7（工具层）**，当前未实现。
+        返回一个 :class:`topo_modeler.result_reader.ResultReader` —— 它**不需要
+        设计环境**（走 `cst.results.ProjectFile` 离线读），所以「跑完关掉工程之后再读」
+        是最自然的用法，也不会占用求解器许可。
 
-        :raises NotImplementedError: 阶段 7 未实现
+        :param path: str 可选, .cst 路径；不给则用 `save()` / `build_all()` 记下的
+            `self._cst_path`
+        :param names: 序列可选, 只读这些 S 参数名；不给则自动发现
+        :param run_id: int, 运行 ID（0 = 当前/最新结果）
+        :return: ResultReader
+        :raises RuntimeError: 既没有传 path，也没有已知的工程路径
         """
-        raise NotImplementedError("read_results 将在阶段 7（工具层）实现（ResultReader）")
+        from topo_modeler.result_reader import ResultReader
 
-    def plot_results(self):
+        target = path or self._cst_path
+        if target is None:
+            raise RuntimeError(
+                "read_results 不知道读哪个工程 —— 请传 path=，"
+                "或先 save('/path/to/x.cst')，或在 build_all() 时给出 output_path")
+        return ResultReader(target, names=names, run_id=run_id)
+
+    def plot_results(self, path='results_report.html', title=None, note='',
+                     highlight=None, meta=None, audit=None, **kwargs):
         """
-        自动绘制结果图。
+        自动出图并落成**自包含 HTML 报告**（阶段 7 §3.2）。
 
-        注意：属于**阶段 7（工具层）**，当前未实现。
+        报告引擎在 `topo_modeler.report`：**零 CDN、零 JS**，所有图形都是内联 SVG，
+        断网/十年后都能打开。同时把审计记录（如果给了 `audit`）一并附上 ——
+        这样一份报告既回答了「结果长什么样」，也回答了「这次是怎么跑出来的」。
 
-        :raises NotImplementedError: 阶段 7 未实现
+        :param path: str, 输出 .html 路径
+        :param title: str 可选, 报告标题（默认按 model_type / topology 生成）
+        :param note: str, 图下附注
+        :param highlight: 可选, ``[(频点 GHz, 标注), …]`` 画竖直参考线
+        :param meta: dict 可选, 报告顶部额外元信息
+        :param audit: AuditLog 可选, 一并附上审计小节
+        :param kwargs: 透传给 `read_results()`（如 `run_id=` / `names=`）
+        :return: str, 写出的 HTML 绝对路径
         """
-        raise NotImplementedError("plot_results 将在阶段 7（工具层）实现")
+        reader = self.read_results(**kwargs)
+        auto_title = title or (
+            f"{self.model_type or 'model'} · {self.topology or '-'} · 仿真结果")
+        base_meta = {
+            '模型类型': self.model_type or '（未知）',
+            '拓扑相': self.topology or '（未知）',
+            '路径点数': len(self.path) if self.path else 0,
+            '已建部件': ', '.join(self._built_parts.keys()) or '（无）',
+        }
+        base_meta.update(meta or {})
+        return reader.plot_all(path, title=auto_title, meta=base_meta,
+                               note=note, highlight=highlight, include_audit=audit)
 
     # ================================================================
     # 工具方法
