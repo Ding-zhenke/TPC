@@ -111,11 +111,16 @@ class StraightWaveguide:
         self.e1 = self.a / 2
         self.e2 = self.a * np.sqrt(3) / 2
 
-        # 构建路径：起点 (0,-1)，沿 +c 走 length+1 步
-        # 终点 c = -1 + (length+1) = length，与旧代码 x1=length 对应
+        # 构建路径：起点 (0,0)，沿 +c 走 length 步
+        #
+        # 与参考工程对齐（阶段 4 T2）：参考的 px1=0、px2=x1*a=18a=4.365，
+        # 即 x ∈ [0, 18a] 共 **18 格**（x1=18=length）。
+        # 原写法 start(0,-1) + move(length+1,'c') 的终点虽也对（c=18），
+        # 但起点落到 c=-1（x=-a），整条路径是 **19 格** ——
+        # 基板/VPC/晶体在 x 方向比参考长一个晶格周期。
         self.path = (TopoPath.builder(self.a, name='p')
-                     .start(0, -1)
-                     .move(length + 1, 'c')
+                     .start(0, 0)
+                     .move(length, 'c')
                      .build())
 
         # 阵列范围：必须覆盖**整个基板**（ARCHITECTURE 第 6 节硬约定 3）
