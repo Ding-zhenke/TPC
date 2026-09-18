@@ -82,6 +82,53 @@ def add_ports_for_straight_waveguide(app, waveguide_name='wg1',
     return (p1, p2)
 
 
+def add_multiport_port_set(app, entries, component='component1'):
+    """
+    **多端口器件**的端口组（α1 族：双馈源 ⇒ 3 端口）—— 2026-09-17 取证落地。
+
+    参考 notebook 的写法（`多端口\\Ant3_1W2N`、`MPMBA\\Ant3_*` 4 个 notebook 同构）：
+
+    ```python
+    app1.pick_face('wg2','10'); app1.add_port(1)      # BA 馈源的铜波导
+    app1.pick_face('wg1','10'); app1.add_port(3)      # AB 馈源经 mirror 后的两条
+    app1.pick_face('wg1','22'); app1.add_port(2)
+    ```
+
+    ⚠️ **端口编号在各 notebook 之间有对调**（A 是 `wg2→P1 / wg1:10→P3 / wg1:22→P2`，
+    B/K 是 `wg2→P1 / wg1:10→P2 / wg1:22→P3`）—— 所以**编号必须由调用方给**，
+    不能在本函数里猜（猜错会让激励端口与预期相反，而 CST 不会报错）。
+
+    ⚠️ 面号 `'10'`（轴向口径端面）在多端口族里最稳；`'22'` 等跨模型不可复用，
+    所以每个端口都用 :func:`add_waveguide_port` 的「选不中就抛」校验。
+
+    :param app: cst_solver.setup 实例
+    :param entries: 序列, 每项 ``(solid_name, port_number, face_id)``；
+        也可给 4 元组 ``(solid_name, port_number, face_id, shield)``
+    :param component: str, 归属组件（仅记录用，端口挂在 solid 上）
+    :return: list[dict], 每项 ``{'solid':…, 'port':…, 'face':…, 'shield':…}``
+    :raises ValueError: entries 为空或形状不对
+    """
+    items = list(entries or ())
+    if not items:
+        raise ValueError('add_multiport_port_set 需要至少一个 (solid, port, face) 条目')
+
+    created = []
+    for entry in items:
+        if len(entry) == 4:
+            solid, port, face, shield = entry
+        elif len(entry) == 3:
+            (solid, port, face), shield = entry, 'electric'
+        else:
+            raise ValueError(
+                f'端口条目必须是 (solid, port, face) 或 (solid, port, face, shield)，'
+                f'收到 {entry!r}')
+        add_waveguide_port(app, solid_name=solid, port_number=int(port),
+                           face_id=str(face), shield=shield)
+        created.append({'solid': solid, 'port': int(port), 'face': str(face),
+                        'shield': shield})
+    return created
+
+
 def add_port_for_antenna(app, waveguide_name='wg1', port_face='10'):
     """
     为天线添加 1 个端口（仅入口）。

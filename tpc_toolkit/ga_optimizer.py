@@ -92,6 +92,8 @@ def plot_single_pop(pop, iter_count, n_count, ga=None,
     :param show: bool, 是否 plt.show()（批量绘图时应设 False）
     :return: matplotlib Figure 对象
     """
+    from mesh_grid.plotting import configure_chinese_font
+    configure_chinese_font()
     if ga is None:
         ga = {"Gen_Length": pop.shape[0], "Gen_Width": pop.shape[1]}
     n_row = ga["Gen_Length"]

@@ -44,9 +44,12 @@
 @author: PC
 """
 
+import math
+from fractions import Fraction
+
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import List, Tuple, Optional, Union
+from typing import List, Tuple, Optional
 
 
 # ============================================================
@@ -518,12 +521,28 @@ class TopoPath:
         """
         自动在 CST 中定义所有路径点的 px/py 参数（p1x,p1y,p2x,p2y,...）。
         使用符号坐标生成参数化表达式（如 'x1*a'），可在 CST 中调整参数。
+
+        ⚠️ **幂等**（P4/V4 真机修复，2026-09-17）：同一个 ``TopoPath`` 对象在**同一个
+        ``app``** 上重复调用时直接跳过。多个构建器（`build_substrate` /
+        `build_vpc_regions` / 模板的 `_define_all_params`）都会调用本方法，
+        重复登记**同名同值**的参数会被守卫层判成「改了已存在参数」，从而产生
+        ``[LOG_FLAG_NO_REBUILD]``（T7'/T13）噪声警告 —— 实测天线模板会刷 6 条。
+        路径的晶格坐标没变 ⇒ 表达式也没变，重复登记没有任何意义。
+
+        换一个 ``app``（或换一个 ``TopoPath``）时仍会正常登记，参数化能力不受影响。
+
+        :param app: cst_solver.setup 实例
+        :param prefix: str/None, 参数名前缀（默认用 ``self.name``）
         """
         pfx = prefix or self.name
+        marker = getattr(self, '_params_defined_marker', None)
+        if marker is not None and marker[0] is app and marker[1] == pfx:
+            return
         for i, (r, c) in enumerate(self.path_lattice):
             px, py = self.lattice_to_cst_expr(r, c)
             app.para(f'{pfx}{i+1}x', px)
             app.para(f'{pfx}{i+1}y', py)
+        self._params_defined_marker = (app, pfx)
 
     def get_cst_point(self, idx, prefix=None):
         """获取第 idx 个点的 CST 参数名元组 ('p1x', 'p1y')"""
@@ -566,6 +585,218 @@ class TopoPath:
 
     # ---- 区域多边形（使用符号坐标，生成参数化表达式） ----
 
+    # ---- 带状区域偏移（P4/V1 修复：弯折路径必须按段法向偏移） ----
+
+    def _step_vectors(self) -> List[Tuple[int, int]]:
+        """
+        每段的**约简晶格步** ``(dr, dc)``。
+
+        三角晶格的每个晶格步在物理空间里的长度都是 ``a``，
+        因此段方向可写成 6 个方向之一，法向也就能用 ``sqr(3)`` 精确表达 ——
+        这是「偏移量仍用 CST 表达式、不出现硬编码数值」的前提。
+
+        :return: list[tuple[int, int]]，长度 = 路径点数 − 1
+        """
+        pts = [(int(r), int(c)) for r, c in self.path_lattice]
+        steps = []
+        for (r1, c1), (r2, c2) in zip(pts, pts[1:]):
+            dr, dc = r2 - r1, c2 - c1
+            divisor = math.gcd(abs(dr), abs(dc)) or 1
+            steps.append((dr // divisor, dc // divisor))
+        return steps
+
+    @staticmethod
+    def _normal_coeff(step: Tuple[int, int]) -> Tuple[Fraction, Fraction]:
+        """
+        段法向（单位长度）的系数表示 ``(kx, ky)``。
+
+        物理法向 = ``(kx * sqr(3)/2, ky) * y_margin`` —— 写成这种形式是为了
+        让点积/合并都能用有理数完成（两个 x 分量相乘得到 ``3/4``，不带 ``sqr(3)``）。
+
+        :param step: tuple[int, int], 约简晶格步 (dr, dc)
+        :return: tuple[Fraction, Fraction]
+        """
+        dr, dc = step
+        return (Fraction(-dr), Fraction(2 * dc + dr, 2))
+
+    @classmethod
+    def _vertex_offset_coeffs(cls, steps: List[Tuple[int, int]]
+                              ) -> List[Tuple[Fraction, Fraction]]:
+        """
+        每个顶点的偏移系数（端点用相邻段法向；中间点用 **miter 连接**）。
+
+        miter 公式：``(n1 + n2) / (1 + n1·n2)`` —— 它到两条段的垂直距离都等于一个带宽，
+        因此带宽处处一致，多边形也是简单多边形（不自交）。
+
+        :param steps: list, :meth:`_step_vectors` 的结果
+        :return: list[tuple[Fraction, Fraction]]
+        :raises ValueError: 路径出现 180° 折返（带宽无定义）
+        """
+        n = len(steps) + 1
+        coeffs = []
+        for index in range(n):
+            if len(steps) == 1:
+                coeffs.append(cls._normal_coeff(steps[0]))
+                continue
+            if index == 0:
+                coeffs.append(cls._normal_coeff(steps[0]))
+                continue
+            if index == n - 1:
+                coeffs.append(cls._normal_coeff(steps[-1]))
+                continue
+            k1x, k1y = cls._normal_coeff(steps[index - 1])
+            k2x, k2y = cls._normal_coeff(steps[index])
+            dot = k1x * k2x * Fraction(3, 4) + k1y * k2y
+            denominator = 1 + dot
+            if denominator == 0:
+                raise ValueError(
+                    '路径在某个顶点处 180° 折返，带状区域的偏移在这里没有定义；'
+                    '请把折返拆成两段独立路径')
+            scale = Fraction(1) / denominator
+            coeffs.append(((k1x + k2x) * scale, (k1y + k2y) * scale))
+        return coeffs
+
+    def _offset_chains(self, y_margin, prefix: Optional[str] = None):
+        """
+        计算带宽偏移后的两条链（``minus`` 与 ``plus``），元素是 CST 表达式 ``(x, y)``。
+
+        直线路径（全部沿 ±c）时结果与旧实现**逐字节相同**（偏移退化为 ``±y_margin``），
+        弯折路径则按段法向 + miter 连接，得到不自交的简单多边形。
+
+        :param y_margin: str, 带宽（CST 参数名或表达式，如 ``'e2'``）
+        :param prefix: str/None, 路径点参数前缀
+        :return: tuple[list, list], ``(minus_chain, plus_chain)``
+        """
+        pfx = prefix or self.name
+        margin = str(y_margin)
+        coeffs = self._vertex_offset_coeffs(self._step_vectors())
+        minus_chain, plus_chain = [], []
+        # x 分量写成 ``kx/2 * sqr(3) * margin``（把 /2 折进系数），表达式更短更好读：
+        # 例如 miter 点为 ``p2x-sqr(3)*e2`` 而不是 ``p2x-2*sqr(3)/2*e2``
+        x_unit = f'sqr(3)*{margin}'
+        for index, (kx, ky) in enumerate(coeffs):
+            px, py = self.get_cst_point(index, pfx)
+            for sign, chain in ((1, plus_chain), (-1, minus_chain)):
+                x_expr = f'{px}{self._offset_term(sign * kx / 2, x_unit)}'
+                y_expr = f'{py}{self._offset_term(sign * ky, margin)}'
+                chain.append([x_expr, y_expr])
+        return minus_chain, plus_chain
+
+    @staticmethod
+    def _offset_term(coef: Fraction, unit: str) -> str:
+        """把 ``coef * unit`` 写成 CST 表达式片段（带正负号；0 返回空串）。"""
+        if coef == 0:
+            return ''
+        sign = '-' if coef < 0 else '+'
+        magnitude = abs(coef)
+        if magnitude == 1:
+            body = unit
+        elif magnitude.denominator == 1:
+            body = f'{magnitude.numerator}*{unit}'
+        else:
+            # 分子为 1 时不写 '1*'（'sqr(3)*e2/2' 而不是 '1*sqr(3)*e2/2'）
+            head = '' if magnitude.numerator == 1 else f'{magnitude.numerator}*'
+            body = f'{head}{unit}/{magnitude.denominator}'
+        return sign + body
+
+    def build_segment_band_polygons(self, y_margin='e2', prefix=None, side=None):
+        """
+        把带状区域拆成**每段一个简单四边形**（弯折路径的正解，P4/V1 修复）。
+
+        为什么需要：**恒定宽度的带状区域在折回路径上会自覆盖** —— 无论偏移算得多准，
+        单个简单多边形都表达不了它（120° 折回的天线路径就是这种情形）。
+        CST 的 `ExtrudeCurve` 遇到自交多边形直接报
+        ``The specified curve is not closed and planar.``
+
+        因此对弯折路径改为「每段一个四边形 + 布尔并」，与
+        :func:`topo_modeler.builders.build_substrate_multi` 处理多路径的做法一致。
+
+        - ``side=None``：整条带（路径两侧各 ``y_margin``）
+        - ``side='upper'``：路径**上侧**半带（含路径本身）
+        - ``side='lower'``：路径**下侧**半带（含路径本身）
+
+        每个四边形都是 CCW 的**简单多边形**（不自交），可以安全拉伸。
+
+        :param y_margin: str, 带宽（CST 参数名或表达式）
+        :param prefix: str/None, 路径点参数前缀
+        :param side: str/None, ``None`` / ``'upper'`` / ``'lower'``
+        :return: list[list], 每个元素是一个闭合顶点列表
+        :raises ValueError: ``side`` 取值非法
+        """
+        if side not in (None, 'upper', 'lower'):
+            raise ValueError(f"side 必须是 None / 'upper' / 'lower'，收到 '{side}'")
+
+        pfx = prefix or self.name
+        margin = str(y_margin)
+        steps = self._step_vectors()
+        x_unit = f'sqr(3)*{margin}'
+
+        def offset(px, py, kx, ky, sign):
+            """路径点 + sign×(kx,ky) 偏移的 CST 表达式。"""
+            return [f'{px}{self._offset_term(sign * kx / 2, x_unit)}',
+                    f'{py}{self._offset_term(sign * ky, margin)}']
+
+        rings = []
+        # ---- 每段一个平行四边形（用**该段自己的法向**）----
+        for index, step in enumerate(steps):
+            kx, ky = self._normal_coeff(step)
+            ax, ay = self.get_cst_point(index, pfx)
+            bx, by = self.get_cst_point(index + 1, pfx)
+            minus_a = offset(ax, ay, kx, ky, -1)
+            minus_b = offset(bx, by, kx, ky, -1)
+            plus_a = offset(ax, ay, kx, ky, +1)
+            plus_b = offset(bx, by, kx, ky, +1)
+            if side is None:
+                ring = [minus_a, minus_b, plus_b, plus_a]
+            elif side == 'upper':
+                ring = [[ax, ay], [bx, by], plus_b, plus_a]
+            else:
+                ring = [minus_a, minus_b, [bx, by], [ax, ay]]
+            ring.append(ring[0])
+            rings.append(ring)
+
+        # ---- 拐角补块：外侧的缺口 ----
+        # 每段平行四边形在拐角外侧会留一个缺口（宽度量级为 y_margin），
+        # 这里补一个四边形把缺口填上。左转（叉积 > 0）时外侧在**右**（'lower'），
+        # 右转时外侧在左（'upper'）；请求整条带时两边都补。
+        minus_chain, plus_chain = self._offset_chains(y_margin, prefix)
+        for index in range(1, len(steps)):
+            cross = self._turn_cross(steps[index - 1], steps[index])
+            if cross == 0:
+                continue
+            outer_side = 'lower' if cross > 0 else 'upper'
+            if side is not None and side != outer_side:
+                continue
+            sign = -1 if outer_side == 'lower' else +1
+            vertex = list(self.get_cst_point(index, pfx))
+            chain = minus_chain if sign < 0 else plus_chain
+            kx_prev, ky_prev = self._normal_coeff(steps[index - 1])
+            kx_next, ky_next = self._normal_coeff(steps[index])
+            before = offset(vertex[0], vertex[1], kx_prev, ky_prev, sign)
+            miter = list(chain[index])
+            after = offset(vertex[0], vertex[1], kx_next, ky_next, sign)
+            ring = [list(vertex), after, miter, before] if sign > 0 else \
+                   [list(vertex), before, miter, after]
+            ring.append(ring[0])
+            rings.append(ring)
+        return rings
+
+    @staticmethod
+    def _turn_cross(step1: Tuple[int, int], step2: Tuple[int, int]) -> int:
+        """
+        两段方向的**物理叉积符号**（>0 为左转），用整数晶格步计算。
+
+        方向矢量可写成 ``a * ((2dc+dr)/2, dr*sqr(3)/2)``，叉积的正负号由
+        ``(2dc1+dr1)*dr2 - dr1*(2dc2+dr2)`` 决定（``sqr(3)`` 因子为正、不影响符号）。
+
+        :param step1: tuple[int, int], 前一段的约简晶格步
+        :param step2: tuple[int, int], 后一段的约简晶格步
+        :return: int, 正 = 左转，负 = 右转，0 = 直行
+        """
+        dr1, dc1 = step1
+        dr2, dc2 = step2
+        return (2 * dc1 + dr1) * dr2 - dr1 * (2 * dc2 + dr2)
+
     def build_substrate_polygon(self, y_margin='e2', prefix=None):
         """
         自动生成基板的 polyline 顶点（路径上下各扩展 y_margin 的带状区域）。
@@ -581,19 +812,21 @@ class TopoPath:
         两条偏移链都包含**每一个**路径点，因此对拐弯路径也能得到确定绕向的带状多边形
         （只取两端偏移点的稀疏写法，其绕向会随路径拐弯方向翻转，不能保证 CCW）。
 
+        ⚠️ **偏移按段法向 + miter 连接**（P4/V1 修复，2026-09-17）：
+        原先只在 y 方向偏移（``py ± y_margin``），直线路径没问题，
+        但**拐弯路径**上两条链会互相穿插 → 自交多边形 → CST 直接拒绝拉伸
+        （实测 `The specified curve is not closed and planar.`）。
+        现在按每段的法向偏移、拐点处用 miter 连接，带宽处处一致且多边形不自交；
+        偏移量仍全部由 CST 表达式（``sqr(3)``、``y_margin``）表达，不引入硬编码数值。
+        直线路径的结果与旧实现**逐字节相同**。
+
         :param y_margin: str, 路径上下扩展量（CST 参数名或表达式），默认 'e2'
         :param prefix: str/None, CST 参数名前缀，None 时用 ``self.name``
         :return: list, 闭合的顶点列表（首尾相同）
         """
-        pfx = prefix or self.name
-        n = len(self.path_lattice)
-        pts = []
-        for i in range(n):
-            px, py = self.get_cst_point(i, pfx)
-            pts.append([px, f'{py}-{y_margin}'])
-        for i in range(n - 1, -1, -1):
-            px, py = self.get_cst_point(i, pfx)
-            pts.append([px, f'{py}+{y_margin}'])
+        minus_chain, plus_chain = self._offset_chains(y_margin, prefix)
+        pts = [list(point) for point in minus_chain]
+        pts.extend(list(point) for point in reversed(plus_chain))
         pts.append(pts[0])
         return pts
 
@@ -607,6 +840,9 @@ class TopoPath:
         - ``'upper'``：**路径链正向** → **上侧偏移链反向**（路径是下边界）
         - ``'lower'``：**下侧偏移链正向** → **路径链反向**（路径是上边界）
 
+        ⚠️ 外侧偏移链同样按**段法向 + miter 连接**计算（P4/V1 修复，见
+        :meth:`build_substrate_polygon`）；直线路径结果与旧实现逐字节相同。
+
         :param side: str, 'upper'（基板路径以上）或 'lower'（路径以下）
         :param y_margin: str, 扩展量，默认 'e2'
         :param prefix: str/None, CST 参数名前缀，None 时用 ``self.name``
@@ -618,17 +854,14 @@ class TopoPath:
 
         pfx = prefix or self.name
         n = len(self.path_lattice)
+        minus_chain, plus_chain = self._offset_chains(y_margin, prefix)
         pts = []
         if side == 'upper':
             for i in range(n):
                 pts.append(list(self.get_cst_point(i, pfx)))
-            for i in range(n - 1, -1, -1):
-                px, py = self.get_cst_point(i, pfx)
-                pts.append([px, f'{py}+{y_margin}'])
+            pts.extend(list(point) for point in reversed(plus_chain))
         else:
-            for i in range(n):
-                px, py = self.get_cst_point(i, pfx)
-                pts.append([px, f'{py}-{y_margin}'])
+            pts.extend(list(point) for point in minus_chain)
             for i in range(n - 1, -1, -1):
                 pts.append(list(self.get_cst_point(i, pfx)))
         pts.append(pts[0])
@@ -671,6 +904,8 @@ class TopoPath:
                 linewidth=2, markersize=6, label=None,
                 lattice_rows=None, lattice_cols=None):
         """matplotlib 预览：画出路径 + 可选晶格背景。返回 (fig, ax)。需要数值坐标。"""
+        from mesh_grid.plotting import configure_chinese_font
+        configure_chinese_font()
         if self._xy is None:
             raise RuntimeError("符号路径无法预览，请在 build() 时提供 param_values")
         if ax is None:

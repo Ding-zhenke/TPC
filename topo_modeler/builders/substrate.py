@@ -31,21 +31,28 @@ def build_substrate(app, path, name='substrate', height='h',
     # 1. 自动在 CST 中定义路径点参数 p1x,p1y,...
     path.auto_define_cst_params(app, prefix='p')
 
-    # 2. 生成基板多边形顶点（路径上下各扩展 y_margin）
-    polygon_pts = path.build_substrate_polygon(y_margin=y_margin, prefix='p')
+    # 2. 生成带状区域。**弯折路径**上恒定宽度的整条带会自覆盖（单个多边形表达不了），
+    #    所以按「每段一个四边形 + 布尔并」来建（P4/V1 真机实测：
+    #    y 向偏移的整条带在 120° 天线路径上自交，CST 报
+    #    `The specified curve is not closed and planar.`）。
+    #    直线路径只有一段 ⇒ 四边形就是原来的整条带多边形，行为不变。
+    quads = path.build_segment_band_polygons(y_margin=y_margin, prefix='p',
+                                             side=None)
+    solids = []
+    for index, ring in enumerate(quads):
+        curve_name = f"{name}_curve" if index == 0 else f"{name}_curve{index + 1}"
+        solid_name = name if index == 0 else f"{name}_seg{index + 1}"
+        app.polyline(ring, name=curve_name, curve='curve1')
+        app.extrude(f"curve1:{curve_name}", name=solid_name, thickness=height,
+                    component=component, material=material)
+        app.translate(solid_name, ['0', '0', f'-{height}/2'],
+                      component=component, log_flag=1)
+        solids.append(solid_name)
 
-    # 3. 绘制 polyline 曲线
-    curve_name = f"{name}_curve"
-    app.polyline(polygon_pts, name=curve_name, curve='curve1')
-
-    # 4. 拉伸为三维实体（从 -h/2 到 +h/2，先拉伸 h 再平移 -h/2）
-    extrude_name = name
-    app.extrude(f"curve1:{curve_name}", name=extrude_name, thickness=height,
-                component=component, material=material)
-
-    # 5. Z方向居中平移（extrude 默认从 0 开始，平移 -h/2 使中心在 z=0）
-    app.translate(extrude_name, ['0', '0', f'-{height}/2'],
-                  component=component, log_flag=1)
+    # 3. 多段时布尔并成一个实体（与 build_substrate_multi 的做法一致）
+    extrude_name = solids[0]
+    for extra in solids[1:]:
+        app.add(extrude_name, extra, component1=component, component2=component)
 
     return extrude_name
 
@@ -87,13 +94,22 @@ def build_substrate_multi(app, paths, name='substrate', height='h',
     for i, (path_name, path) in enumerate(paths.items()):
         pfx = f'{prefix}{i}'
         path.auto_define_cst_params(app, prefix=pfx)
-        pts = path.build_substrate_polygon(y_margin=y_margin, prefix=pfx)
-        curve = f'{name}_{i}_curve'
-        app.polyline(pts, name=curve, curve='curve1')
-        solid = f'{name}_part{i}'
-        app.extrude(f'curve1:{curve}', solid, thickness=height,
-                    component=component, material=material)
-        parts.append(solid)
+        # ⚠️ 与 build_substrate 同一处理（P4/V6 真机修复，2026-09-17）：
+        # **弯折路径**上恒定宽度的整条带会自覆盖，单个多边形会被 CST 拒绝
+        # （`The specified curve is not closed and planar.`），所以按
+        # 「每段一个四边形 + 拐角补块」建，最后统一布尔并。
+        # 直线路径只有一段 ⇒ 与旧实现逐字节相同。
+        rings = path.build_segment_band_polygons(y_margin=y_margin, prefix=pfx,
+                                                 side=None)
+        for index, ring in enumerate(rings):
+            curve = (f'{name}_{i}_curve' if index == 0
+                     else f'{name}_{i}_curve{index + 1}')
+            solid = (f'{name}_part{i}' if index == 0
+                     else f'{name}_part{i}_seg{index + 1}')
+            app.polyline(ring, name=curve, curve='curve1')
+            app.extrude(f'curve1:{curve}', solid, thickness=height,
+                        component=component, material=material)
+            parts.append(solid)
 
     if unite and len(parts) > 1:
         # `Add` 结果留在第一个操作数里，且第二个会被删除

@@ -7,7 +7,7 @@ r"""
 
 **只读**：不改任何 notebook，不执行任何 notebook。
 
-输出：`docs/next_plan/stages/08_notebook_inventory.md`
+输出：`docs/guides/notebook_migration_inventory.md`
 
 用法::
 
@@ -23,7 +23,7 @@ import sys
 from collections import Counter, OrderedDict
 
 SRC_DEFAULT = r'D:\成电博士生涯\拓扑光子晶体模型\硅基'
-OUT_DEFAULT = os.path.join('docs', 'next_plan', 'stages', '08_notebook_inventory.md')
+OUT_DEFAULT = os.path.join('docs', 'guides', 'notebook_migration_inventory.md')
 
 # ---- 分类规则：按目录判定（长前缀优先）----
 CATEGORIES = [

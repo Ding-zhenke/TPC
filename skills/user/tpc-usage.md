@@ -15,7 +15,7 @@ applyTo: "**/*.py"
 4. 需要低成本总览时用 AST 只取名字（不读实现）：打印每个 `.py` 的文档首行 + `FunctionDef/ClassDef` 名。
 5. 子包细节读使用者技能文档：`./tri-grid.md`、`./hex-grid.md`、`./topo-modeler.md`。
 
-## 1. 包结构（5 层）
+## 1. 包结构（6 层）
 
 ```
 TPC/                              ← 已 pip install -e .，无需 sys.path.append
@@ -23,6 +23,8 @@ TPC/                              ← 已 pip install -e .，无需 sys.path.app
 ├── mesh_grid/        纯算法：tri_grid（三角晶格/路径 DSL）、hex_grid（六边形/DXF）
 ├── topo_modeler/     建模引擎：TopoModeler + builders/ 各部件构建器
 ├── topo_templates/        端到端模板（StraightWaveguide / UnitAntenna）
+├── tpc_service/      运行服务层（P2）：工程注册 + 任务服务 + 单 worker；不依赖 MCP
+├── integrations/cst-mcp/  MCP 服务（P3）：发行名 tpc-cst-mcp，11 个工具，stdio 入口
 └── tpc_toolkit/      独立工具（s2p 解析 / 遗传算法 / 等效介质），不依赖 CST
 ```
 
@@ -41,14 +43,96 @@ from topo_modeler.builders import (build_vpc_regions, build_feed,
 
 > ⚠️ **不要再写 `sys.path.append(r'D:\...\TPC')`。** 那是 pip 安装方式引入前的
 > 临时做法，换机器/换目录就会失效（旧 notebook 里 84 处都是这么写的）。
-> 唯一需要配置的是 CST 安装路径：把 `cst_solver/config_template.py` 复制成
-> `cst_solver/config.py` 并改 `CST_INSTALL_PATH`；`cst` 模块由 CST 自带，
-> 无法从 PyPI 安装。
+> 推荐通过环境变量 `CST_INSTALL_PATH` 或 `CST_CONFIG_FILE` 指向用户 JSON 配置；旧 `config.py` 仍兼容。运行 `python -m cst_solver doctor --probe` 检查接口导入，不会启动 CST。普通 `import cst_solver` 不要求 CST；实际建模和读 .cst 结果才需要官方接口。见 [环境配置](../../docs/guides/cst_environment.md)。
+
+### 中文图与负号（所有 Matplotlib 图通用）
+
+在创建 Figure **之前**使用共用字体配置；正式导出把标题/坐标/图例中的中文传入 `text` 并用 `strict=True`：
+
+```python
+from mesh_grid.plotting import chinese_plot_style
+import matplotlib.pyplot as plt
+
+with chinese_plot_style(text='频率透射系数', strict=True):
+    fig, ax = plt.subplots()
+    ax.plot([300, 320, 340], [-2, -3, -1])
+    ax.set_xlabel('频率 (GHz)')
+    ax.set_ylabel('透射系数 (dB)')
+    fig.savefig('s21.png', dpi=180, bbox_inches='tight')
+    plt.close(fig)
+```
+
+不要直接写 `font.sans-serif=['SimHei']` 或 `family='Microsoft YaHei'`：字体可能不存在。工具会检查真实字形；无中文字体时配置 `TPC_CJK_FONT` 或改为英文标签，不要屏蔽 Glyph missing 警告。负号和 PDF/SVG 字体已统一处理。保存后查看一次图，确认中文、图例、负刻度完整。[完整指南](../../docs/guides/chinese_plotting.md)
+
+### Python 与 AI 两种入口的当前状态
+
+Python 包可直接使用；**MCP 服务首版已实现**（P3，独立发行项目 `integrations/cst-mcp/`，发行名 `tpc-cst-mcp`，包名 `cst_mcp`），安装与配置见 [`integrations/cst-mcp/README.md`](../../integrations/cst-mcp/README.md)。证据是**离线 46 项测试**（假后端 + 内存传输 + 真 stdio 杂讯检查）；**真实 CST 上的端到端闭环属计划 P4/V9，尚未进行**。用 AI 编排时仍要读取实际结果、保留参数/单位与消息，不能把 doctor 的 `importable` 当作仿真已通过（P4/V8 真机已确认：`doctor --probe` **不创建设计环境**，`importable` 仅表示**接口能加载**，与许可/仿真无关；见 [`docs/validation/p4_real_machine_evidence.md`](../../docs/validation/p4_real_machine_evidence.md) §1）。
+
+### MCP 入口怎么用（P3 首版，离线验证）
+
+给支持 MCP 的 AI 客户端（Claude Desktop / VS Code / 自研客户端…）接上 CST 能力，只需要两步安装 + 一段客户端配置：
+
+```bash
+# 1) 核心包（几何 / 执行 / 数值能力）
+pip install -e .
+# 2) MCP 服务（依赖 tpc-cst>=2.0.0,<3 与 mcp==1.29.1；要求 Python ≥ 3.10）
+pip install -e integrations/cst-mcp
+```
+
+> ⚠️ 改完核心包**要重装**：新增顶层包（如 P2 的 `tpc_service`）之后必须重新 `pip install -e .`，
+> 否则旧的可编辑安装映射里没有它，在 `integrations/cst-mcp/` 目录里 `import tpc_service` 会 `ModuleNotFoundError`。
+
+自检（不启动服务、不启 CST）：
+
+```bash
+python -m cst_mcp --check     # 打印能力报告 JSON：CST 可用性、后端、模板、工具清单与限制
+```
+
+客户端配置（任何支持 MCP 的客户端都是「启动一条 stdio 命令」）：
+
+```json
+{
+  "mcpServers": {
+    "tpc-cst": {
+      "command": "python",
+      "args": ["-m", "cst_mcp"],
+      "env": {
+        "TPC_MCP_WORKDIR": "D:\\tpc_mcp_work",
+        "CST_INSTALL_PATH": "C:\\SOFTWARE\\CST Studio Suite 2026"
+      }
+    }
+  }
+}
+```
+
+| 阶段 | 工具 |
+|---|---|
+| 先看能力（离线，不启 CST） | `get_capabilities` → `list_templates` → `validate_model_spec` |
+| 建模（异步任务） | `build_model` → `get_project_state` |
+| 求解（异步长任务） | `run_simulation` → `get_job_status` |
+| 取结果 / 分析 / 报告 | `get_results` → `analyze_s_parameters` → `export_report` |
+| 收尾 | `close_project`（只关本服务创建的会话） |
+
+四条最容易踩的边界（详细口径见 [包说明](../../docs/packages/cst_mcp.md) 与
+[`integrations/cst-mcp/README.md`](../../integrations/cst-mcp/README.md)）：
+
+- **`interrupted` 不是成功**，且**不会自动重跑**；判断状态要认全 `queued/running/succeeded/failed/interrupted`。
+- **多段连续合格区间按段列出，绝不合并**；`total_bandwidth_ghz` 是各段之和（dB 口径 `20·log10|S|`、零值 −300 dB）。
+- **失败是结构化错误**（`{code, message, details, retryable}`），不会变成空数据；`get_results` 在任务未成功时返回错误而不是空结果。
+- **缺关键物理条件要问用户**：模板默认值会显式回显（`effective` / `field_sources`），**不得**用默认值静默代替用户意图。
 
 ## 2. 按需查阅地图（**照此表读文件，别通读**）
 
 | 你要做什么 | 读这个文件 |
 |---|---|
+| **提交任务 / 查状态 / 取产物（幂等、重启恢复）** | `tpc_service/service.py`、`tpc_service/state.py`（用法见 §「共用运行服务 tpc_service」） |
+| **MCP 工具表 / 参数 Schema / 返回结构** | `integrations/cst-mcp/src/cst_mcp/tools.py`（`TOOL_SPECS` + `HANDLERS`）、`server.py` |
+| MCP 协议通道保护（stdout 隔离） | `integrations/cst-mcp/src/cst_mcp/isolation.py` |
+| MCP 工作目录 / 后端 / 运行服务单例 | `integrations/cst-mcp/src/cst_mcp/runtime.py` |
+| MCP 的 S 参数分析口径（dB / 多段带宽 / 谐振） | `integrations/cst-mcp/src/cst_mcp/analysis.py` |
+| 工程注册与会话归属（副本 / 覆盖策略） | `tpc_service/registry.py` |
+| 任务记录落盘与工作目录约束 | `tpc_service/store.py` |
+| 后端契约 / 假后端 / 真实 CST 接线 | `tpc_service/backends/{base,fake,cst_backend}.py` |
 | 任何 `app.xxx()` 的签名 | `cst_solver/setup.pyi`（最快） |
 | 开/关/保存工程、`app.cst_file` | `cst_solver/project.py`、`cst_solver/__init__.py` |
 | 参数 `para/freq_limit` | `cst_solver/parameters.py` |
@@ -130,21 +214,41 @@ assert signed_area(my_poly) > 0        # 手写多边形拉伸前先自检
 | `FileNotFoundError: CST project file not found` | 相对路径按**工作目录**解析 | 模板 `tmp.cst` 放 notebook 同目录 |
 | `ImportError: cst` | CST python 库路径没配 | 改 `cst_solver/config.py` 的 `CST_INSTALL_PATH` |
 | `AttributeError: … no attribute 'GetBoundingBox'` | `cst_file.modeler` 已废弃 | 改用 `cst_file.model3d` |
+| `CstOperationError: cst_unavailable`（`code='cst_unavailable'`） | 没有 CST 环境（CST 初始化失败 ⇒ `app is None`）；**P1 起 `TopoModeler.run()/save()` 不再静默 no-op 返回成功**（见文末「离线预检 / 运行契约 / 结构化失败」§4） | 无 CST 时不要当成「跑完了」，如实上报；只做流程编排用 `m.validate()`（返回 error 结果、不抛） |
 | 保存后模型里有垃圾实体 | 实验性命令写进了历史 | 关工程 → 从干净模板重开 → 重跑 → 重新保存（§5） |
+| `RuntimeError: An error occurred while trying to execute add_to_history: (&H8000ffff) …` | 下发的 VBA 被 CST 拒绝 —— 走的是**异常**通道，不是消息通道 | 按 CST 原文改 VBA；例：`.Coordinates` 的合法值只有 `"Free"` / `"Full"` / `"Picks"`（§4.1） |
+| 拾取明明成功，`pick_face_auto()` 却返回 `None` | 脏工程：历史里的失败命令被 `get_messages()` **反复**报出，「消息为空」判据失效 | 改用正向判据 `get_picked_count('face') == 1`；库侧已修（§4.1 + 文末「面拾取」） |
+| 建模时刷 `[LOG_FLAG_NO_REBUILD]` 警告（守卫 T7'/T13） | ① **先判断是不是重复登记**：同一条路径的参数被**多个构建器重复登记**曾导致**误报**（2026-09 已修，`TopoPath.auto_define_cst_params()` 现已幂等），此时参数值根本没变；② 真的是「改了**已有**参数但没重建历史」 | ① 误报：升到修好的版本即可，**不用改建模代码**；② 真报警：`app.para(name, val, log_flag=1)` 或 `full_history_rebuild()`（§7） |
 
-### 4.1 唯一可靠的反馈通道：CST 自己的消息日志 ✅实测
+### 4.1 主要反馈通道之一：CST 自己的消息日志 ✅实测
 
-TPC 库**不保证**把 CST 的错误抛成 Python 异常，所以每个重操作后**读 CST 日志**（只读、不污染历史）：
+CST 的失败有**两条**通道，都要看：
+
+1. **`add_to_history()` 可能直接抛 Python 异常** —— 异常文本里带 CST 原文，例如
+   `RuntimeError: An error occurred while trying to execute add_to_history:
+   (&H8000ffff) Invalid coordinate type. Please specify either "Free", "Full" or "Picks".`
+   这条是**显式失败**，代码里不接就会中断；
+2. **有的失败只写消息**，完全不抛异常。所以每个重操作后还要**读 CST 日志**
+   （只读、不污染历史）：
 
 ```python
 def cst_log(tag=''):
-    msgs = app.cst_file.get_messages()      # 读取后即清空
+    msgs = app.cst_file.get_messages()      # 读一次清一次；但历史失败会反复报出（见下方 ⚠）
     print(f'[{tag}]', '无消息' if not msgs else msgs)
 
 app.intersect(g1A, clip_A); cst_log('g1A ∩ clip_A')
 app.cst_file.model3d.Rebuild()              # 阻塞式强制重放历史（大模型约数秒）← 最佳同步点
 cst_log('完整重建后')
 ```
+
+> ⚠️ **脏工程里消息会一直报历史失败，别拿它当唯一判据。**
+> 实测（2026-09-17，CST Studio Suite 2026 真机）：工程历史里只要留下**一条失败命令**，
+> 之后**每次** `get_messages()` 都会**再次**报出那条历史失败，并不是「读一次就干净」。
+> 于是「消息为空 = 成功」在脏工程里会**一直判失败** —— 实测 `pick_face_auto()` 因此一直返回
+> `None`，而 `GetNumberOfPickedFaces()` 明确是 `1`（拾取其实成功了）。
+> 正确做法：**有正向信号就用正向信号**（拾取用 `get_picked_count('face') == 1`），
+> 取不到计数时才退回「消息为空」判定 —— 库侧已按此修好 `_pick_succeeded()`（见文末「面拾取」）。
+> 证据见 [`docs/validation/p4_real_machine_evidence.md`](../../docs/validation/p4_real_machine_evidence.md) §3。
 
 其它探测手段：
 - `app.cst_file.model3d` 有 387 个方法，可 `dir()` 找（`Rebuild`、`StoreParameter`、`add_to_history` 等）
@@ -155,6 +259,7 @@ cst_log('完整重建后')
 ## 5. 验收清单（每次交付建模 notebook 必做）
 
 1. 每个重操作后 `cst_log()` 无消息；`model3d.Rebuild()` 后无消息
+   （⚠️ 结论**须在干净工程里**得出：脏工程里消息会反复报历史失败，见 §4.1）
 2. **重启 kernel → 从第一个代码单元顺序全量重跑**（唯一可信的验证）
 3. notebook 无 error 输出（用 json 扫 `output_type == 'error'`）
 4. 保存后核验磁盘产物（**不用连 CST**）：
@@ -219,6 +324,12 @@ app.cst_file.model3d.Rebuild()                          # 同步 + 自检
 app.cst_file.save(r'<绝对路径>\out.cst', include_results=False, allow_overwrite=True)
 ```
 
+> **导出结果后保存要用 `include_results=False`**（P4/V4 真机验收，2026-09-17）：
+> 先在**已求解工程的副本**上 `export_result_1d('S-Parameters\\S1,1', path)` 真的产出文件后，
+> 再用 `save(include_results=True)` 会**如期**触发守卫告警 `SAVE_AFTER_RESULT_EXPORT`
+> （plan_id=T3，severity=warning）；改成 `include_results=False` **就不再告警**，与守卫建议一致。
+> 证据见 [`docs/validation/p4_real_machine_evidence.md`](../../docs/validation/p4_real_machine_evidence.md) §5。
+
 ## 8. 坐标与方向速查
 
 - 三角晶格：`x = c*a + r*(a/2)`，`y = r*(a/2)*√3`；`e1 = a/2`，`e2 = a*√3/2`
@@ -256,6 +367,287 @@ s11 = res.read_s_parameter('S1,1')
 
 ---
 
+## 离线预检 / 运行契约 / 结构化失败（P1，2026-09 新增）
+
+> ⚠️ 本节所有结论目前**只有离线测试证据**（`cst_solver/tests/`、`topo_modeler/tests/`、`tests/`）；
+> **真机验收属计划 P4**（[统一计划](../../docs/next_plan/README.md)），不要当成「已通过真机验证」。
+
+### 1. 先离线预检，再动手建模（`topo_modeler/preflight.py`）
+
+预检**不导入 CST、不建 DE**（CST 只做路径级诊断），所以可以在没有 CST 的机器上先把规格过一遍。
+
+| 入口 | 作用 |
+|---|---|
+| `list_templates()` | 默认只列**可构建**的模板；`include_planned=True` 才把未实现类型也列出来（带 `buildable=False` 与 `reason`） |
+| `describe_template(model_type)` | 字段/类型/单位/取值范围/默认值/是否必填 |
+| `validate_model_spec(spec, …)` | 完整预检，返回 `ok/buildable/normalized/effective/field_sources/ctor_kwargs/errors/warnings/assumptions/checks/cst` |
+
+```python
+from topo_modeler.preflight import list_templates, describe_template, validate_model_spec
+
+print([t['model_type'] for t in list_templates()])                       # 只列能建的
+print([t['model_type'] for t in list_templates(include_planned=True)])   # 未实现的也在（buildable=False）
+print(describe_template('straight_waveguide')['required'])               # 该模板的必填字段
+
+report = validate_model_spec('spec.yaml')          # 不启动 CST
+if report['errors'] or not report['buildable']:
+    for e in report['errors']:
+        print(e['code'], e['message'])             # 按 code 分流（见下）
+else:
+    print(report['effective'])                     # 用户输入 + 模板默认值（默认值可见）
+    print(report['field_sources'])                 # 每个字段来自 'user' 还是 'default'
+    print(report['ctor_kwargs'])                   # 真正会传给模板构造的参数
+```
+
+- **使用建议**：先 `validate_model_spec` 预检、再建模；**`errors` 为空且 `buildable` 为真**才建档。
+- 无效输入会在 `errors` 里给出 `code`；**未实现的类型报 `model_type_not_implemented`**
+  （`reason` 会写清「当前可构建的类型」）。
+- `assumptions` 是预检**替你做的假设**（例如 `require_output=False` 时「缺 `output.path`」只记假设），
+  **必须回显**给用户，不能吞掉。
+- `errors` 里放的是**错误码清单**，常见的有：`config_unknown_field`、`config_type_error`、
+  `config_value_out_of_range`、`config_enum_invalid`、`config_model_type_invalid`、
+  `model_type_not_implemented`（未实现类型）、`template_not_found`（模板工程不存在）、
+  `output_not_writable`。
+- 直接调配置层时，`topo_modeler.config.ConfigError` 现在带 `code` 与 `details`，可**按码分流**：
+
+```python
+from topo_modeler.config import ConfigError, modeler_from_config
+
+try:
+    modeler = modeler_from_config(spec)
+except ConfigError as exc:
+    print(exc.code, exc.details)      # 例如 config_unknown_field / config_value_out_of_range
+```
+
+### 2. 运行契约：`run_checked()` 和 `run()` 的区别（`cst_solver/run_contract.py`）
+
+| | `app.run()` | `app.run_checked(...)` |
+|---|---|---|
+| 返回 | `None`（**行为一字未改**） | `dict`：`status` / `errors` / `evidence` / `fingerprint_before` / `fingerprint_after` … |
+| 说明什么 | 只说明 VBA **提交**没炸 | 说明**算完了、且结果是本次的**（或如实说明不是） |
+| 记录 | 无 | 默认落盘工程目录的 `run_contract.jsonl` |
+
+`succeeded` 要**四件事同时成立**：提交未抛异常 + `get_messages()` 为空 + 结果存在 +
+结果指纹在提交前后发生变化；否则给 `failed`（提交异常 / 消息非空）或 `unverified`
+（没异常也没消息，但结果缺失 / 未变化 / 指纹查不到）。**`unverified` 不得当成成功。**
+> ⚠️ 其中「`get_messages()` 为空」这一条在**脏工程**里会一直不成立（历史失败反复报出，见 §4.1），
+> 所以别把消息判据当成唯一依据，正向信号（结果指纹、几何量、已选面数）优先。
+
+```python
+outcome = app.run_checked(note='wg1 首次求解')
+print(outcome['status'])                 # succeeded / failed / unverified
+if outcome['status'] != 'succeeded':
+    for e in outcome['errors']:
+        print(e['code'], e['message'])   # run_messages / results_missing / results_unchanged …
+    raise SystemExit('本次运行没有可确认的结果')   # 别把它写成「跑完了」
+```
+
+| 错误码 | 含义 |
+|---|---|
+| `run_exception` | 提交求解时抛了异常 |
+| `run_messages` | 提交后 CST 消息非空（有的失败不抛异常，消息是主要线索；脏工程里消息会反复报历史失败，见 §4.1） |
+| `messages_unreadable` | 读消息本身失败 |
+| `results_missing` | 工程里找不到任何结果 |
+| `results_unchanged` | 结果指纹没变 —— 很可能还是上一轮的结果 |
+| `results_not_verified` | 指纹不可用（探测失败 / 拿不到工程路径），**「有没有结果」其实是不知道** |
+| `audit_write_failed` | 运行记录没能落盘（结论仍有效，但事后无法追溯消息） |
+
+- **务必落盘**：CST `get_messages()` **读一次清一次**（但历史失败会反复报出，见 §4.1），
+  `JsonlSink` 把读到的消息写进
+  `run_contract.jsonl`（路径取 `run_log_path(project_path)`），否则事后无据可查。
+- **局限**：`results_changed` 是**必要条件不是充分条件** —— 它只证明结果区变了，
+  不证明这份结果就是本次算的（例如另一个会话也在写同一工程）。真正的判据要在真机上做
+  小范围串行闭环，属计划 **P4/V7**。
+- **`run_id=0` 不是历史编号**，它是「当前最新结果」的别名；要固定某次运行必须显式给具体 `run_id`。
+  单位与口径直接取 `result_conventions()`（GHz、`s_db = 20*log10(abs(S))`、幅度 0 记 −300 dB），
+  **不要另抄一份**。
+
+### 3. 材料旧接口的失败怎么查（「空列表 / `None`」不再等于没事）
+
+`new_material` / `list_library_materials` / `load_material_from_file` / `get_material_filepath`
+这四个旧兼容接口的**返回值和日志文案一字未改**（旧 notebook 照跑），但失败现在会登记一条
+结构化记录（`{code, message, details, retryable}`），所以「静默失败」能被看见：
+
+```python
+from cst_solver.failures import collect_failures, recent_failures, set_failure_strict
+
+with collect_failures() as failures:
+    app.new_material('Copper (annealed)')     # 名字不认识：返回值照旧，但会登记
+    mats = app.list_library_materials()       # 空列表：先确认是不是材料库路径不存在
+if failures:
+    for f in failures:
+        print(f['operation'], f['code'], f['message'], f['details'])
+```
+
+| 错误码 | 出现处 | 含义 |
+|---|---|---|
+| `material_not_preset` | `new_material` | 材料名既不在工程里、也不在材料库 |
+| `material_library_missing` | `list_library_materials` | 材料库路径不存在（**空列表 ≠ 库里没有材料**） |
+| `material_file_not_found` | `load_material_from_file` | `.mtd` 文件找不到 |
+| `material_definition_empty` | `load_material_from_file` | `.mtd` 里没有有效定义 |
+| `material_file_missing` | `get_material_filepath` | 取不到材料文件路径（**`None` ≠ 路径为空**） |
+
+- 批处理 / CI 里想「失败就停」：`set_failure_strict(True)` —— 之后静默失败直接抛
+  `CstOperationError`（带 `code` / `retryable` / `details`）；**用完记得关回去**，
+  默认关闭就是为了兼容旧 notebook。
+- `recent_failures(clear=True)` 读最近的记录（**包括**没放进 `collect_failures()` 的那些）。
+- 离线回归：`pytest cst_solver/tests/test_failures.py -q`。
+
+### 4. ⚠ 行为变更：`TopoModeler.run()` / `save()` 无 CST 环境时改为抛异常
+
+- **旧行为**：`app is None`（CST 初始化失败）时**静默 no-op 却返回成功** ——
+  把「没跑」「没保存」当成成功，是本库最危险的一类谎报。
+- **新行为（P1）**：直接抛 `CstOperationError('cst_unavailable')`
+  （`operation='TopoModeler.run'` / `'TopoModeler.save'`）。初始化失败时
+  `TopoModeler._init_cst` 也会 `record_failure(..., 'cst_unavailable', ...)`，
+  可用 `collect_failures()` 看到。
+- **影响**：在无 CST 机器上做流程编排的代码要分开处理 —— `m.validate()` 仍**返回**
+  error 结果（不抛），`m.run()` / `m.save()` 会**抛**。
+
+```python
+from cst_solver.failures import CstOperationError
+
+try:
+    modeler.run()
+except CstOperationError as exc:
+    print(exc.code, exc.retryable)      # 'cst_unavailable'
+    # 没有 CST 环境：记成「未运行」，不要记成「跑完了」，也不要吞掉
+```
+
+---
+
+## 共用运行服务 tpc_service（P2，2026-09 新增）
+
+> 新增顶层包 `tpc_service/`：**工程注册 + 任务服务**（`RunService`），让 Python 用户和（P3 的）MCP 服务
+> 共用同一套「提交 → 查状态 → 取产物」能力。它**不依赖 MCP**，也不重写几何/VBA/数值逻辑。
+> ⚠️ 本节全部结论只有**离线测试证据**：`tpc_service/tests/` 共 **47 项**（含 `max_concurrent == 1` 的串行证据）。
+> **真实 CST 后端 `CstBackend` 尚未验证，真机判据属计划 P4/V7**
+> （[统一计划](../../docs/next_plan/README.md)）—— 不要当成「已通过真机验证」「生产可用」。
+> （下文 `§P1-n` 指上一节「离线预检 / 运行契约 / 结构化失败（P1）」的第 n 小节。）
+
+### 1. 什么时候用它
+
+需要下面任何一件事，就用 `RunService`；都不是的话，单次建模**仍直接用模板或 `TopoModeler` 即可**
+（见 §7 最小可用配方），不必套一层服务：
+
+- **提交任务 → 查状态 → 取产物**：不想自己管「跑到哪一步了」；
+- **幂等重发**：脚本重跑时用**同一个 `request_id`**，同参数的重复提交不会重跑第二遍；
+- **重启后不丢历史**：任务记录落在 `<workdir>/jobs/<job_id>.json`（原子写）、事件流落在
+  `<workdir>/events.jsonl`，服务重启后未完成的任务会被如实标成 `interrupted`；
+- **多人/多入口共用一台 CST**：所有后端调用在**一个**专用线程里串行，天然不打架。
+
+### 2. 最小例子（离线，假后端）
+
+假后端不碰 CST，可在无 CST 的机器上把流程先跑一遍：
+
+```python
+import os
+from tpc_service import RunService
+from tpc_service.backends.fake import FakeBackend
+
+work = r'D:\tpc_work'
+os.makedirs(work, exist_ok=True)
+template = os.path.join(work, 'tmp.cst')
+open(template, 'w').close()          # 占位工程（假后端不解析文件内容）
+
+service = RunService(work, backend=FakeBackend())      # 不传 backend 就是真实 CST（第 4 段）
+job = service.submit('build', project_path=template,
+                     params={'spec': {'model': {'type': 'straight_waveguide'}}})
+print(job['status'], job['job_id'])                    # queued job-xxxxxxxxxxxx
+
+done = service.wait(job['job_id'], timeout=10)
+print(done['status'])                                  # succeeded
+print(done['artifacts'])                               # [{'kind': 'project', 'path': ..., 'note': ...}]
+print(service.logs(job['job_id']))                     # 后端日志
+service.shutdown()
+```
+
+- `kind` 只有三种：`build` / `solve` / `study`。
+- **未注册的 `project_path` 会自动注册**，默认**复制**到 `<workdir>/projects/` 再执行
+  （`copy=False` 就地执行、`overwrite=True` 才刷新已有副本）。
+- 状态词表就五个：`queued` / `running` / `succeeded` / `failed` / `interrupted`；
+  **`interrupted` 不是成功**（重启后未完成的任务一律 `interrupted`，`error.code='service_restarted'`，**不自动重跑**）。
+- 状态判断要**认全词表**：`if done['status'] != 'failed'` 这种写法会把 `interrupted` 当成跑通了。
+- `wait(job_id, timeout=…)` **超时不抛异常**，只是返回**当前**状态（可能还是 `running`）——
+  看到 `running` 就继续等，别当成功。服务快照：`service.describe()`
+  （含 `worker` / `backend` / 各状态任务数 / `recovery`）。
+
+### 3. 幂等与错误处理
+
+**`request_id` 去重**：同一个 `request_id` + 同一种 `kind` + 同一份参数 ⇒ 返回既有任务并带
+`duplicate=True`，**不会再执行一次**；同 ID 但参数/种类不同 ⇒ 抛 `request_id_conflict`。
+
+```python
+from tpc_service.errors import ServiceError
+
+job = service.submit('solve', project_id=pid, request_id='wg1-solve-01')
+again = service.submit('solve', project_id=pid, request_id='wg1-solve-01')
+print(again['job_id'] == job['job_id'], again['duplicate'])   # True True —— 没有重跑
+
+try:
+    service.submit('solve', project_id=pid, request_id='wg1-solve-01',
+                   params={'run_id': 3})                       # 同 ID 不同参数
+except ServiceError as exc:
+    print(exc.code)                                            # request_id_conflict
+```
+
+所有失败都是 `tpc_service.errors.ServiceError`，带 `code` / `message` / `details` / `retryable`，
+`exc.to_dict()` 直接是 `{code, message, details, retryable}`（与 P1 的结构化失败**同一套口径**）：
+
+| `code` | 含义 | 你该做什么 |
+|---|---|---|
+| `workdir_escape` | 产物路径逃出工作目录 | 检查自己拼的路径，写文件的路径必须走 `ensure_within()` |
+| `project_not_found` | 工程文件不存在 | 先确认路径；用 `validate_model_spec` / 预检（§P1-1）挡住更早的错 |
+| `project_exists` | 目标工作副本已存在且未允许覆盖 | 复用已有 `project_id`，或确认后 `overwrite=True` |
+| `project_not_registered` | 工程 ID 没注册 | `service.projects()` 看现有 ID |
+| `request_id_conflict` | 同一 `request_id` 提交了不同参数 | 换一个 `request_id`（别改参数硬塞进旧 ID） |
+| `unknown_job_kind` | `kind` 不是 `build`/`solve`/`study` | 改 `kind` |
+| `unknown_job` | 任务 ID 不存在 | 用 `service.list_jobs()` 列一遍 |
+| `invalid_transition` | 任务状态迁移非法（内部一致性错误） | 不要自己改记录文件；报 bug |
+| `cancel_not_supported` | 运行中的任务无法取消（CST 停止接口未核实） | 等它跑完；只有 `queued` 才 `cancel()` 得掉 |
+| `backend_failed` | 后端执行失败（含「求解没确认保存」） | 看 `job['error']['message']` 与 `job['log']` |
+| `service_shutdown` | worker 已关闭，不再接受任务 | 重新 `RunService(...)` |
+
+- `cancel(job_id)` 只对 `queued` 生效（→ `interrupted` + `cancelled_before_start`）；
+  `running` 会抛 `cancel_not_supported` —— 本库**不提供虚假的「已取消」**。
+- **求解结果先保存再读**：`solve` / `study` 没确认保存（`saved` 不为 `True`）时服务层直接判 `failed`，
+  因为 `run_id=0` 指向「当前最新结果」，不先保存就可能把**上一轮**的结果当本轮（同 §P1-2 的契约）。
+
+### 4. 真实 CST 用法与边界
+
+不传 `backend` 时用 `tpc_service.backends.cst_backend.CstBackend`：
+
+```python
+from tpc_service import RunService
+
+service = RunService(r'D:\tpc_work')          # backend=None → CstBackend
+
+# 建模：params['spec'] 就是 §P1-1 的模型规格（先预检、再建模、最后保存）
+job = service.submit('build', project_path=r'D:\src\ant6.cst', params={'spec': spec})
+built = service.wait(job['job_id'], timeout=3600)
+pid = built['project_id']                     # 后续用 project_id 引用同一工作副本
+
+# 求解：run_checked 判定成功 → 先保存 → 再读指标（saved=True 才可能成功）
+job = service.submit('solve', project_id=pid, params={'note': 'wg1 首次求解'})
+solved = service.wait(job['job_id'], timeout=7200)
+print(solved['result_summary'])               # 指标摘要；run_identity 里有 run_token / run_id
+
+# 参数研究：scan / batch / optimize（各自走 topo_modeler 的扫描/批量/优化器）
+job = service.submit('study', project_id=pid, params={'study': {
+    'kind': 'scan',
+    'base_config': spec,                    # 模型规格
+    'params': {'a': [0.9, 1.0, 1.1]},       # 要扫的参数 → 取值列表
+}})
+```
+
+- `study` 的三种 `kind` 分别走 `topo_modeler.scanner.ParameterScan`（扫描）、
+  `topo_modeler.batch.BatchModeler`（批量）、`topo_modeler.optimizer.GeneticOptimizer`（优化），内部串行。
+- `build` 会先跑 `validate_model_spec` 预检（§P1-1），预检不过就不会启动 CST。
+- ⚠️ **真机行为尚未验证（计划 P4/V7）**：本轮只有离线假后端证据，
+  `CstBackend` 的建模/求解/参数研究**都还没在真机上跑过**，不要据此承诺结果可用。
+
+---
+
 ## 库开发 / 维护视角 → 已拆成独立 skill
 
 给 `cst_solver` **新增封装、修库内部缺陷、改 API 存根与文档**：
@@ -274,7 +666,7 @@ CST 的面编号（`'10'` / `'22'` / `'9'` …）随几何与生成顺序变化�
 | 方法 | 说明 |
 |---|---|
 | `pick_face_at(name, x, y, z)` | 按坐标点拾取面（下发 `Pick.PickFaceFromPoint`），点需落在目标面上 |
-| `pick_face_auto(name, points=[…], candidates=[…])` | 先按点逐个试、失败再按编号试；以 `get_messages()` 是否报错判定，返回 `('point',(x,y,z))` / `('id',fid)` / `None`，失败的点会自动 `pick_clear()` |
+| `pick_face_auto(name, points=[…], candidates=[…])` | 先按点逐个试、失败再按编号试；**优先以已选面数 `GetNumberOfPickedFaces() == 1` 判定成功**，取不到计数时才退回 `get_messages()` 判定（2026-09 真机修正：脏工程里消息会反复报历史失败，只看消息会一直判失败），返回 `('point',(x,y,z))` / `('id',fid)` / `None`，失败的点会自动 `pick_clear()` |
 
 用法（扭波导 / 加端口这类面号会变的场景）：
 
@@ -528,7 +920,7 @@ app.mirror('import_1', [0, 0, 0], [0, 1, 0], component='gridlens', copy=True, un
 `(E−H₁)∪(E−H₂) = E−(H₁∩H₂)`，会把孔**填回来**；必须先把实体沿 y=0 切开成互补两半。）
 
 **排除法结论**：`precision` 6→2 只让文件小 21%，对导入耗时几乎无影响 ⇒ 慢的不是精度，是**实体条数**。
-想根治只能减少孔数：抬高 `ratio`（格距 ×k ⇒ 孔数 ÷k²，要接受 GRIN 采样变粗）。
+想根治只能减少孔数：固定物理尺寸时应降低 `ratio`（格距 `a/ratio` 增大、孔数下降），并重新检查 GRIN 采样和等效折射率；固定 `nx/ny` 时改 `ratio` 不减少孔数。
 
 ---
 
@@ -574,4 +966,3 @@ app.rotate_port(2, [0, 0, 180], copy=True)      # 复制并旋转 ⇒ 新增一�
 **⑤ 顺带：`import_subproject(filename, subproject_name)` 两个路径都必须传绝对路径。**
 CST 用**它自己的**工作目录解析相对路径 ⇒ 传相对名会报 `Unable to read SAB file`
 （文件本身没问题：`.sab` 头 `ACIS BinaryFile … ACIS 35.0`、尾 `End-of-ACIS-data`）。
-

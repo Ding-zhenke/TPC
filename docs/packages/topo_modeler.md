@@ -13,12 +13,13 @@
 | **入口** | `TopoModeler`、`NameManager`（包级导出）；底层入口 `topo_modeler.builders.*` |
 | **依赖** | `cst_solver`（CST 会话：`setup`）、`mesh_grid.tri_grid.TopoPath`（几何与坐标） |
 | **被谁依赖** | `topo_templates/`（`StraightWaveguide`、`UnitAntenna`） |
-| **源码位置** | `topo_modeler/`：`modeler.py`、`name_manager.py`、`builders/`（8 个构建器）、阶段 7 工具层（`config.py` / `result_reader.py` / `report.py` / `audit.py`）、`lens_build.py`、`lens_build_standalone.py`、`tests/` |
-| **当前阶段** | 阶段 0–3 已完成；**阶段 5（库加固）离线部分完成**；**阶段 6 几何层完成**（`builders/lens.py`）；**阶段 7 的「看得见 / 留得下」两半完成**（配置 ▸ 结果读取 ▸ 自包含 HTML 报告 ▸ 审计落盘）。仍缺：`GRINLensAntenna` 模板、阶段 7 的 `scanner` / `batch` / `optimizer`、端到端真机验证 |
+| **源码位置** | `topo_modeler/`：`modeler.py`、`name_manager.py`、`builders/`（8 个构建器）、阶段 7 工具层（`config.py` / `result_reader.py` / `report.py` / `audit.py`）、P1 预检层（`preflight.py`）、`lens_build.py`、`lens_build_standalone.py`、`tests/` |
+| **当前阶段** | 几何构建器、配置、结果读取、报告、审计与预检已实现；GRIN 透镜及六类模板已落地。扫描、批量与优化的编排已有离线覆盖，真实 CST 求解闭环仍待验收。详见[统一计划](../next_plan/README.md) |
 
 **公开 API 规模**（AST 统计，2026-09-16）：`TopoModeler` 32 个公开方法，`NameManager` 8 个公开方法，
 另有 `builders/` 与两个透镜脚本中的模块级函数（`builders/` 见第 3 节的表）。
-阶段 7 工具层（7 个模块）见 §11。
+阶段 7 工具层（7 个模块）见 §11；P1 的配置 / 建模预检（`preflight.py`）与
+`run()` / `save()` 的行为变更见 §12。
 `tests/test_lens.py`（36 项）是透镜构建器的**等价性护栏**：把原脚本
 `lens_build.py` 原样跑一遍，与库函数逐点/逐条比对。
 
@@ -72,8 +73,8 @@ topo_modeler/                    建模引擎层（本包）
 ├── name_manager.py              NameManager —— CST 实体命名唯一化
 ├── builders/                    部件构建器：无状态纯函数 + 显式参数
 │   ├── __init__.py              统一导出 14 个符号（含 2 个 intersect_* 辅助函数）
-│   ├── substrate.py             基板：带状多边形 → extrude → z 居中
-│   ├── vpc_region.py            VPC-A / VPC-B 区域 + 与基板求交
+│   ├── substrate.py             基板：逐段四边形 → extrude → z 居中 → 布尔并
+│   ├── vpc_region.py            VPC-A / VPC-B 区域（逐段四边形 + 布尔并）+ 与基板求交
 │   ├── crystal.py               光子晶体三角孔阵列（超元胞，核心）
 │   ├── feed.py                  馈源 3 型：ab_elliptical / ba_tapered / cylinder
 │   ├── waveguide.py             空心矩形波导：外方体 − 内方体
@@ -82,6 +83,7 @@ topo_modeler/                    建模引擎层（本包）
 │   └── solver.py                时域求解器 + 监视器 + 高级参数
 ├── tests/test_lens.py           透镜构建器回归：与原脚本 lens_build.py 逐点/逐条等价
 ├── config.py                    阶段7：YAML 配置驱动 + 可执行取值域（不碰 CST）
+├── preflight.py                 P1：配置/建模预检（结构化字段描述 + 离线预检结论，不碰 CST）
 ├── result_reader.py             阶段7：ResultReader（cst_solver.Result 的批量+出图外壳）
 ├── report.py                    阶段7：自包含 HTML 报告引擎（零 CDN / 零 JS）
 ├── audit.py                     阶段7：审计落盘（tool_calls.jsonl / production_chain.md）
@@ -126,8 +128,8 @@ tpc_toolkit/  独立工具层：不依赖 CST，也不被本包依赖
 | `modeler.py` | `TopoModeler` | 智能推断（模型类型 / 拓扑相 / 监视器 / 端口数）+ 流水线编排 + 端到端 / 保存 / 运行 / 关闭 / 预览 / 验收 | 21 |
 | `name_manager.py` | `NameManager` | CST 实体命名唯一化、别名、按部件取名 | 8 |
 | `builders/__init__.py` | 22 个导出符号 | 统一导出全部构建器，供 `from topo_modeler.builders import …` | 0（纯 re-export） |
-| `builders/substrate.py` | `build_substrate`、`build_substrate_multi` | 沿路径生成带状基板并 z 居中；**多路径版**各路径各做一条带再布尔并（阶段 8） | 2 |
-| `builders/vpc_region.py` | `build_vpc_regions`、`intersect_vpc_with_substrate` | 生成 VPC-A（上半区）/ VPC-B（下半区）并可与基板求交 | 2 |
+| `builders/substrate.py` | `build_substrate`、`build_substrate_multi` | 沿路径生成带状基板并 z 居中；**弯折路径按「每段一个四边形 + 拐角补块」逐段建模再布尔并**（2026-09-17 修复，直线路径产物与旧实现逐字节相同）；**多路径版**各路径各做一条带再布尔并（阶段 8） | 2 |
+| `builders/vpc_region.py` | `build_vpc_regions`、`intersect_vpc_with_substrate` | 生成 VPC-A（上半区）/ VPC-B（下半区）并可与基板求交；同样按**逐段四边形 + 布尔并**（A 用 `side='lower'`、B 用 `side='upper'`） | 2 |
 | `builders/crystal.py` | `build_topological_crystal`、`intersect_crystal_with_vpc` | 三角孔超元胞阵列（最核心的重复代码：25 行 → 1 个函数），并可与 VPC 求交 | 2 |
 | `builders/feed.py` | `build_feed`、`build_ab_elliptical_feed`、`build_ba_tapered_feed`、`build_cylinder_feed` | 3 种馈源几何（统一入口 + 3 个具体实现） | 4 |
 | `builders/waveguide.py` | `build_waveguide` | 空心矩形波导（外方体 − 内方体） | 1 |
@@ -205,8 +207,8 @@ tpc_toolkit/  独立工具层：不依赖 CST，也不被本包依赖
 | 方法 | 签名 | 说明 | 返回 |
 |---|---|---|---|
 | `build_all` | `build_all(freq_range=(300, 380), include_feed=True, include_waveguide=True, include_ports=True, **kwargs)` | 顺序执行：基板 → VPC → 晶体 → 馈源 → 波导 → 端口 → 求解器 → `integrate()` | `self` |
-| `save` | `save(path)` | `app.save(path)` 并记录 `self._cst_path` | `self` |
-| `run` | `run()` | `app.run()`；守卫层会在提交前拦「参数改过但历史没重建」（陷阱 T2） | `self` |
+| `save` | `save(path)` | `app.save(path)` 并记录 `self._cst_path`。⚠️ **行为变更（P1）**：`app is None`（CST 初始化失败）时不再静默 no-op 返回成功，而是抛 `CstOperationError('cst_unavailable')`——原先是「什么都没写却返回成功」 | `self` |
+| `run` | `run()` | `app.run()`；守卫层会在提交前拦「参数改过但历史没重建」（陷阱 T2）。⚠️ **行为变更（P1）**：`app is None` 时不再静默 no-op 返回成功，而是抛 `CstOperationError('cst_unavailable')`；原因与影响见第 12 节 | `self` |
 | `validate` | `validate()` | 转发 `app.validate_model()`（读 `get_messages()` + `Rebuild()`）；无 CST 时返回说明性的 error 字典 | `dict` |
 | `read_results` | `read_results(path=None, names=None, run_id=0)` | **阶段 7**：返回 `ResultReader`（离线读，不需要设计环境） | `ResultReader` |
 | `plot_results` | `plot_results(path='results_report.html', title=None, note='', highlight=None, meta=None, audit=None, **kwargs)` | **阶段 7**：出自包含 HTML 报告（内联 SVG，零 CDN/JS），可附审计小节 | `str`（HTML 路径） |
@@ -371,6 +373,8 @@ print(nm)                 # NameManager(generated=0, aliases=0)
 ### 6.1 `builders/substrate.py` —— 基板
 
 **作用**：沿路径生成一条「上下一各扩 `y_margin`」的带状多边形，拉伸成体并沿 z 居中，得到基板。
+**弯折路径**下不再是单个多边形，而是**每段一个四边形 + 拐角补块**逐段建模再布尔并
+（2026-09-17 修复；直线路径产物与旧实现逐字节相同，见 §6.1）。
 
 ```python
 def build_substrate(app, path, name='substrate', height='h',
@@ -389,10 +393,21 @@ def build_substrate(app, path, name='substrate', height='h',
 
 **内部调用链**：
 `path.auto_define_cst_params(app, prefix='p')`（在 CST 里定义 `p1x,p1y,…`）
-→ `path.build_substrate_polygon(y_margin='e2', prefix='p')`（生成带状多边形顶点）
-→ `app.polyline(pts, name='substrate_curve', curve='curve1')`
-→ `app.extrude('curve1:substrate_curve', name='substrate', thickness='h', component=…, material=…)`
-→ `app.translate('substrate', ['0','0','-h/2'], component=…, log_flag=1)`（把 z 中心挪到 0）
+→ `quads = path.build_segment_band_polygons(y_margin=y_margin, prefix='p', side=None)`
+（**逐段**生成四边形顶点；直线路径只有一段 ⇒ 与旧的单条带多边形逐字节相同）
+→ 对第 `i` 个四边形：`app.polyline(ring, name=f'{name}_curve' 或 f'{name}_curve{i+1}', curve='curve1')`
+→ `app.extrude(f'curve1:{curve}', name=name 或 f'{name}_seg{i+1}', thickness=height, component=…, material=…)`
+→ `app.translate(solid, ['0','0','-h/2'], component=…, log_flag=1)`（把 z 中心挪到 0）
+→ 多段时对 `solids[1:]` 各做一次 `app.add(solids[0], extra, component1=…, component2=…)` **布尔并**
+（`Add` 结果留在第一个操作数，故返回名就是 `name`）。
+
+> ✅ **2026-09-17 修复（P4/V1）**：此前是「一条带一多边形」，即
+> `path.build_substrate_polygon(y_margin='e2', prefix='p')` → 单个 polyline → 单次 extrude。
+> 该写法在**弯折路径**上会得到自交多边形（偏移只在 y 方向，拐弯处两条链互相穿插），
+> CST 报 `The specified curve is not closed and planar.`；
+> 且**恒定宽度的整条带在折回路径上会自覆盖**，单个简单多边形根本无法表达。
+> 现改为**逐段四边形 + 布尔并**（`build_segment_band_polygons()`），
+> `build_substrate_multi` 早就是这一套路。
 
 **返回值**：`str` —— 基板实体名（= `name`）。
 
@@ -406,8 +421,10 @@ build_substrate(app, path, name='my_sub', y_margin='e2')   # → 'my_sub'
 
 ### 6.2 `builders/vpc_region.py` —— VPC 区域
 
-**作用**：沿路径生成两个区域 —— VPC-A 为路径**上半区**（含路径），VPC-B 为路径**下半区**（含路径），
+**作用**：沿路径生成两个区域 —— VPC-A 为路径**下半区**（含路径），VPC-B 为路径**上半区**（含路径），
 各自拉伸成体并 z 居中；另提供一个可选的「与基板求交」辅助函数。
+**弯折路径**下与基板同样按**逐段四边形 + 布尔并**生成（A 用 `side='lower'`、B 用 `side='upper'`），
+见 §6.2。
 
 ```python
 def build_vpc_regions(app, path, name_prefix='vpc', height='h',
@@ -433,10 +450,20 @@ def intersect_vpc_with_substrate(app, substrate_name, vpca_name, vpcb_name,
 | `vpca_name` / `vpcb_name` | 待裁剪的 VPC 区域名 |
 | `component` | 两侧实体所属组件 |
 
-**内部调用链**（A、B 各一遍）：
-`path.auto_define_cst_params(app, prefix='p')` → `path.build_vpc_area_polygon(side='upper'|'lower', y_margin=…, prefix='p')`
-→ `app.polyline(...)` → `app.extrude(f'curve1:{name}_curve', name, thickness=height, …)`
-→ `app.translate(name, ['0','0','-h/2'], …)`。
+**内部调用链**（A、B 各一遍，各自都是**逐段四边形 + 布尔并**）：
+`path.auto_define_cst_params(app, prefix='p')`
+→ `path.build_segment_band_polygons(y_margin=y_margin, prefix='p', side='lower'|'upper')`
+（**A 用 `side='lower'`、B 用 `side='upper'`**；直线路径只有一段 ⇒ 与旧实现逐字节相同）
+→ 对每段 `app.polyline(ring, name=…)`（`{name_prefix}_A_curve` / `{name_prefix}_A_curve{i+1}`，`curve='curve1'`）
+→ `app.extrude(f'curve1:{curve}', name=…)`（首个 `{name_prefix}_A`、其余 `{name_prefix}_A_seg{i+1}`，`thickness=height`）
+→ `app.translate(solid, ['0','0','-h/2'], …)`
+→ 对 `solids[1:]` 各做一次 `app.add(target_name, extra, …)` **布尔并**。
+
+> ✅ **2026-09-17 修复（P4/V1）**：此前是「一条半带一多边形」，即
+> `path.build_vpc_area_polygon(side='upper'|'lower', y_margin=…, prefix='p')` → 单个 polyline → 单次 extrude。
+> 弯折路径上「恒定宽度的整条半带」同样会自覆盖，单多边形表达不了，
+> 故本次一并改为**逐段四边形 + 布尔并**，
+> `build_substrate_polygon()` / `build_vpc_area_polygon()` 仅保留作兼容与查看，构建器已不再调用它们。
 
 `intersect_vpc_with_substrate` 则是两次 `app.intersect(substrate, vpc_x, component1=…, component2=…)`。
 
@@ -504,18 +531,27 @@ def intersect_crystal_with_vpc(app, crystal_a_name, crystal_b_name,
 **每个区域的实际调用顺序**（`A`、`B` 各一遍）：
 
 ```
-app.triangle(lattice, height, center=center_up, theta=[0,0,0],   name='g1A',      curve='curve1')
-app.triangle(lattice, height, center=center_dn, theta=[0,0,180], name='g2A',      curve='curve1')
-app.triangle(up_hole, height, center=center_up, theta=[0,0,0],   name='tri_up_A', curve='curve1')
-app.triangle(dn_hole, height, center=center_dn, theta=[0,0,180], name='tri_dn_A', curve='curve1')
-app.add('g1A', 'g2A')                       # 合并两个大三角形
-app.add('tri_up_A', 'tri_dn_A')             # 合并两个小三角形
-app.subtract('g1A', 'tri_up_A')            # 大 − 小 = 三角孔
-app.rotation('g1A', angle=[0,0,120], repetition=2, copy=True, unite=True, log_flag=1)
-app.translate('g1A', [lattice, '0', '0'],  repetitions='int({xup})',   copy=True, unite=True, log_flag=1)
-app.translate('g1A', ['0', '{y_margin}*2', '0'],  repetitions='int({yup}/2)', copy=True, unite=True, log_flag=1)
-app.translate('g1A', ['0', '-{y_margin}*2', '0'], repetitions='int({ydn}/2)', copy=True, unite=True, log_flag=1)
+app.translate('g1A', [lattice, '0', '0'],  repetitions='int(xup)',   copy=True, unite=True, log_flag=1)
+app.translate('g1A', ['0', 'e2*2', '0'],  repetitions='int(yup/2)', copy=True, unite=True, log_flag=1)
+app.translate('g1A', ['0', '-e2*2', '0'], repetitions='int(ydn/2)', copy=True, unite=True, log_flag=1)
 ```
+
+**阵列次数写「参数名」还是「数字」，由 `repeat_expression(value, divisor=1)` 决定**
+（`builders/crystal.py`，2026-09-17 新增）：
+
+| 入参 | 产物 | 语义 |
+| --- | --- | --- |
+| `'xup'`（str） | `int(xup)` | **引用 CST 参数** —— 模板走这条，改参数几何跟着变 |
+| `25`（int，旧行为） | `int(25)` | 烘成数值（字节级兼容：调用方没在参数表里声明该名字时用） |
+| `('yup', 2)` | `int(yup/2)` | 引用参数 + 分母 |
+| `(14, 2)`（旧行为） | `int(14/2)` | 烘成数值 + 分母 |
+
+> ⚠️ **烘数字 = 假参数化**。参考工程 `Ant1_D_{AB,BA}_120_Feed_antenna-DF` 的历史里是
+> `"int(xup)"` / `"int(yup/2)"` / `"int(ydn/2)"`；本库 2026-09-17 之前一律写 `int(25)`，
+> 真机实测整份 `ModelHistory.json` 里 `xup|yup|ydn` 出现 **0 次** —— 参数表里的阵列范围
+> 形同备注，在 CST 里改它不动几何。取证与修复见
+> [P4 真机证据](../validation/p4_real_machine_evidence.md) §8.7；
+> 回归 `topo_modeler/tests/test_crystal_array_expression.py`。
 
 **返回值**：`build_topological_crystal` → `(crystal_a_name, crystal_b_name)`（`'g1A'`, `'g1B'`）；
 `intersect_crystal_with_vpc` → `(crystal_a_name, crystal_b_name)`（相交后名字不变）。
@@ -523,12 +559,14 @@ app.translate('g1A', ['0', '-{y_margin}*2', '0'], repetitions='int({ydn}/2)', co
 ```python
 from topo_modeler.builders import build_topological_crystal, intersect_crystal_with_vpc
 
-ca, cb = build_topological_crystal(app, path, topology='AB')
+ca, cb = build_topological_crystal(app, path, topology='AB',
+                                   xup='xup', yup='yup', ydn='ydn')   # 推荐：参数引用
 # → ('g1A', 'g1B')
 intersect_crystal_with_vpc(app, ca, cb, 'vpc_A', 'vpc_B')
 ```
 
-> 缺陷：阵列范围只能由 `path.get_array_range()` 推断，宽基板覆盖不全；当前**不能**传 `xup/yup/ydn`（见第 8 节 (c)）。
+> `xup/yup/ydn` 可直接传（数字或**参数名**）；`None`（默认）才回退到
+> `path.get_array_range()` —— 该回退只按路径推断，宽基板覆盖不全（见第 8 节 (c)(f)）。
 
 ### 6.4 `builders/feed.py` —— 馈源（3 种类型）
 
@@ -921,8 +959,8 @@ build_waveguide(app, name='my_wg')
 add_ports_for_straight_waveguide(app, waveguide_name='my_wg')
 configure_solver(app, freq_range=(300, 380), monitors=('E',))
 
-# 4. 验收：CST 不保证把错误抛成异常，必须读消息
-print(app.cst_file.get_messages())        # 应为空（读后即清空）
+# 4. 验收：失败有两条通道（异常 + 消息），且消息为空只在干净工程里可信
+print(app.cst_file.get_messages())        # 应为空（历史里留过失败命令时会反复报出）
 app.cst_file.model3d.Rebuild()            # 阻塞式重放历史，最能暴露问题
 print(app.cst_file.get_messages())        # 仍应为空
 
@@ -940,7 +978,7 @@ app.save(r'D:\out\manual.cst')
 > `full_deembedding` / `consider_material_inside` 两个空转形参已删除，
 > `calculation_type` 已接上 `cst_solver` 的求解器分派，
 > `'vpca' / 'vpcb'` 命名错位与模板 `run()` 的 `start_solver()` 也一并修掉了。
-> 仍**未修**的是端口面编号硬编码，以及阶段 4/5/6 未实现的功能。
+> 端口面编号硬编码仍是部分旧路径的限制；阶段 4/5/6 的能力状态以本文开头及[统一计划](../next_plan/README.md)为准。
 > 详见仓库提交历史与 `skills/developer/cst-solver-dev.md`。
 
 以下缺陷原记录自 [`../../skills/developer/cst-solver-dev.md`](../../skills/developer/cst-solver-dev.md) 的「待修清单」，
@@ -956,8 +994,8 @@ app.save(r'D:\out\manual.cst')
 | (f) `topo_templates/*.py` 的 `run()` | 调用 `self.app.start_solver()`，而该方法在全库中**不存在** | `run()` 必抛 `AttributeError`（`build_all()` 正常） | ✅ 已修：改用 `self.app.run()` |
 | (g) `topo_templates/*.py` 的 `__init__` | 经 `TopoModeler.set_parameters()` 调 `app.set_parameters(params)`，而真实签名是 `set_parameters(name, value, log_flag=0)` | **构造时就抛 `TypeError`**，比 (d)(e) 更早触发 | ✅ 已修：`TopoModeler.set_parameters()` 改用字典式批量接口 `app.paras(params, None)` |
 | `builders/port.py::add_ports_for_straight_waveguide` / `add_port_for_antenna` | CST 面编号 `'10'` / `'22'` 从旧 notebook **硬编码**提取 | 面编号与实体几何强相关：一旦波导尺寸/朝向/构建顺序变化，端口可能落在**错误的面上** | ⏳ 未修（阶段 3 已知限制）：应改为按法向量自动查找，把 `face_id` 降级为可选覆盖项 |
-| `TopoModeler.build_lens` / `builders/lens.py`（GRIN 透镜） | ~~**阶段 4 未实现**~~ | ~~含 GRIN 透镜的器件暂不能建~~ | ✅ **已修**（2026-09-15）：透镜几何下沉为 `builders/lens.py` 的无状态层（`GrinLensSpec` / `GrinLensHoles` / `build_grin_lens_holes`），`build_lens()` 已接线。**与原脚本 `lens_build.py` 逐点/逐条等价**（`topo_modeler/tests/test_lens.py`，36 项）。⚠️ 仍缺：`method='dxf'` 入口、`GRINLensAntenna` 模板、CST 端到端真机验证 |
-| `TopoModeler.read_results` / `plot_results` | **阶段 7 未实现**：两者都抛 `NotImplementedError` | 仿真结果（S 参数 / 远场 / E 场）无法通过本包读取 | ⏳ 待阶段 7 实现独立的 `ResultReader`（阶段 5 已把底层读取/导出 API 做进 `cst_solver.Result`） |
+| `TopoModeler.build_lens` / `builders/lens.py`（GRIN 透镜） | 旧阶段未实现 | 旧版不能直接构建透镜 | ✅ 几何层、DXF 入口及 `GRINLensAntenna` 模板已落地，真机建模已验证；求解结果待验收 |
+| `TopoModeler.read_results` / `plot_results` | 旧阶段未实现 | 旧版不能从本包读取和展示结果 | ✅ 现由 `ResultReader` 和自包含 HTML 报告承接；真实求解闭环仍待验收 |
 | `add_waveguide_port` 的 `full_deembedding` / `consider_material_inside`；`configure_solver` 的 `calculation_type` | 形参曾存在但函数体**未使用** | 调用方以为开关生效，实际被忽略 | ✅ 已修：两个空转形参已删除（改为 `orientation` / `shield` 并真正转发给 `add_port`）；`calculation_type` 已按 `TD-S`/`FD-S`/`EIGENMODE`/`IE-S`/`ASYMPTOTIC` 分派到对应 `cst_solver` 方法，非法值直接 `ValueError` |
 
 **注意 (a)(b) 的绕向修复引入了两处可见变化**：
@@ -975,11 +1013,15 @@ app.save(r'D:\out\manual.cst')
 
 **其它限制**（来自阶段 0–3 指南，尚未开始）：
 
-- **多端口未实现**（阶段 6）：3 端口 / 4 端口天线不在当前能力范围；
+- **多端口范围**：`MultiPortAntenna` 已支持其已登记的 3 端口几何；其他端口数量仍按模板配置与预检能力表判断；
 - **符号路径的阵列范围**：符号路径的 `get_array_range()` 需要 `param_values` 才能数值化，
   无法直接返回 CST 表达式；
-- **无 CST 环境**：`TopoModeler` 会把 `app` 置为 `None` 并给 warning，
-  此时 `set_path` / `set_parameters` / `preview` 可用，但任何 `build_*` 会失败（`topo_templates` 里则显式抛 `RuntimeError`）。
+- **无 CST 环境**：`TopoModeler` 会把 `app` 置为 `None`（`_init_cst` 失败时同时向
+  `cst_solver.failures` 失败通道记一条 `cst_unavailable`）并给 warning，
+  此时 `set_path` / `set_parameters` / `preview` 可用，但任何 `build_*` 会失败
+  （`topo_templates` 里则显式抛 `RuntimeError`）。
+  ⚠️ **P1 行为变更**：`run()` / `save()` 在 `app is None` 时不再静默 no-op 返回成功，
+  而是抛 `CstOperationError('cst_unavailable')`；`validate()` 行为不变（仍返回说明性 `error` 字典）。
 
 ---
 
@@ -1002,7 +1044,8 @@ app.save(r'D:\out\manual.cst')
    布尔求交返回空集**且不报错** —— 这是本仓库最高频的静默事故（ARCHITECTURE §6 硬约定 1）。
 5. **用模板端到端验证**：至少用一个 `topo_templates/` 里的模板（或最小脚本）跑通，
    并检查 `app.cst_file.get_messages()` 为空、`model3d.Rebuild()` 后仍为空
-   （CST 不保证把错误抛成 Python 异常）。
+   （**注意两条**：失败也可能表现为调用直接抛异常；且消息为空只在**干净工程**里可信 ——
+   历史里留过一条失败命令后，`get_messages()` 会反复报它，见 ARCHITECTURE §6 硬约定 10）。
 6. **同步文档**：新增/修改 builder 或模板 → 更新本文件（`docs/packages/topo_modeler.md`）对应小节；
    新增硬约定或踩坑 → `docs/ARCHITECTURE.md` §6 + 相关 skill；
    修掉已知缺陷 → 删掉 `cst-solver-dev.md` 的「待修清单」对应行（见 WORKFLOW §6 同步矩阵）。
@@ -1028,6 +1071,7 @@ app.save(r'D:\out\manual.cst')
 | 使用者总规程：写 notebook、排错、验收 | [`../../skills/user/tpc-usage.md`](../../skills/user/tpc-usage.md) |
 | 开发者工作流（开发宪法：归属判定 / 提交规范 / 同步矩阵） | [`../../skills/developer/WORKFLOW.md`](../../skills/developer/WORKFLOW.md) |
 | CST 封装层开发，含本包 builders 的**待修清单** | [`../../skills/developer/cst-solver-dev.md`](../../skills/developer/cst-solver-dev.md) |
+| P1 契约收口的**离线**实测记录（预检口径、判定矩阵、旧接口兼容性） | [`../validation/p1_contract_evidence.md`](../validation/p1_contract_evidence.md) |
 
 > 注：撰写本文时，`../next_plan/README.md` 与 `../../skills/user/topo-modeler.md` 两个目标**尚未创建**
 > （`docs/ARCHITECTURE.md`、`docs/README.md` 与 `skills/developer/WORKFLOW.md` 已先行引用这两个位置）；
@@ -1042,12 +1086,13 @@ app.save(r'D:\out\manual.cst')
 
 | 模块 | 主要符号 | 职责 |
 |---|---|---|
-| `config.py` | `load_config`、`validate_config`、`template_from_config`、`modeler_from_config`、`example_config`、`dump_config`、`FIELD_SPECS`、`field_help` | **YAML 配置驱动**：把取值域做成**可执行**的（非法取值、未知字段、量纲越界、跨类型字段都在建实例**之前**报错）。接受的字段从模板构造签名自动推导 |
+| `config.py` | `load_config`、`validate_config`、`template_from_config`、`modeler_from_config`、`example_config`、`dump_config`、`FIELD_SPECS`、`field_help` | **YAML 配置驱动**：把取值域做成**可执行**的（非法取值、未知字段、量纲越界、跨类型字段都在建实例**之前**报错）。接受的字段从模板构造签名自动推导。`ConfigError` 带机器可读 `code` / `details`（见第 12 节） |
+| `preflight.py` | `list_templates`、`describe_template`、`validate_model_spec`、`SUPPORTED_MODEL_TYPES` | **P1 配置 / 建模预检**：给机器（MCP 客户端 / AI）用的**结构化**字段描述，以及一次**不碰 CST** 的「能不能建」结论（见第 12 节） |
 | `result_reader.py` | `ResultReader` | `cst_solver.Result` 的**批量化 + 出图**外壳；频率强转 float、S 值保持 complex；含 `peak_position()` / `peak_shift()`（把「谐振峰偏差 < 1 GHz」变成 API） |
 | `report.py` | `HtmlReport`、`svg_line_chart`、`svg_heatmap`、`svg_polar`、`svg_timeline` | **自包含 HTML 报告**：零 CDN、零 JS，全部内联 SVG |
 | `audit.py` | `AuditLog`、`record_call`、`default_audit_dir` | **审计落盘**：`tool_calls.jsonl` + `production_chain.md` + 参数存档（不覆盖） |
 | `scanner.py` | `ParameterScan`、`ScanPoint`、`value_metric`、`peak_metric`、`band_min_metric` | **参数扫描**：枚举组合 → 注入的执行器 → 聚合/热力图/曲线/CSV/报告。`combinations()` 是纯函数，轴取值非法在**枚举阶段**就报错 |
-| `batch.py` | `BatchModeler`、`BatchEntry`、`design_environment_baseline`、`close_extra_design_environments` | **批量建模**：`from_config()` 读批量 YAML；**强制串行**（`parallel>1` 直接报错）；进循环前记 DE 基线、结束只关自己开的 |
+| `batch.py` | `BatchModeler`、`BatchEntry`、`design_environment_query`、`design_environment_baseline`、`close_extra_design_environments` | **批量建模**：`from_config()` 读批量 YAML；**强制串行**（`parallel>1` 直接报错）；进循环前记 DE 基线、结束只关自己开的。⚠️ 清点 DE 用 `design_environment_query()`（能区分「没有 DE」与「问不到」）；`running_design_environments()` 保留为**旧签名**，它把两种情况都返回成 `[]`，**不可**用来下「没有 DE 活着」的结论（2026-09-17 静默失败审计补上） |
 | `optimizer.py` | `GeneticOptimizer`、`OptResult`、`continuous_variables`、`binary_variables` | **GA 桥接**：连续模式（实数基因）与二值模式（**完整复用** `tpc_toolkit.ga_optimizer` 的算子）。目标函数注入 ⇒ 可离线验收 |
 
 **执行器是注入的**（这是能在没有 CST 的机器上验收整条链路的关键）::
@@ -1080,6 +1125,133 @@ app.save(r'D:\out\manual.cst')
     rr = ResultReader(r'D:\out\wg_AB.cst')
     rr.export_csv('s_params.csv')                          # 阶段 5 的导出
     report_from_s_parameters_csv('s_params.csv').write('r.html')
+
+---
+
+## 12. P1：配置 / 建模预检与「正确失败」
+
+P1（契约收口）在本包补了两件事：一个**给机器看的**预检层（`preflight.py`），
+以及把「静默成功」改成**结构化失败**（`run()` / `save()`）。
+
+> ⚠️ **证据等级**：目前只有**离线测试**证据（`topo_modeler/tests/test_preflight.py`，21 条；
+> 预检全程不导入 CST、不创建设计环境）。真机验收属计划 **P4**，本节不声称已通过真机验证。
+
+### 12.1 配置 / 建模预检（`topo_modeler/preflight.py`）
+
+`config.py` 已经把「取值域 → 可执行校验」这条做完（见第 11 节），但它还缺两件事：
+`field_help()` 返回的是**给人看的文本行**，而机器（MCP 工具 / AI 客户端）需要**结构**；
+以及「语法上合法」≠「可以构建」。
+
+| 公开入口 | 签名 | 返回 |
+|---|---|---|
+| `list_templates` | `list_templates(*, include_planned=False)` | `List[dict]`：每个模板一份 `describe_template()` 结果；默认**只列可构建的**，`include_planned=True` 才带上计划中类型（`buildable=False`） |
+| `describe_template` | `describe_template(model_type)` | `dict`：单个模板的结构化描述（未知类型抛 `ConfigError`） |
+| `validate_model_spec` | `validate_model_spec(spec, *, model_type=None, base_dir=None, check_paths=True, require_output=False, diagnose_cst=True)` | `dict`：一次**离线**预检结论 |
+| `SUPPORTED_MODEL_TYPES` | — | `('straight_waveguide', 'unit_antenna')`；另有 `NOT_IMPLEMENTED_CODE = 'model_type_not_implemented'` |
+
+**`describe_template()` / `list_templates()` 的返回结构**：
+
+| 键 | 内容 |
+|---|---|
+| `model_type` / `class` / `stage` / `buildable` / `reason` | 类型名、模板类名（未实现时为 `None`）、所属阶段、**能否构建**与原因 |
+| `sections` | 合法小节名（`geometry` / `feed` / `waveguide` / `solver` / `output`） |
+| `defaults` | `{小节: {字段: 默认值}}`，来自模板构造签名（复用 `config.example_config`） |
+| `required` | 该模板**支持但无默认值**的字段 —— 直波导只有 `output.path`，单元天线还包括 `feed.radiator` |
+| `fields` | **结构化字段列表**，逐字段给出下表的键 |
+
+每个字段是一个字典：
+
+| 键 | 含义 |
+|---|---|
+| `section` / `name` / `dotted` | 小节名 / 字段名 / 点号全名（如 `geometry.length`） |
+| `kind` | `float` / `int` / `enum` / `str` / `str_list` |
+| `unit` | 单位（`mm` / `GHz` / `格`）；无量纲为空串 |
+| `ctor` | 对应的**模板构造形参名**（`feed.type` → `feed_type`、`output.path` → `output_path`；纯合成字段如 `solver.fmin` 为空串） |
+| `choices` | `enum` 的合法取值（可含 `None`，如 `feed.radiator`） |
+| `min_value` / `max_value` / `exclusive_min` | 取值域；下界是否为开区间由 `exclusive_min` 表示 |
+| `default` / `has_default` | 默认值，以及「是否有默认值」 |
+| `required` / `supported` | 是否必填 / 该模板是否支持这个字段 |
+| `doc` | 中文说明（含「仅 straight_waveguide / 仅 unit_antenna」这类适用范围标注） |
+
+**`validate_model_spec()` 的返回结构**：
+
+| 键 | 内容 |
+|---|---|
+| `ok` | **预检是否无错**（`errors` 为空） |
+| `buildable` | 该类型**是否已实现、可以构建** |
+| `model_type` / `class` / `stage` | 解析出的类型、模板类、阶段 |
+| `normalized` | 规范化后的输入（补上 `model.type` 等） |
+| `effective` | **生效值**（用户值 + 模板默认值），可直接当构造参数用 |
+| `field_sources` | 每个点号字段的来源：`user`（用户给了）/ `default`（用默认值） |
+| `ctor_kwargs` | 可直接解包给模板构造的 kwargs（如 `freq_range` 由 `solver.fmin` + `fmax` 合成） |
+| `required_fields` | 该类型的必填字段（点号名） |
+| `errors` / `warnings` | 结构化错误（`{code, message, details, retryable}`）与提示 |
+| `assumptions` | 本次预检**替你做的假设**（如「N 个字段未给出，将使用模板默认值」） |
+| `checks` | 逐项检查结果 `{name, status, detail}` |
+| `cst` | `diagnose_environment(probe=False)` 的原始诊断（**只是信息**，不影响 `ok`） |
+
+⚠️ `ok` 与 `buildable` 是**两件事**，不要混用：缺 `output.template_cst` 时 `ok=False`
+但 `buildable=True`（类型能建，只是这次预检没过）；计划中类型则 `ok=False` 且 `buildable=False`。
+
+**离线保证**：`validate_model_spec()` **不导入 CST、不创建设计环境（DE）**。
+字段与默认值来自 `config.py`（纯 Python，惰性导入模板类只看签名）；三项检查都不碰真环境：
+
+| `checks` 项 | 做什么 | 明确**不**做什么 |
+|---|---|---|
+| `template_cst` | 只判断模板工程**是否存在** | **不建目录**、不复制模板 |
+| `output_dir` | 目录已存在时用**临时探测文件**验证可写；不存在时只提示「建模时会创建」 | 不为校验而创建输出目录 |
+| `cst_availability` | `cst_solver.environment.diagnose_environment(probe=False)`，只解析路径与模块可发现性 | 不启动 CST；**结论只是信息，不影响 `ok`** |
+
+**未实现类型的口径**：`grin_lens_antenna`、`multiport_antenna`、
+`power_divider`、`mzi_switch` 均已有模板类；`validate_model_spec()` 应按当前
+`SUPPORTED_MODEL_TYPES` 与实际字段判断可构建性。只有真正未支持的类型或变体才报
+`model_type_not_implemented`，不可把已实现模板误报为计划类型。
+
+预检层自己的错误码：`template_not_found`、`output_required`、`output_not_writable`、
+`config_invalid_character`、`model_type_not_implemented`；其余沿用 `ConfigError` 的那批（见 12.2）。
+
+### 12.2 `ConfigError` 错误码（`topo_modeler/config.py`）
+
+`ConfigError` 现在带机器可读的 `code` 与 `details`
+（`ConfigError(message, code='config_invalid', **details)`），各处 raise 都带具体错误码。
+**旧行为不变**：直接 `try/except ConfigError` 的代码不受影响；计划中类型在 `validate_config()`
+里仍只给 warning，字段也仍与模板签名对表。
+
+| 错误码 | 含义 |
+|---|---|
+| `config_unknown_field` | 未知字段（不在模板签名的接受列表里） |
+| `config_field_not_accepted` | 该字段对**这个**模型类型不适用 |
+| `config_value_out_of_range` | 取值越界（量纲 / 范围） |
+| `config_enum_invalid` | 枚举取值非法（如 `feed.type`、`solver.monitors`） |
+| `config_type_error` | 类型不符 |
+| `config_unknown_section` | 未知小节 |
+| `config_model_type_invalid` | `model.type` 不合法 |
+| `config_model_type_not_implemented` | 类型合法但尚未实现 |
+| `config_missing_model_type` | 没给 `model.type` |
+| `config_freq_range_invalid` | `solver.fmax` 不大于 `fmin` |
+| `config_file_not_found` / `config_parse_error` / `config_empty` / `config_yaml_missing` | 配置来源问题：文件不存在 / 解析失败 / 空配置 / YAML 依赖缺失 |
+| `config_field_spec_error` / `config_invalid` | 取值域自身写错 / 未分类的默认码 |
+
+> 预检层把 `ConfigError` 转成 `{code, message, details, retryable}` 四件套
+> （唯一实现是 `cst_solver.failures.structured_error()`），因此错误结构在
+> `cst_solver` 与 `topo_modeler` 之间是**同一种**。
+
+### 12.3 **行为变更**：`run()` / `save()` 不再「不跑也返回成功」
+
+| 方法 | 旧行为（P1 之前） | 新行为（P1 起） |
+|---|---|---|
+| `save(path)` | `app is None` 时静默 no-op，**却返回 `self`**（看着像保存成功） | 抛 `CstOperationError('cst_unavailable')` |
+| `run()` | `app is None` 时静默 no-op，**却返回 `self`**（看着像跑完了） | 抛 `CstOperationError('cst_unavailable')` |
+| `validate()` | 返回说明性的 `error` 字典 | **不变**（仍返回字典，便于在无 CST 的机器上做流程编排） |
+
+**为什么改**：`app is None`（`_init_cst` 失败，通常是本机没有 CST 或工程打不开）时，
+旧实现什么都不做却返回成功 —— 这正是 `cst_mcp.md` §5 禁止的「把失败伪装成成功」：
+调用方会把「没保存」「没跑」当成「保存好了」「跑完了」，带着空结论一路往下走。
+`_init_cst` 失败时还会往失败通道记一条 `cst_unavailable`
+（`cst_solver.failures.record_failure`），因此「无 CST 环境」现在是**可检查**的。
+
+**兼容性影响**：依赖「无 CST 时 `run()` / `save()` 静默通过」的脚本会开始看到异常 ——
+这是**刻意的**；需要旧语义请显式判断 `modeler.app is None`，或改用 `validate()`（行为未变）。
 
 ---
 

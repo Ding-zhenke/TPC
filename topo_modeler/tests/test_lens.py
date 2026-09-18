@@ -2,7 +2,7 @@
 """
 GRIN 透镜构建器回归测试
 =======================
-对应实施计划 `docs/next_plan/stages/06_阶段6_复杂模板层.md`。
+对应实施计划 `docs/next_plan/README.md`。
 
 守住什么
 --------
@@ -259,7 +259,16 @@ def test_coverage_check_catches_missing_columns(spec, holes):
 # ============================================================
 
 def test_cst_call_sequence_matches_original(spec, holes, tmp_path, original):
-    """库函数的 CST 步骤必须与原脚本**逐条**一致（方法名 + 参数）。"""
+    """
+    库函数的 CST 步骤必须与原脚本**逐条**一致（方法名 + 参数）。
+
+    ⚠️ **唯一的有意偏离**（P4/V6 真机，2026-09-17）：楔形裁剪体的顶点。
+    原脚本写 ``Ls*cosd(120)`` / ``Ls*sind(120)``，而 CST 2026 **拒绝** ``cosd``
+    （实测报 ``Invalid expression: Ls*cosd(120)``，同一表达式表里的 ``sind(60)`` 却能过）。
+    本库改用**精确等价**写法 ``-Ls/2`` 与 ``±Ls*sqr(3)/2``
+    （cos120°=cos240°=−1/2、sin120°=√3/2、sin240°=−√3/2），
+    既避开不受支持的函数又保持参数化。下面这一条按「等价」而不是「逐字一致」校验。
+    """
     ns, rec = original
 
     dxf = str(tmp_path / 'grin_lens_hexring.dxf')
@@ -273,8 +282,17 @@ def test_cst_call_sequence_matches_original(spec, holes, tmp_path, original):
     assert [c[0] for c in mine_calls] == [c[0] for c in orig_calls], (
         f"调用顺序不同：\n  原脚本 {[c[0] for c in orig_calls]}\n"
         f"  本库   {[c[0] for c in mine_calls]}")
+    deviations = 0
     for i, (a, b) in enumerate(zip(mine_calls, orig_calls)):
-        assert a == b, f"第 {i} 条调用不同：\n  本库   {a}\n  原脚本 {b}"
+        if a != b:
+            assert a[0] == 'polyline' and 'cosd(120)' in str(b), (
+                f"第 {i} 条调用不同且不是预期的楔形顶点修复：\n  本库   {a}\n  原脚本 {b}")
+            assert a[1][0] == [[0, 0], ['-Ls/2', 'Ls*sqr(3)/2'],
+                               ['-Ls/2', '-Ls*sqr(3)/2'], [0, 0]], a
+            deviations += 1
+        else:
+            pass
+    assert deviations <= 1, f'有意偏离只能有一处，实际 {deviations} 处'
 
 
 def test_cst_call_sequence_summary(original):

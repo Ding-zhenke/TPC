@@ -22,8 +22,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.path import Path
 from matplotlib.collections import PolyCollection
-plt.rcParams['font.sans-serif'] = ['SimHei']
-plt.rcParams['axes.unicode_minus'] = False
+from mesh_grid.plotting import configure_chinese_font
 import collections
 import numpy as np
 from tqdm import tqdm
@@ -577,6 +576,7 @@ class HexGridVisualizer:
             origin: tuple，原点坐标 (x, y)
             coord_auto_hide_threshold: int，网格数超过此阈值时自动隐藏坐标标签
         """
+        configure_chinese_font()
         self.hex_lib = HexLib(hex_size, orientation, origin)
         self.hex_size = hex_size
         self.origin = origin
@@ -896,6 +896,7 @@ def read_and_display_dxf_matplotlib(filename="hex_grid.dxf",show_on=True):
         filename: str，DXF 文件路径
         show_on: bool，是否显示图表
     """
+    configure_chinese_font()
     try:
         doc = ezdxf.readfile(filename)
         msp = doc.modelspace()

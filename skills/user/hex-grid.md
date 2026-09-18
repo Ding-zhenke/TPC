@@ -32,3 +32,7 @@ from mesh_grid.hex_grid import HexLib
 lib = HexLib(hex_size=20, orientation="pointy")
 grid = lib.create_staggered_grid((0, 5), (0, 4))
 ```
+
+## 中文绘图约定
+
+预览已接入自动字体检测。自定义 Matplotlib 图在创建 Figure 前使用 `mesh_grid.plotting.chinese_plot_style(text=实际中文标签, strict=True)`，在上下文内保存。无字体时设置 TPC_CJK_FONT 或用英文标签，不忽略缺字警告。见 [中文绘图指南](../../docs/guides/chinese_plotting.md)。

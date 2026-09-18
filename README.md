@@ -7,6 +7,8 @@
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │  topo_templates/       直波导 / 单元天线 端到端一键建模                     │
+│  tpc_service/     工程注册 + 任务服务（会话、任务、执行记录）        │
+│  integrations/cst-mcp/  MCP 服务（AI 客户端入口；依赖 tpc-cst）      │
 ├──────────────────────────────────────────────────────────────┤
 │  topo_modeler/    TopoModeler（智能推断+流水线） + builders/ 部件构建器 │
 ├───────────────────────────────┬──────────────────────────────┤
@@ -30,13 +32,24 @@ pip install -e ".[all]"
 > **不再需要 `sys.path.append(r'D:\...\TPC')`。**
 >
 > 唯一例外：`cst` 模块由 CST Studio Suite 自带，无法从 PyPI 安装。
-> `cst_solver` 导入时会自行读取配置并把 CST 的 `python_cst_libraries` 加入 `sys.path`，
-> 所以你只需要复制一次配置文件：
+> 普通导入不再加载 CST；创建 `setup` 或 `Result` 时才加载官方接口。
+> 推荐在启动 Python 前设置环境变量（旧 `config.py` 仍兼容）：
 
-```bash
-copy cst_solver\config_template.py cst_solver\config.py
-# 然后编辑 config.py 里的 CST_INSTALL_PATH
+```powershell
+$env:CST_INSTALL_PATH = 'C:\SOFTWARE\CST Studio Suite 2026'
+python -m cst_solver doctor --probe
 ```
+
+更多配置与诊断见 [环境指南](docs/guides/cst_environment.md)。
+中文绘图统一使用 [中文字体配置](docs/guides/chinese_plotting.md)，无需在各脚本硬编码字体名。
+Python 包与 CST MCP 的剩余工作统一见 [实施计划](docs/next_plan/README.md)；
+**已验证的 CST / Python 组合与能力边界见 [支持矩阵](docs/SUPPORT_MATRIX.md)**
+（CST 2026 + Python 3.11.7：建模 / 会话 / 服务层 / MCP 通道 / 结果读取已真机验证，
+**求解尚未验证** —— 不要把它当已验证能力用）；
+**MCP 服务首版已实现**（独立发行项目 `integrations/cst-mcp/`，发行名 `tpc-cst-mcp`，见
+[包说明](docs/packages/cst_mcp.md) 与 [该项目 README](integrations/cst-mcp/README.md)）——
+离线测试 72 项，且**本地 stdio + 真 CST 的建模段已真机验证**（20 OK / 0 FAIL），
+「求解 → S 参数 → 报告」那一段属计划 P4/V9，尚未进行。
 
 ---
 
@@ -77,6 +90,8 @@ modeler.save('antenna.cst')
 | [`topo_modeler/`](./topo_modeler) | 建模引擎：`TopoModeler` + `builders/` 各部件构建器 | ✅ | [docs/packages/topo_modeler.md](./docs/packages/topo_modeler.md) |
 | [`topo_templates/`](./topo_templates) | 端到端器件模板 | ✅ | [docs/packages/topo_templates.md](./docs/packages/topo_templates.md) |
 | [`tpc_toolkit/`](./tpc_toolkit) | S 参数解析、遗传算法算子、等效介质公式 | ❌ | [docs/packages/tpc_toolkit.md](./docs/packages/tpc_toolkit.md) |
+| [`tpc_service/`](./tpc_service) | 共用运行服务：工程注册 + 任务服务（串行执行、请求去重、重启恢复、状态与产物记录），不依赖 MCP | ⚠️ 看后端 | [docs/packages/tpc_service.md](./docs/packages/tpc_service.md) |
+| [`integrations/cst-mcp/`](./integrations/cst-mcp) | **独立发行项目** `tpc-cst-mcp`：MCP 集成层，把同一套 Python 能力暴露成 11 个 MCP 工具（stdio，首版离线验证） | ⚠️ 看后端 | [docs/packages/cst_mcp.md](./docs/packages/cst_mcp.md) |
 
 整体架构与依赖关系 → [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)
 
@@ -88,11 +103,20 @@ modeler.save('antenna.cst')
 
 | 目的 | 读哪份 |
 |---|---|
+| ⭐ **要给拓扑光子晶体建模、想直接动手**（结构解剖 + 可复制配方 + 参考工程参数口径 + AB/BA 不变式 + 离线拓扑自检 + 排错） | [`skills/user/topo-quickstart.md`](./skills/user/topo-quickstart.md) |
 | **主手册**：按需查阅地图、报错定位表、三条硬约定、已知库缺陷、验收清单 | [`skills/user/tpc-usage.md`](./skills/user/tpc-usage.md) |
 | 三角晶格 / 路径 DSL | [`skills/user/tri-grid.md`](./skills/user/tri-grid.md) |
 | 六边形晶格 / DXF | [`skills/user/hex-grid.md`](./skills/user/hex-grid.md) |
 | 建模引擎三种用法（模板 / Modeler / Builder） | [`skills/user/topo-modeler.md`](./skills/user/topo-modeler.md) |
 | 建模引擎阶段 0–3 详细指南 | [`docs/guides/topo_modeler_guide_stage0-3.md`](./docs/guides/topo_modeler_guide_stage0-3.md) |
+
+### 我要用 AI 客户端驱动 CST（MCP）
+
+| 目的 | 读哪份 |
+|---|---|
+| **MCP 服务首版已实现**（离线验证；真机闭环待 P4/V9）：安装、客户端配置、BA 直波导完整示例 | [`integrations/cst-mcp/README.md`](./integrations/cst-mcp/README.md) |
+| MCP 集成层的包说明（11 个工具、关键语义、证据等级与限制） | [`docs/packages/cst_mcp.md`](./docs/packages/cst_mcp.md) |
+| 双入口的产品边界与工具契约设计口径 | [`docs/architecture/cst_mcp.md`](./docs/architecture/cst_mcp.md) |
 
 ### 我是开发者（改库本身）
 
@@ -120,9 +144,13 @@ TPC/
 ├── topo_modeler/              包 3：建模引擎
 ├── topo_templates/                 包 4：端到端模板
 ├── tpc_toolkit/               包 5：独立工具
+├── tpc_service/               包 6：共用运行服务（工程注册 + 任务服务）
 │
-├── docs/                      文档：架构 / 单包说明 / 指南 / 计划
-├── skills/                    技能：使用者视角 + 开发者视角
+├── integrations/cst-mcp/      独立发行项目：tpc-cst-mcp（MCP 集成层，stdio）
+│├── docs/                      文档：架构 / 单包说明 / 指南 / 计划
+├── skills/                    技能：使用者视角 + 开发者视角（**唯一事实来源**）
+├── .github/skills/            IDE / Copilot 自动加载薄壳（只做转指）
+├── .dsh/skills/               DSH（DeepSeek Harness）自动发现入口（只做转指）
 ├── scripts/                   仓库工具（文档生成、API 统计）
 ├── tests/                     跨包测试
 ├── examples/                  示例 notebook
@@ -135,8 +163,9 @@ TPC/
 ## 环境要求
 
 - **Python** ≥ 3.9（开发环境为 Anaconda Python 3.11）
-- **CST Studio Suite**（仅使用 `cst_solver` / `topo_modeler` / `topo_templates` 时需要，仅 Windows）
+- **CST Studio Suite**（仅使用 `cst_solver` / `topo_modeler` / `topo_templates`，或 `tpc_service` / `integrations/cst-mcp` 的**真实后端**时需要，仅 Windows；两者配假后端可完全离线使用）
 - `numpy` / `matplotlib` / `tqdm` 为必需依赖；`shapely` / `ezdxf` / `scipy` 为可选依赖
+- `integrations/cst-mcp`（`tpc-cst-mcp`）**单独要求 Python ≥ 3.10**（MCP SDK `mcp==1.29.1` 的下限），并依赖 `tpc-cst>=2.0.0,<3`
 
 ---
 

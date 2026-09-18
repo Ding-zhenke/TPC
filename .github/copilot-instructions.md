@@ -9,10 +9,13 @@
 
 | 你的任务 | 读 |
 |---|---|
+| **用 TPC 建拓扑光子晶体器件（直波导 / 单元天线 / 多域壁器件），或把参考工程 `硅基` 的口径搬进来** | ⭐ [`skills/user/topo-quickstart.md`](../skills/user/topo-quickstart.md) ← 先读这个（含**离线拓扑正确性自检**） |
 | 用 TPC 建模型、跑仿真、读结果（**使用者视角**，不改库） | [`skills/user/tpc-usage.md`](../skills/user/tpc-usage.md) |
 | 改 `cst_solver` / `mesh_grid` / `topo_modeler` / `topo_templates` / `tpc_toolkit` 的源码（**开发者视角**） | [`skills/developer/WORKFLOW.md`](../skills/developer/WORKFLOW.md) ← 先读这个 |
 | 给 `cst_solver` 加 VBA 封装 / 修封装层缺陷 | [`skills/developer/cst-solver-dev.md`](../skills/developer/cst-solver-dev.md) |
 | 了解包结构 | [`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) |
+
+> DSH（DeepSeek Harness）的自动发现入口在 [`.dsh/skills/`](../.dsh/skills/) —— 新增 skill 时要与 `.github/skills/` 同步补薄壳。
 
 ---
 
@@ -37,9 +40,9 @@
 1. **一次只改一个包**，并为这个包单独写一条 commit（详细 commit message，禁止 `"update"`）。
 2. **改代码必须同步文档**：公开 API → `setup.pyi` + 重跑文档生成器；包结构 → `docs/ARCHITECTURE.md` + `docs/packages/*.md`。
 3. **拼写错误必须修，但不许静默破坏兼容**：加正确名 + 旧名作别名，再登记弃用。
-4. **阶段判定**：先看 [`docs/next_plan/`](../docs/next_plan/)。
-   属于已完成阶段（0–3）的问题 → 直接改代码；属于未开始阶段（4+）→ **只完善计划，不写实现**。
+4. **任务判定**：先看 [统一未完成计划](../docs/next_plan/README.md)，按依赖实施；完成项删除，真机验收欠项保留。同步 developer/user 两类 skill。
 5. **不要用 `sys.path.append`**：本仓库通过 `pip install -e .` 安装。
+6. **中文绘图**：使用 `mesh_grid.plotting.chinese_plot_style` 或 `configure_chinese_font`；详见 [使用者规程](../skills/user/tpc-usage.md)，不要写死字体名或忽略缺字警告。
 
 ---
 

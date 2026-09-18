@@ -248,11 +248,14 @@ def test_build_substrate_multi_unites_bands_and_translates_once():
     adds = [a for n, a, _k in app.calls if n == 'add']
     translates = [a for n, a, _k in app.calls if n == 'translate']
 
-    assert len(polylines) == 3 and len(extrudes) == 3
+    # 弯折路径按「每段一个四边形 + 拐角补块」建（P4/V6 真机修复）：
+    # 每段一个 polyline/extrude，因此数量 ≥ 路径数，而不是恒定相等。
+    assert len(polylines) == len(extrudes) >= 3
     assert all(isinstance(p, (list, tuple)) and p for p in polylines)
-    assert len(adds) == 2                        # N 条带并成 1 个 ⇒ N-1 次 Add
+    assert len(adds) == len(extrudes) - 1        # N 个实体并成 1 个 ⇒ N-1 次 Add
     assert len(translates) == 1                  # 只在最后 z 居中一次
-    assert extrudes == ['sub_part0', 'sub_part1', 'sub_part2']
+    assert extrudes[0] == 'sub_part0'
+    assert {'sub_part1', 'sub_part2'} <= set(extrudes)
     # Add 的结果留在**第一个操作数**（ARCHITECTURE §6 硬约定 2）
     assert all(a[0] == 'sub_part0' for a in adds)
     assert result == 'sub_part0'

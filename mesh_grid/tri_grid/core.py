@@ -22,9 +22,7 @@ from matplotlib.patches import Polygon
 from matplotlib.collections import PolyCollection
 from typing import Tuple, List, Dict, Union, Optional
 from tqdm import tqdm
-import matplotlib
-
-matplotlib.rc("font", family='Microsoft YaHei')
+from mesh_grid.plotting import configure_chinese_font
 
 
 def find_different_points(P1, P2, eps=1e-9):
@@ -353,6 +351,7 @@ def plot_triangle_grid(row_range: Tuple[int, int],
         fig: 图形对象
         ax: 坐标轴对象
     """
+    configure_chinese_font()
     # 生成网格数据
     triangles, centers_up, centers_dn, pos_to_center_up, pos_to_center_dn = \
         build_triangle_lattice(row_range, col_range, a, offset, theta)

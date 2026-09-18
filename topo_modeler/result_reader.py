@@ -47,6 +47,11 @@ import math
 import os
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from tpc_toolkit.curves import (      # 谐振/区间的规则只有一份实现
+    find_resonances as _find_resonances,
+    resonance_criterion as _resonance_criterion,
+)
+
 __all__ = [
     'ResultReader',
     'ResultReaderError',
@@ -274,8 +279,9 @@ class ResultReader:
         """
         两个 reader 之间某个 S 参数的**谐振峰频差** [GHz]。
 
-        这是阶段 4 的原始判据（「谐振峰偏差 < 1 GHz」）的**可执行版本** ——
-        在此之前它只是文档里的一句话，没有 API 支撑。
+        ⚠️ 这里用的是「全带单一极值」——**只看反射最深的那一点**，不做配对。
+        要跑计划 P4/V3 的判据（「谐振峰偏差 < 1 GHz」，且要求可比的峰），
+        请用 :meth:`resonance_shift`（多极值 + prominence + 就近配对）。
 
         :param other: ResultReader 或 .cst 路径
         :param name: str, S 参数名
@@ -287,6 +293,60 @@ class ResultReader:
         f1, _ = self.peak_position(name, band=band)
         f2, _ = other.peak_position(name, band=band)
         return abs(f1 - f2)
+
+    def resonances(self, name: str = 'S1,1', *,
+                   band: Optional[Tuple[float, float]] = None,
+                   kind: str = 'min', min_prominence_db: float = 0.0
+                   ) -> List[Dict[str, Any]]:
+        """
+        曲线上的**全部**局部极值（谷/峰），带 prominence 过滤。
+
+        规则来自 `tpc_toolkit.curves.find_resonances`（全仓唯一实现，
+        MCP 层的 `find_resonances` 也调它）—— 与 `peak_position` 的区别是：
+        后者只给「全带最深的那一点」，多谐振结构下会把两个不同的峰当成同一个。
+
+        :param name: str, S 参数名
+        :param band: tuple 可选, 只在带内找
+        :param kind: ``'min'``（谷）或 ``'max'``
+        :param min_prominence_db: float, 幅度低于此值的不算（滤数值毛刺）
+        :return: list[dict], ``{'freq_ghz','db','kind','prominence_db'}``
+        """
+        xs, ys = self.read_s_parameters_db(names=[name])[name]
+        return _find_resonances(xs, ys, kind=kind,
+                                min_prominence_db=min_prominence_db, band=band)
+
+    def resonance_shift(self, other, name: str = 'S1,1', *,
+                        band: Optional[Tuple[float, float]] = None,
+                        kind: str = 'min', min_prominence_db: float = 0.0,
+                        limit_ghz: float = 1.0,
+                        tolerance_ghz: Optional[float] = None) -> Dict[str, Any]:
+        """
+        **计划 P4/V3 判据的可执行版本**：两条曲线的谐振峰偏差是否 < ``limit_ghz``。
+
+        在此之前这条判据只是文档里的一句话（旧做法拿四个频点的 dB 差当代理）。
+        这里：各自提取极值 → **按频率就近配对** → 算频差 → 与限值比较，
+        并把中间量（配对了哪些峰、各自 dB、最大/平均频差）全部返回。
+        配不上任何峰时 ``ok=False, reason='no_matched_resonance'`` ——
+        **不把「没配上」当通过**。
+
+        :param other: ResultReader 或 .cst 路径
+        :param name: str, S 参数名
+        :param band: tuple 可选, 只在带内找
+        :param kind: ``'min'``（谷）或 ``'max'``
+        :param min_prominence_db: float, prominence 下限
+        :param limit_ghz: float, 判据限值（默认 1 GHz）
+        :param tolerance_ghz: float 可选, 配对容差
+        :return: dict, 见 `tpc_toolkit.curves.resonance_criterion`
+        """
+        def _pairs(reader):
+            return reader.resonances(name, band=band, kind=kind,
+                                     min_prominence_db=min_prominence_db)
+
+        if not isinstance(other, ResultReader):
+            other = ResultReader(other, names=[name])
+        return _resonance_criterion(_pairs(self), _pairs(other),
+                                    limit_ghz=limit_ghz,
+                                    tolerance_ghz=tolerance_ghz, name=name)
 
     # ------------------------------------------------------------
     # 导出 / 出图

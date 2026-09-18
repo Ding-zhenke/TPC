@@ -95,7 +95,44 @@ __all__ = [
 
 
 class ConfigError(ValueError):
-    """配置非法（未知字段 / 类型错误 / 取值越界 / 与模板签名不符）。"""
+    """
+    配置非法（未知字段 / 类型错误 / 取值越界 / 与模板签名不符）。
+
+    :param code: str, 机器可读错误码（``config_unknown_field`` /
+        ``config_value_out_of_range`` / ``config_model_type_invalid`` …）。
+        预检层（``topo_modeler.preflight``）用它把异常转成
+        ``{code, message, details, retryable}`` 结构回给 MCP 客户端；
+        直接 `try/except ConfigError` 的旧代码不受影响。
+    :param details: 任意键值对，写进结构化错误（如 ``field='geometry.length'``）
+    """
+
+    def __init__(self, message, code: str = 'config_invalid', **details):
+        super().__init__(message)
+        self.code = code
+        self.details = details
+
+
+#: 本模块可能产出的错误码（``ConfigError`` 的 `code`）。
+#: 一致性检查（`scripts/check_api_consistency.py` 的 `error-codes` 项）要求
+#: 代码里用到的码必须出现在某个 `*_ERROR_CODES` 表里 —— 这张表就是配置层的来源。
+CONFIG_ERROR_CODES = (
+    'config_invalid',                    # 默认码（上面的 `code=` 缺省值）
+    'config_empty',                      # 配置为空
+    'config_file_not_found',
+    'config_parse_error',                # YAML 解析失败
+    'config_yaml_missing',               # 想要 YAML 但没装 PyYAML
+    'config_missing_model_type',         # 缺少 model.type
+    'config_model_type_invalid',         # 未知 model.type
+    'config_model_type_not_implemented', # 语法合法但类还不存在
+    'config_unknown_section',
+    'config_unknown_field',
+    'config_field_not_accepted',         # 该模板签名不接受这个字段
+    'config_field_spec_error',           # 字段规格（内部）非法
+    'config_type_error',
+    'config_enum_invalid',
+    'config_value_out_of_range',
+    'config_freq_range_invalid',
+)
 
 
 # ============================================================
@@ -103,11 +140,14 @@ class ConfigError(ValueError):
 # ============================================================
 
 #: 已实现（`topo_templates` 里有对应类）
-IMPLEMENTED_MODEL_TYPES = ('straight_waveguide', 'unit_antenna')
+IMPLEMENTED_MODEL_TYPES = ('straight_waveguide', 'unit_antenna',
+                           'grin_lens_antenna', 'multiport_antenna',
+                           'mzi_switch', 'power_divider')
 
-#: 计划中（类还不存在）；语法上合法，但 factory 会明确报「未实现」
-PLANNED_MODEL_TYPES = ('grin_lens_antenna', 'multiport_antenna',
-                       'power_divider', 'mzi_switch')
+#: 计划中（类还不存在）；语法上合法，但 factory 会明确报「未实现」。
+#: 2026-09-17：P5 三类模板全部落地后**本表为空** —— 机制本身保留（见
+#: `tests/test_config.py` 用合成类型的用例），将来加新器件时继续用。
+PLANNED_MODEL_TYPES = ()
 
 #: 全部合法取值
 ALL_MODEL_TYPES = IMPLEMENTED_MODEL_TYPES + PLANNED_MODEL_TYPES
@@ -116,10 +156,10 @@ ALL_MODEL_TYPES = IMPLEMENTED_MODEL_TYPES + PLANNED_MODEL_TYPES
 _MODEL_TYPE_INFO = {
     'straight_waveguide': ('StraightWaveguide', '阶段 3'),
     'unit_antenna': ('UnitAntenna', '阶段 3'),
-    'grin_lens_antenna': ('GRINLensAntenna', '阶段 6（几何层已就绪，模板待建）'),
-    'multiport_antenna': ('MultiPortAntenna', '阶段 8'),
-    'power_divider': ('PowerDivider', '阶段 8'),
-    'mzi_switch': ('MZISwitch', '阶段 8'),
+    'grin_lens_antenna': ('GRINLensAntenna', '阶段 6 几何 + P5 模板（2026-09-17）'),
+    'multiport_antenna': ('MultiPortAntenna', 'P5 模板（2026-09-17，α1 族：3 端口）'),
+    'mzi_switch': ('MZISwitch', 'P5 模板（2026-09-17；basic==cascade 同一几何）'),
+    'power_divider': ('PowerDivider', 'P5 模板（2026-09-17；分路数 2/3/4/6）'),
 }
 
 #: YAML 允许出现的顶层小节
@@ -200,16 +240,21 @@ class FieldSpec:
             if value not in self.choices:
                 raise ConfigError(
                     f"{dotted} = {value!r} 非法；合法取值："
-                    f"{' | '.join(map(str, self.choices))}")
+                    f"{' | '.join(map(str, self.choices))}",
+                    code='config_enum_invalid', field=dotted,
+                    value=value, choices=list(map(str, self.choices)))
             return value
 
         if self.kind in ('float', 'int'):
             if isinstance(value, bool) or not isinstance(value, (int, float)):
                 raise ConfigError(
                     f"{dotted} 应为{'整数' if self.kind == 'int' else '数值'}，"
-                    f"收到 {type(value).__name__}（{value!r}）")
+                    f"收到 {type(value).__name__}（{value!r}）",
+                    code='config_type_error', field=dotted, value=value)
             if self.kind == 'int' and float(value) != int(value):
-                raise ConfigError(f"{dotted} 应为整数，收到 {value!r}")
+                raise ConfigError(f"{dotted} 应为整数，收到 {value!r}",
+                                  code='config_type_error', field=dotted,
+                                  value=value)
             num = int(value) if self.kind == 'int' else float(value)
             if self.min_value is not None:
                 bad = (num <= self.min_value if self.exclusive_min
@@ -218,36 +263,55 @@ class FieldSpec:
                     op = '>' if self.exclusive_min else '≥'
                     unit = f' {self.unit}' if self.unit else ''
                     raise ConfigError(
-                        f"{dotted} 必须 {op} {self.min_value}{unit}，收到 {num}")
+                        f"{dotted} 必须 {op} {self.min_value}{unit}，收到 {num}",
+                        code='config_value_out_of_range', field=dotted,
+                        value=num, min_value=self.min_value,
+                        exclusive_min=self.exclusive_min)
             if self.max_value is not None and num > self.max_value:
                 unit = f' {self.unit}' if self.unit else ''
                 raise ConfigError(
-                    f"{dotted} 必须 ≤ {self.max_value}{unit}，收到 {num}")
+                    f"{dotted} 必须 ≤ {self.max_value}{unit}，收到 {num}",
+                    code='config_value_out_of_range', field=dotted,
+                    value=num, max_value=self.max_value)
+            if self.choices and num not in self.choices:
+                # ⚠️ 非 `enum` 类型也必须守 `choices`：字段声明了取值集合却没人查，
+                #    就是"文档写了、机器不守"的静默失效（2026-09-17 发现
+                #    `split_ratio` 的 choices 曾经完全没生效）。
+                raise ConfigError(
+                    f"{dotted} = {num} 非法；合法取值："
+                    f"{' | '.join(map(str, self.choices))}",
+                    code='config_enum_invalid', field=dotted,
+                    value=num, choices=list(map(str, self.choices)))
             return num
 
         if self.kind == 'pair':
             if not isinstance(value, (list, tuple)) or len(value) != 2:
                 raise ConfigError(
-                    f"{dotted} 应为长度 2 的序列（如 [300, 380]），收到 {value!r}")
+                    f"{dotted} 应为长度 2 的序列（如 [300, 380]），收到 {value!r}",
+                    code='config_type_error', field=dotted, value=value)
             return tuple(value)
 
         if self.kind == 'str':
             if not isinstance(value, str):
                 raise ConfigError(
-                    f"{dotted} 应为字符串，收到 {type(value).__name__}（{value!r}）")
+                    f"{dotted} 应为字符串，收到 {type(value).__name__}（{value!r}）",
+                    code='config_type_error', field=dotted, value=value)
             return value
 
         if self.kind == 'str_list':
             if isinstance(value, str):
                 raise ConfigError(
                     f"{dotted} 应为列表（如 [E] 或 [E, Farfield]），收到字符串 "
-                    f"{value!r}；YAML 里写 `monitors: [E]` 而不是 `monitors: E`")
+                    f"{value!r}；YAML 里写 `monitors: [E]` 而不是 `monitors: E`",
+                    code='config_type_error', field=dotted, value=value)
             if not isinstance(value, (list, tuple)):
                 raise ConfigError(
-                    f"{dotted} 应为列表，收到 {type(value).__name__}")
+                    f"{dotted} 应为列表，收到 {type(value).__name__}",
+                    code='config_type_error', field=dotted, value=value)
             return list(value)
 
-        raise ConfigError(f"字段 {dotted} 的 kind={self.kind!r} 未实现（内部错误）")
+        raise ConfigError(f"字段 {dotted} 的 kind={self.kind!r} 未实现（内部错误）",
+                          code='config_field_spec_error', field=dotted)
 
 
 def _f(section, name, kind, **kw):
@@ -278,12 +342,103 @@ FIELD_SPECS: Tuple[FieldSpec, ...] = (
     _f('geometry', 'width', 'int', ctor='width', min_value=1, unit='格',
        doc='波导/VPC 半宽（晶格数）；同时决定阵列范围 yup/ydn', default=14),
     _f('geometry', 'bend_angle', 'enum', ctor='bend_angle',
-       choices=(60, 120, 180, 240, 300),
-       doc='拐弯角（60° 的整数倍）—— 仅 unit_antenna', default=120),
+       choices=(0, 120, 240, 360),
+       doc='拐弯张角（两侧臂夹角，= 单臂偏角 ×2；单臂偏角须是 60° 的整数倍，'
+           '故只能是 120 的整数倍；0 = 不拐弯）—— 仅 unit_antenna', default=120),
     _f('geometry', 'straight_length', 'int', ctor='straight_length',
        min_value=1, unit='格', doc='直段长度（晶格数）—— 仅 unit_antenna', default=18),
     _f('geometry', 'arm_length', 'int', ctor='arm_length',
        min_value=1, unit='格', doc='拐弯后臂长（晶格数）—— 仅 unit_antenna', default=14),
+
+    # ---- lens（GRIN 透镜；字段放在 geometry 小节，不新增顶层小节）----
+    _f('geometry', 'lens_method', 'enum', ctor='lens_method',
+       choices=('generate', 'dxf', 'insitu'),
+       doc="GRIN 透镜孔阵列来源：'generate' 现算 + 落 DXF、'dxf' 用现成 DXF、"
+           "'insitu' **不落 DXF**（在 CST 内逐个 `hexagon` 建环，参考 notebook 的做法）"
+           '（仅 grin_lens_antenna）', default='generate'),
+    _f('geometry', 'lens_dxf', 'str', ctor='lens_dxf',
+       doc="lens_method='dxf' 时的孔阵列 DXF 路径（仅含透镜的模板）"),
+    _f('geometry', 'lens_dxf_out', 'str', ctor='lens_dxf_out',
+       doc="lens_method='generate' 时导出的孔阵列 DXF 路径（默认落在当前目录）"),
+    _f('geometry', 'lens_ratio', 'float', ctor='lens_ratio', exclusive_min=True,
+       doc='透镜孔网格细化倍率（格距 = a/ratio）。⚠️ 孔数与它的关系容易说反：'
+           '固定 nx/ny 时孔数与 ratio 无关（器件尺寸随之变）；固定物理尺寸时'
+           '孔数 ∝ ratio² ⇒ **提速要降 ratio 并把 nx/ny 同比缩小**'
+           "（仅 'generate' / 'dxf' 路线）",
+       default=1.0),
+    _f('geometry', 'lens_nx', 'int', ctor='lens_nx', min_value=1,
+       doc="椭圆长半轴 = nx 个格距（仅 'generate' / 'dxf' 路线）", default=16),
+    _f('geometry', 'lens_ny', 'int', ctor='lens_ny', min_value=1,
+       doc="椭圆短半轴 = ny 个格距（仅 'generate' / 'dxf' 路线）", default=13),
+    # ---- lens（就地环透镜：`lens_method='insitu'` 专用）----
+    # 默认值取参考 notebook 的 `N=(y[1]+2)*2` / `d0=8*HEX_SIZE*2*sqr(3)`
+    # （见 `topo_modeler/builders/lens.py::DEFAULT_RING_LAYERS / DEFAULT_D0_LAYERS`）。
+    _f('geometry', 'lens_layers', 'int', ctor='lens_layers', min_value=1,
+       doc="lens_method='insitu' 的六边形网格层数 N（参考 30）。"
+           '⚠️ 孔数 ≈ 3N²（N=30 ⇒ 共 1426 孔 ≈ 1455 条建模指令）；'
+           '必须满足 N > 2*lens_d0_layers，否则渐变区间为空会报错',
+       default=30),
+    _f('geometry', 'lens_d0_layers', 'int', ctor='lens_d0_layers', min_value=1,
+       doc="lens_method='insitu' 的内圈门槛 d0 = lens_d0_layers*HEX_SIZE*2*sqr(3)"
+           '（参考 8 层）', default=8),
+    _f('geometry', 'lens_name', 'str', ctor='lens_name',
+       doc='透镜实体名', default='lens_epc'),
+    _f('geometry', 'lens_rotation', 'float', ctor='lens_rotation', unit='deg',
+       doc='**透镜绕自身近焦点自转角** `dphi`（仅 grin_lens_antenna；'
+           '参考 `*_rotation.ipynb` 的 `dphi`）。⚠️ 与 `dphi1/dphi2` 不是一回事：'
+           '后者是把透镜绕 z 转后当**第二个相位副本**（仅 power_divider）',
+       default=0),
+    _f('geometry', 'lens_component', 'str', ctor='lens_component',
+       doc='透镜组件名（DXF 路线上也是层名）', default='gridlens'),
+    # ⚠️ 相位是**元组**参数（`lens_phase=(dphi1, dphi2)`），而配置只有标量字段类型
+    # ⇒ 与前例 `fmin`/`fmax` → `freq_range` 一样，**由两个标量合成**。
+    _f('geometry', 'dphi1', 'float', ctor='', unit='deg',
+       doc='输出臂 1 的透镜相位角（与 dphi2 合成构造参数 lens_phase）'),
+    _f('geometry', 'dphi2', 'float', ctor='', unit='deg',
+       doc='输出臂 2 的透镜相位角（与 dphi1 合成构造参数 lens_phase）'),
+
+    # ---- 复杂器件模板（P5）----
+    # 这些字段的 `ctor` 就是模板构造参数名；`accepted_fields()` 按构造签名自动筛选，
+    # 所以同一个字段只对**真有该参数**的模板生效（例如 split_ratio 只对 power_divider）。
+    _f('geometry', 'split_ratio', 'int', ctor='split_ratio',
+       choices=(2, 3, 4, 6), min_value=2,
+       doc='功分器分路数（仅 power_divider；有数据依据的取值 2/3/4/6）'),
+    _f('geometry', 'trunk_length', 'int', ctor='trunk_length', min_value=1,
+       unit='格', doc='功分器主干长度（晶格数；仅 power_divider）'),
+    _f('geometry', 'sub_length', 'int', ctor='sub_length', min_value=1,
+       unit='格', doc='功分器第二级臂长（晶格数，仅 4/6 的级联结构用）'),
+    _f('geometry', 'port_number', 'int', ctor='port_number', min_value=1,
+       doc='端口编号（单端口模板用；多端口模板请用 port_numbers）'),
+    _f('geometry', 'mzi_type', 'enum', ctor='mzi_type',
+       choices=('basic', 'cascade'),
+       doc='MZI 类型（仅 mzi_switch；参考里 basic 与 cascade 是**同一几何**）',
+       default='basic'),
+    _f('geometry', 'arm_x1', 'int', ctor='arm_x1', min_value=1, unit='格',
+       doc='MZI 直段长度（晶格数）'),
+    _f('geometry', 'arm_gap_y1', 'int', ctor='arm_gap_y1', min_value=1, unit='格',
+       doc='MZI 两臂间距（晶格数）'),
+    _f('geometry', 'mid_x2', 'int', ctor='mid_x2', min_value=0, unit='格',
+       doc='MZI 中段长度（晶格数）'),
+    _f('geometry', 'pump_ax', 'float', ctor='pump_ax', unit='mm',
+       doc='MZI 泵浦区沿 x 半轴'),
+    _f('geometry', 'pump_ay', 'float', ctor='pump_ay', unit='mm',
+       doc='MZI 泵浦区沿 y 半轴'),
+    _f('geometry', 'cylinder_radius', 'float', ctor='cylinder_radius', unit='mm',
+       doc='MZI 开关圆柱半径'),
+    _f('geometry', 'sigma1', 'float', ctor='sigma1',
+       doc='MZI 开关材料的电导率（Sigma，材料 m1）'),
+    # ---- 功分器的开关/泵浦区（`pump_switching` 特征）----
+    _f('geometry', 'switch_mode', 'enum', ctor='switch_mode',
+       choices=(None, 'arm_mid', 'explicit'),
+       doc='功分器开关/泵浦区放置方式（仅 power_divider）：None 不建 / '
+           'arm_mid 每条第一级输出臂最后一段中点（本库口径）/ explicit 用 switch_xy',
+       default=None),
+    _f('geometry', 'switch_radius', 'float', ctor='switch_radius', unit='mm',
+       exclusive_min=True, doc='开关圆柱半径（参考 rc1=0.4）', default=0.4),
+    _f('geometry', 'switch_sigma', 'float', ctor='switch_sigma', unit='S/m',
+       doc='开关材料电导率（参考 sigma1=0；开关态用 100/2000）', default=0.0),
+    _f('geometry', 'switch_material', 'str', ctor='switch_material',
+       doc='开关材料名', default='switch1'),
 
     # ---- feed ----
     _f('feed', 'type', 'enum', ctor='feed_type',
@@ -356,7 +511,8 @@ def _require_yaml():
     except ImportError as exc:                     # pragma: no cover
         raise ConfigError(
             "读/写 YAML 需要 PyYAML（pip install pyyaml）；"
-            "也可以直接把 dict 传给 load_config()") from exc
+            "也可以直接把 dict 传给 load_config()",
+            code='config_yaml_missing') from exc
     return yaml
 
 
@@ -371,19 +527,26 @@ def load_config(source) -> Dict[str, Any]:
     if isinstance(source, dict):
         return dict(source)
     if not isinstance(source, str):
-        raise ConfigError(f"配置应为 YAML 路径或 dict，收到 {type(source).__name__}")
+        raise ConfigError(f"配置应为 YAML 路径或 dict，收到 {type(source).__name__}",
+                          code='config_type_error',
+                          actual_type=type(source).__name__)
     if not os.path.exists(source):
-        raise ConfigError(f"配置文件不存在：{source}")
+        raise ConfigError(f"配置文件不存在：{source}",
+                          code='config_file_not_found', path=source)
     yaml = _require_yaml()
     try:
         with open(source, encoding='utf-8') as fh:
             data = yaml.safe_load(fh)
     except Exception as exc:
-        raise ConfigError(f"YAML 解析失败（{source}）：{exc}") from exc
+        raise ConfigError(f"YAML 解析失败（{source}）：{exc}",
+                          code='config_parse_error', path=source) from exc
     if data is None:
-        raise ConfigError(f"配置文件为空：{source}")
+        raise ConfigError(f"配置文件为空：{source}",
+                          code='config_empty', path=source)
     if not isinstance(data, dict):
-        raise ConfigError(f"配置顶层应为映射（key: value），收到 {type(data).__name__}")
+        raise ConfigError(f"配置顶层应为映射（key: value），收到 {type(data).__name__}",
+                          code='config_type_error',
+                          actual_type=type(data).__name__)
     return data
 
 
@@ -396,11 +559,15 @@ def _flatten(cfg: Dict[str, Any]) -> Dict[Tuple[str, str], Any]:
         if key not in SECTIONS:
             raise ConfigError(
                 f"未知的顶层小节 {key!r}；合法小节：{' | '.join(SECTIONS)}"
-                f"（不要把小节名写错，也不要把字段提到顶层）")
+                f"（不要把小节名写错，也不要把字段提到顶层）",
+                code='config_unknown_section', section=key,
+                legal=list(SECTIONS))
         if value is None:
             continue
         if not isinstance(value, dict):
-            raise ConfigError(f"小节 {key!r} 应为映射，收到 {type(value).__name__}")
+            raise ConfigError(f"小节 {key!r} 应为映射，收到 {type(value).__name__}",
+                              code='config_type_error', section=key,
+                              actual_type=type(value).__name__)
         for sub, sub_value in value.items():
             flat[(key, sub)] = sub_value
     return flat
@@ -432,10 +599,14 @@ def validate_config(cfg, model_type: Optional[str] = None,
 
     mtype = model_type or flat.get(('model', 'type'))
     if mtype is None:
-        raise ConfigError("缺少 model.type；合法取值：" + ' | '.join(ALL_MODEL_TYPES))
+        raise ConfigError("缺少 model.type；合法取值：" + ' | '.join(ALL_MODEL_TYPES),
+                          code='config_missing_model_type',
+                          legal=list(ALL_MODEL_TYPES))
     if mtype not in ALL_MODEL_TYPES:
         raise ConfigError(
-            f"model.type = {mtype!r} 非法；合法取值：" + ' | '.join(ALL_MODEL_TYPES))
+            f"model.type = {mtype!r} 非法；合法取值：" + ' | '.join(ALL_MODEL_TYPES),
+            code='config_model_type_invalid', model_type=mtype,
+            legal=list(ALL_MODEL_TYPES))
 
     warnings_list: List[str] = []
     dropped: Dict[str, Any] = {}
@@ -449,7 +620,9 @@ def validate_config(cfg, model_type: Optional[str] = None,
                    f"`{pair[0]}` 小节的合法字段："
                    f"{', '.join(legal) if legal else '（该小节无字段）'}")
             if strict:
-                raise ConfigError(msg)
+                raise ConfigError(msg, code='config_unknown_field',
+                                  section=pair[0], name=pair[1],
+                                  legal=legal, value=value)
             warnings_list.append(msg + '（已忽略）')
             dropped[f'{pair[0]}.{pair[1]}'] = value
             continue
@@ -461,20 +634,26 @@ def validate_config(cfg, model_type: Optional[str] = None,
     if ('solver', 'monitors') in clean:
         monitors = clean[('solver', 'monitors')]
         if not monitors:
-            raise ConfigError("solver.monitors 不能为空列表（至少要一个监视器）")
+            raise ConfigError("solver.monitors 不能为空列表（至少要一个监视器）",
+                              code='config_value_out_of_range',
+                              field='solver.monitors', value=monitors)
         for mon in monitors:
             if mon not in MONITOR_CHOICES:
                 raise ConfigError(
                     f"solver.monitors 里的 {mon!r} 非法；合法取值："
                     f"{' | '.join(MONITOR_CHOICES)}"
-                    f"（见 cst_solver/simulation/monitors.py 的 _FIELD_CONFIG）")
+                    f"（见 cst_solver/simulation/monitors.py 的 _FIELD_CONFIG）",
+                    code='config_enum_invalid', field='solver.monitors',
+                    value=mon, choices=list(MONITOR_CHOICES))
 
     # 频率区间
     if ('solver', 'fmin') in clean and ('solver', 'fmax') in clean:
         if clean[('solver', 'fmax')] <= clean[('solver', 'fmin')]:
             raise ConfigError(
                 f"solver.fmax ({clean[('solver', 'fmax')]}) 必须大于 "
-                f"solver.fmin ({clean[('solver', 'fmin')]})")
+                f"solver.fmin ({clean[('solver', 'fmin')]})",
+                code='config_freq_range_invalid', field='solver.fmax',
+                fmin=clean[('solver', 'fmin')], fmax=clean[('solver', 'fmax')])
 
     # 与模板签名对表（不要求 CST：只读签名）
     if mtype in PLANNED_MODEL_TYPES:
@@ -493,7 +672,9 @@ def validate_config(cfg, model_type: Optional[str] = None,
                 f"model.type={mtype!r} 的模板不接受这些字段：{', '.join(unknown)}\n"
                 f"  它接受的是：{', '.join(sorted(ok))}\n"
                 f"  （例如直波导没有 bend_angle / straight_length / arm_length，"
-                f"那是 unit_antenna 的字段）")
+                f"那是 unit_antenna 的字段）",
+                code='config_field_not_accepted', model_type=mtype,
+                unknown=unknown, accepted=sorted(ok))
 
     result: Dict[str, Any] = {'model': {'type': mtype}}
     for (section, name), value in sorted(clean.items()):
@@ -521,7 +702,8 @@ def _template_class(model_type: str):
     """取模板类（惰性导入 `topo_templates`，因此本模块导入时不碰 CST）。"""
     info = _MODEL_TYPE_INFO.get(model_type)
     if info is None:
-        raise ConfigError(f"未知 model.type: {model_type!r}")
+        raise ConfigError(f"未知 model.type: {model_type!r}",
+                          code='config_model_type_invalid', model_type=model_type)
     name, stage = info
     import topo_templates
     cls = getattr(topo_templates, name, None)
@@ -531,7 +713,10 @@ def _template_class(model_type: str):
             f"但它还不存在（属于{stage}）。\n"
             f"  现在能用的类型：{' | '.join(IMPLEMENTED_MODEL_TYPES)}\n"
             f"  尚未实现的类型：{' | '.join(PLANNED_MODEL_TYPES)}"
-            f"（见 docs/next_plan/README.md 的阶段表）")
+            f"（见 docs/next_plan/README.md 的阶段表）",
+            code='config_model_type_not_implemented', model_type=model_type,
+            class_name=name, stage=stage,
+            implemented=list(IMPLEMENTED_MODEL_TYPES))
     return cls
 
 
@@ -539,7 +724,8 @@ def accepted_fields(model_type: str) -> Tuple[str, ...]:
     """
     该模型类型**可写的 YAML 字段名**（从模板构造签名自动推导）。
 
-    `solver.fmin` / `solver.fmax` 由本模块合成 `freq_range`，所以它们也在这里返回。
+    `solver.fmin` / `solver.fmax` 由本模块合成 `freq_range`，所以它们也在这里返回；
+    `geometry.dphi1` / `geometry.dphi2` 同样合成 `lens_phase`。
 
     :param model_type: str, 模型类型
     :return: tuple[str, ...], 排好序的字段名（裸名，不含小节前缀）
@@ -554,6 +740,8 @@ def accepted_fields(model_type: str) -> Tuple[str, ...]:
             if spec.ctor in params:
                 ok.add(spec.name)
         elif spec.name in ('fmin', 'fmax') and 'freq_range' in params:
+            ok.add(spec.name)
+        elif spec.name in ('dphi1', 'dphi2') and 'lens_phase' in params:
             ok.add(spec.name)
     return tuple(sorted(ok))
 
@@ -593,6 +781,8 @@ def _to_ctor_kwargs(clean: Dict[str, Any]) -> Dict[str, Any]:
     - ``feed.type`` → ``feed_type``
     - ``output.path`` → ``output_path``
     - ``solver.fmin`` + ``solver.fmax`` → ``freq_range=(fmin, fmax)``
+    - ``geometry.dphi1`` + ``geometry.dphi2`` → ``lens_phase=(dphi1, dphi2)``
+      （相位是元组，而配置只有标量字段类型 —— 与 fmin/fmax 同一处理方式）
     """
     kwargs: Dict[str, Any] = {}
     for section, values in clean.items():
@@ -603,7 +793,7 @@ def _to_ctor_kwargs(clean: Dict[str, Any]) -> Dict[str, Any]:
         for key, value in values.items():
             spec = FIELD_INDEX.get((section, key))
             if spec is None or not spec.ctor:
-                continue                            # fmin/fmax 单独合成
+                continue                            # fmin/fmax/dphi* 单独合成
             kwargs[spec.ctor] = value
     solver = clean.get('solver') or {}
     if 'fmin' in solver and 'fmax' in solver:
@@ -612,6 +802,10 @@ def _to_ctor_kwargs(clean: Dict[str, Any]) -> Dict[str, Any]:
         kwargs['freq_range'] = (solver['fmin'], FIELD_INDEX[('solver', 'fmax')].default)
     elif 'fmax' in solver:
         kwargs['freq_range'] = (FIELD_INDEX[('solver', 'fmin')].default, solver['fmax'])
+    geometry = clean.get('geometry') or {}
+    if 'dphi1' in geometry or 'dphi2' in geometry:
+        kwargs['lens_phase'] = (geometry.get('dphi1', 0.0),
+                                geometry.get('dphi2', 0.0))
     return kwargs
 
 
@@ -674,10 +868,17 @@ def modeler_from_config(cfg, model_type: Optional[str] = None,
     if build_path:
         a = geo.get('lattice_constant', 0.2425)
         if mtype == 'unit_antenna':
+            # `bend_angle` 是**张角**（两侧臂夹角）：单臂实际转角 = bend_angle/2，
+            # 符号按拓扑取（AB 朝 +y、BA 朝 −y）—— 与 `UnitAntenna` 模板一致。
+            # 依据见 docs/validation/p4_real_machine_evidence.md §4.5。
             bend = geo.get('bend_angle', 120)
-            path = (TopoPath.builder(a, name='p')
-                    .start(0, 0).move(geo.get('straight_length', 18), 'c')
-                    .turn(bend).move(geo.get('arm_length', 14), 'along').build())
+            sign = 1 if geo.get('topology', 'BA') == 'AB' else -1
+            builder = (TopoPath.builder(a, name='p')
+                       .start(0, 0).move(geo.get('straight_length', 18), 'c'))
+            if bend:
+                builder.turn(sign * (bend // 2)).move(
+                    geo.get('arm_length', 14), 'along')
+            path = builder.build()
         else:
             path = (TopoPath.builder(a, name='p')
                     .start(0, 0).move(geo.get('length', 18), 'c').build())
@@ -708,7 +909,9 @@ def example_config(model_type: str = 'straight_waveguide') -> Dict[str, Any]:
     """
     if model_type not in ALL_MODEL_TYPES:
         raise ConfigError(
-            f"未知 model.type={model_type!r}；合法取值：{' | '.join(ALL_MODEL_TYPES)}")
+            f"未知 model.type={model_type!r}；合法取值：{' | '.join(ALL_MODEL_TYPES)}",
+            code='config_model_type_invalid', model_type=model_type,
+            legal=list(ALL_MODEL_TYPES))
 
     sig_defaults = {}
     if model_type in IMPLEMENTED_MODEL_TYPES:

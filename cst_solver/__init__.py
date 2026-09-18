@@ -20,58 +20,32 @@ CST Studio Suite 自动化 Python 接口包
 @author: PC
 """
 
-import sys
 import os
+import logging
+
+from cst_solver.vba_specs import MonitorSpec, PortSpec, validate_vba_specs
+
+from cst_solver.environment import (
+    CSTPaths, CSTConfigurationError, CSTUnavailableError,
+    discover_cst_installations, get_cst_paths, diagnose_environment,
+    describe_interface_abi, interpreter_abi_tag,
+    _load_cst_module, _read_config,
+)
 
 # ============================================================
-# 加载配置：仅通过文件系统路径读取 config.py（避免循环导入）
-# 配置优先顺序: config.py → config_template.py → 内置默认值
+# 加载配置快照；实际操作使用 environment 的统一解析与按需加载。
 # ============================================================
-_cfg_dir = os.path.dirname(os.path.abspath(__file__))
-
-def _load_cfg(filename):
-    """从文件路径读取配置变量（避免模块导入的循环依赖）"""
-    ns = {"__builtins__": __builtins__}
-    try:
-        with open(filename, encoding="utf-8") as f:
-            code = compile(f.read(), filename, 'exec')
-            exec(code, ns)
-    except Exception:
-        pass
-    return ns
-
-_cfg = {}
-for _name in ["config.py", "config_template.py"]:
-    _path = os.path.join(_cfg_dir, _name)
-    if os.path.exists(_path):
-        _cfg = _load_cfg(_path)
-        if _name == "config_template.py":
-            print("[WARN] 未找到 config.py，使用 config_template.py 中的默认配置")
-            print("   请复制 config_template.py 为 config.py 并修改 CST_INSTALL_PATH")
-        break
-
-def _derive_python_lib(install_path):
-    return os.path.join(install_path, "AMD64", "python_cst_libraries")
-
-def _derive_material_lib(install_path):
-    return os.path.join(install_path, "Library", "Materials")
-
-CST_INSTALL_PATH = _cfg.get("CST_INSTALL_PATH", r"C:\SOFTWARE\CST Studio Suite 2026")
-CST_PYTHON_LIB = _cfg.get("CST_PYTHON_LIB") or _derive_python_lib(CST_INSTALL_PATH)
-CST_MATERIAL_LIB = _cfg.get("CST_MATERIAL_LIB") or _derive_material_lib(CST_INSTALL_PATH)
-
-if not _cfg:
-    print("[WARN] 未找到配置文件，使用默认 CST 路径")
-    print("   请创建 cst_solver/config.py 并设置 CST_INSTALL_PATH")
-
-# 将 CST Python 库路径添加到系统路径
-if CST_PYTHON_LIB and CST_PYTHON_LIB not in sys.path:
-    sys.path.append(CST_PYTHON_LIB)
-
-# 导入 CST 库
-import cst
-import cst.interface
-import cst.results
+# 保留历史常量；无配置时不再假定某个开发者的安装目录。
+# 配置错误延迟到实际操作，确保诊断入口仍然可导入。
+try:
+    _cfg, _, _ = _read_config(os.environ)
+    _paths = get_cst_paths()
+except CSTConfigurationError:
+    _cfg = {}
+    _paths = CSTPaths(None, None, None, 'configuration_error')
+CST_INSTALL_PATH = _paths.install_path
+CST_PYTHON_LIB = _paths.python_lib
+CST_MATERIAL_LIB = _paths.material_lib
 
 # ============================================================
 # 运行时守卫层：模式可在 config.py 里用 CST_GUARD_MODE 覆盖
@@ -93,13 +67,14 @@ from cst_solver._guards import (  # noqa: E402
     set_guard_mode,
 )
 
-_guard_mode_cfg = _cfg.get("CST_GUARD_MODE")
+_guard_mode_cfg = os.environ.get('CST_GUARD_MODE') or _cfg.get("CST_GUARD_MODE")
 if _guard_mode_cfg:
     if _guard_mode_cfg in GUARD_MODES:
         set_guard_mode(_guard_mode_cfg)
     else:
-        print(f"[WARN] config.py 里的 CST_GUARD_MODE='{_guard_mode_cfg}' 非法，"
-              f"可选 {GUARD_MODES}；已回退到 '{DEFAULT_GUARD_MODE}'")
+        logging.getLogger(__name__).warning(
+            "CST_GUARD_MODE=%r 非法，可选 %s；已回退到 %s",
+            _guard_mode_cfg, GUARD_MODES, DEFAULT_GUARD_MODE)
 
 # ============================================================
 # 导入所有 Mixin 模块
@@ -328,11 +303,25 @@ class setup(
         :raises RuntimeError: 打开工程失败
         """
         self.t = 0
-        # 初始化 CST 交互式设计环境
-        self.project = cst.interface.DesignEnvironment()
-
+        self.cst_file = None
+        self._environment_closed = False
+        # 路径错误在创建 DE 之前暴露，避免打开工程失败留下空窗口。
         if filename is not None:
-            self._open_and_activate(filename)
+            filename = os.path.abspath(filename)
+            if not os.path.isfile(filename):
+                raise FileNotFoundError(f'CST project file not found: {filename}')
+            get_guard_state(self).check_project_path(filename)
+        self.project = _load_cst_module('cst.interface').DesignEnvironment()
+        try:
+            if filename is not None:
+                self._open_and_activate(filename)
+        except BaseException:
+            try:
+                self.project.close()
+                self._environment_closed = True
+            except Exception:
+                logging.getLogger(__name__).exception('打开工程失败后的 CST 会话清理失败')
+            raise
 
     def _open_and_activate(self, filename):
         """
@@ -378,4 +367,60 @@ class setup(
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """退出时自动关闭工程"""
-        self.close()
+        if exc_type is None:
+            self.close()
+        else:
+            try:
+                self.close()
+            except Exception:
+                logging.getLogger(__name__).exception('CST 清理失败，保留原始操作异常')
+
+
+# ============================================================
+# 公开入口（P1：API 与发行一致性）
+# ============================================================
+#
+# 在此之前本包**没有 __all__**：`from cst_solver import *` 会把 24 个内部
+# Mixin 类也一并导出，公开面与实现细节混在一起，也没有任何地方可以核对。
+# 这里显式声明「故意公开」的名字；Mixin 类仍然可以直接 import
+# （`from cst_solver import MaterialMixin` 照旧可用），只是不再算公开面。
+# 一致性由 `scripts/check_api_consistency.py` 的 public-surface 检查守住：
+# __all__ 里的每个名字都必须真的能取到。
+__all__ = [
+    # 主要类
+    'setup',
+    'result',
+    'Result',
+    # 环境发现与诊断（离线可用，不启动 CST）
+    'CSTPaths',
+    'CSTConfigurationError',
+    'CSTUnavailableError',
+    'discover_cst_installations',
+    'get_cst_paths',
+    'diagnose_environment',
+    'describe_interface_abi',
+    'interpreter_abi_tag',
+    'CST_INSTALL_PATH',
+    'CST_PYTHON_LIB',
+    'CST_MATERIAL_LIB',
+    # 运行时守卫层
+    'CstGuardError',
+    'GuardFinding',
+    'GuardState',
+    'GUARD_MODES',
+    'DEFAULT_GUARD_MODE',
+    'FARFIELD_GAIN_MODES',
+    'FARFIELD_KNOWN_MODES',
+    'PROJECT_SUFFIXES',
+    'assert_gain_mode',
+    'get_guard_mode',
+    'get_guard_state',
+    'reset_guard_state',
+    'set_guard_mode',
+    # 面操作（依赖 pick，与 setup 一起公开）
+    'FaceOpsMixin',
+    # CST VBA 对象的离线配置契约（不启动 CST）
+    'PortSpec',
+    'MonitorSpec',
+    'validate_vba_specs',
+]

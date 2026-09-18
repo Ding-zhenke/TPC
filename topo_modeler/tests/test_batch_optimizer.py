@@ -192,12 +192,17 @@ def test_cleanup_only_touches_beyond_baseline(monkeypatch):
     """
     🔴 关键安全性质：**只关自己开的**。
     用一个假的「DE 列表」验证：基线里的进程号一个都不能被动。
+
+    ⚠️ 这里的替身点从 `running_design_environments` 换成了
+    `design_environment_query` —— 后者是新的一等原语（能区分「没有 DE」与「问不到」），
+    清理逻辑改为经它取数。
     """
     import topo_modeler.batch as batch_mod
 
     baseline = {1001, 1002}
-    monkeypatch.setattr(batch_mod, 'running_design_environments',
-                        lambda: [1001, 1002, 2001, 2002])
+    monkeypatch.setattr(
+        batch_mod, 'design_environment_query',
+        lambda: {'ok': True, 'pids': [1001, 1002, 2001, 2002], 'reason': ''})
     closed = []
     fake_interface = type('M', (), {
         'DesignEnvironment': type('DE', (), {
@@ -212,6 +217,34 @@ def test_cleanup_only_touches_beyond_baseline(monkeypatch):
     assert sorted(result) == [2001, 2002]
     assert closed == [2001, 2002]
     assert 1001 not in closed and 1002 not in closed
+
+
+def test_cleanup_does_nothing_when_query_is_unavailable(monkeypatch):
+    """
+    「问不到」时**一个 DE 都不动**（宁可留着自己开的，也不要误关用户的）。
+
+    这条正是 2026-09-17 静默失败审计补上的：过去空列表既表示「没有 DE」，
+    也表示「查不了」，清理逻辑无法区分。
+    """
+    import topo_modeler.batch as batch_mod
+
+    monkeypatch.setattr(
+        batch_mod, 'design_environment_query',
+        lambda: {'ok': False, 'pids': [], 'reason': 'cst.interface 不可导入'})
+    closed = []
+    fake_interface = type('M', (), {
+        'DesignEnvironment': type('DE', (), {
+            'connect': staticmethod(
+                lambda pid: type('C', (), {'close': lambda self: closed.append(pid)})())
+        })
+    })
+    monkeypatch.setitem(sys.modules, 'cst', type('cst', (), {'interface': fake_interface})())
+    monkeypatch.setitem(sys.modules, 'cst.interface', fake_interface)
+
+    assert close_extra_design_environments({1001}, verbose=True) == []
+    assert closed == []
+    # 不传基线时「只清点」也应返回空，而不是假装查到了什么
+    assert close_extra_design_environments(None) == []
 
 
 def test_batch_cleanup_uses_baseline(tmp_path, monkeypatch):

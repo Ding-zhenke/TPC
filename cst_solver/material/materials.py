@@ -8,6 +8,22 @@ CST 材料与组件 Mixin 模块
 """
 
 import os
+import logging
+
+from cst_solver.failures import record_failure
+
+#: 本模块可能产出的错误码（材料名/材料库/材料文件三类）。
+#: 一致性检查（`scripts/check_api_consistency.py` 的 `error-codes` 项）要求
+#: 代码里用到的码必须出现在某个 `*_ERROR_CODES` 表里。
+MATERIAL_ERROR_CODES = (
+    'material_not_preset',        # 材料名不在预设表里（旧兼容接口，只提示不抛）
+    'material_library_missing',   # 材料库目录不存在
+    'material_file_not_found',    # 指定的 .mtd 不存在
+    'material_file_missing',      # 材料在库里找不到对应文件
+    'material_definition_empty',  # .mtd 里没有有效定义
+)
+
+_logger = logging.getLogger(__name__)
 
 
 class MaterialMixin:
@@ -26,6 +42,12 @@ class MaterialMixin:
           - 'Silicon (lossy)' — 损耗硅
           - 'Quartz (Fused) (lossy)' — 损耗熔融石英
 
+        ⚠️ 名字不在预设表里时**行为与旧版一致**：写一条日志后返回 ``None``，
+        什么也不建；同时这条失败会进入**结构化失败通道**
+        （``cst_solver.failures``），因此共用服务不会把它当成功。
+        需要「直接抛异常」时可开 ``cst_solver.failures.set_failure_strict(True)``；
+        上层 ``topo_modeler.builders.build_materials`` 就是提前校验后抛 ``ValueError``。
+
         :param name: str, 材料名称
         """
         if name == 'Copper (annealed)':
@@ -35,7 +57,12 @@ class MaterialMixin:
         elif name == "Quartz (Fused) (lossy)":
             f1 = self._material_quartz()
         else:
-            print("没有该材料，请手动添加")
+            record_failure(
+                'new_material', 'material_not_preset',
+                f'没有该材料，请手动添加：{name!r}',
+                material=name,
+                preset=['Copper (annealed)', 'Silicon (lossy)',
+                        'Quartz (Fused) (lossy)'])
             return
         self.cst_file.model3d.add_to_history(name, f1)
 
@@ -357,19 +384,11 @@ End With
 
         :return: str, 材料库路径
         """
-        try:
-            from cst_solver.config import CST_MATERIAL_LIB
-            return CST_MATERIAL_LIB
-        except ImportError:
-            pass
-        try:
-            from cst_solver.config_template import CST_MATERIAL_LIB
-            return CST_MATERIAL_LIB
-        except ImportError:
-            pass
-        # 最终 fallback: 从默认安装路径推导
-        _default = r"C:\SOFTWARE\CST Studio Suite 2026"
-        return os.path.join(_default, 'Library', 'Materials')
+        from cst_solver.environment import get_cst_paths, CSTUnavailableError
+        path = get_cst_paths().material_lib
+        if path is None:
+            raise CSTUnavailableError('未配置 CST 材料库，请设置 CST_INSTALL_PATH 或 CST_MATERIAL_LIB')
+        return path
 
     def list_library_materials(self):
         """
@@ -382,10 +401,14 @@ End With
             >>> materials = app.list_library_materials()
             >>> print(materials)
             ['Copper (annealed)', 'Silicon (lossy)', ...]
+
+        ⚠️ 材料库路径不存在时返回 ``[]``（与旧版一致），但会记录一条结构化失败
+        （``material_library_missing``）—— 空列表不等于「库里没有材料」。
         """
         lib_path = self._get_material_library_path()
         if not os.path.exists(lib_path):
-            print(f"[WARN] 材料库路径不存在: {lib_path}")
+            record_failure('list_library_materials', 'material_library_missing',
+                           f'材料库路径不存在: {lib_path}', path=lib_path)
             return []
         materials = []
         for f in os.listdir(lib_path):
@@ -425,11 +448,13 @@ End With
             if os.path.exists(candidate):
                 filepath = candidate
             else:
-                print(f"[WARN] 未找到材料文件: {filepath}")
+                record_failure('load_material_from_file', 'material_file_not_found',
+                               f'未找到材料文件: {filepath}', path=filepath)
                 return False
 
         if not os.path.exists(filepath):
-            print(f"[WARN] 材料文件不存在: {filepath}")
+            record_failure('load_material_from_file', 'material_file_not_found',
+                           f'材料文件不存在: {filepath}', path=filepath)
             return False
 
         # 解析 .mtd 文件
@@ -454,7 +479,8 @@ End With
                 commands.append(stripped)
 
         if not commands:
-            print(f"[WARN] 材料文件 {filepath} 中未找到有效定义")
+            record_failure('load_material_from_file', 'material_definition_empty',
+                           f'材料文件 {filepath} 中未找到有效定义', path=filepath)
             return False
 
         # 生成 VBA 命令并写入 CST 历史
@@ -465,7 +491,7 @@ End With
 
         self.cst_file.model3d.add_to_history(
             f'Define material: {material_name}', cmd)
-        print(f"[OK] 已加载材料: {material_name}")
+        _logger.info('已加载材料: %s', material_name)
         return True
 
     def get_material_filepath(self, material_name):
@@ -474,10 +500,15 @@ End With
 
         :param material_name: str, 材料名称（如 'Copper (annealed)'）
         :return: str 或 None, 完整路径或 None（未找到时）
+
+        ⚠️ 未找到时返回 ``None``（与旧版一致），同时记录一条结构化失败
+        （``material_file_missing``）—— ``None`` 不等于「路径为空」。
         """
         lib_path = self._get_material_library_path()
         filepath = os.path.join(lib_path, material_name + '.mtd')
         if os.path.exists(filepath):
             return filepath
-        print(f"[WARN] 材料库中未找到: {material_name}")
+        record_failure('get_material_filepath', 'material_file_missing',
+                       f'材料库中未找到: {material_name}',
+                       material=material_name, path=filepath)
         return None

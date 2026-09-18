@@ -9,7 +9,7 @@
 | 职责 | 三角晶格 / 六边形晶格的网格生成、坐标换算、空间分析与筛选、可视化、DXF 导出、路径 DSL（`TopoPath`） |
 | 需要 CST | ❌ **完全不需要**。`import mesh_grid` 不会把 `cst` 拉进 `sys.modules`（实测为 `False`）；它只产出 CST 表达式**字符串**，不做任何下发 |
 | 入口 | `from mesh_grid.tri_grid import TopoPath`（路径 DSL / 坐标统一层）<br>`from mesh_grid.hex_grid import HexLib, HexGridVisualizer`（六边形晶格）<br>子包 `__init__.py` 的 `__all__` 决定公开面 |
-| 依赖 | 必需：`numpy`、`matplotlib`；进度条：`tqdm`。`mesh_grid/hex_grid/core.py` 在**模块顶层**就 `import ezdxf` 与 `from shapely...`，而 `mesh_grid/__init__.py` 会自动导入两个子包 —— 所以导入 `mesh_grid` 需要先 `pip install -e ".[geometry]"`（或 `.[all]`，即 `ezdxf>=1.0` + `shapely>=2.0`） |
+| 依赖 | 必需：numpy、matplotlib、tqdm；只有导入 hex_grid 时才需要 geometry 可选依赖。mesh_grid 子包按需加载 |
 | 被谁依赖 | `topo_templates/`（`straight_waveguide.py`、`unit_antenna.py` 用 `TopoPath` 造路径）、`tpc_toolkit/`（`ga_optimizer.py`、`effective_medium.py` 用 hex_grid 工具）、`topo_modeler/builders/`（`substrate.py` / `vpc_region.py` / `crystal.py` 的 `path` 参数就是 `TopoPath` 实例）、`tests/test_grid_opt.py` |
 | 源码位置 | `mesh_grid/__init__.py`、`mesh_grid/tri_grid/core.py`、`mesh_grid/tri_grid/topo_path.py`、`mesh_grid/hex_grid/core.py`、各自 README |
 | 公开 API 规模 | **23 个模块级函数 + 4 个类 + 60 个公开方法**（`tri_grid` 19 个函数 + `hex_grid` 4 个函数；方法分布：`HexLib` 25、`TopoPath` 19、`HexGridVisualizer` 10、`TopoPathBuilder` 6）。口径 = `python scripts/_api_stats.py`（AST 扫描，跳过 `tests/` 与下划线开头符号） |
@@ -203,8 +203,10 @@ xy_dn = pos_to_xy((0, 3), (0, 4), 1.0, r=2, c=3, triangle_type='down')    # (3.5
 未 `start()` 就调用 `.move()` / `.line_to()` 一律抛 `RuntimeError("请先调用 .start(r, c) 设置起点")`。
 
 > **区域多边形绕向是硬约定（CCW）。** `build_substrate_polygon()` 与 `build_vpc_area_polygon()` 都保证**逆时针**（有向面积 > 0）。原因见 `docs/ARCHITECTURE.md` §6 硬约定 1：CST 的 `ExtrudeCurve` 沿多边形**法向**拉伸，而法向由顶点绕向决定 —— CCW 拉到 `+z`、CW 拉到 `−z`；绕向反了，实体在 z 上会与其它部件差一个 `h`，布尔求交得到**空集却不报错**。这也是为什么两条边界链都包含**每一个**路径点：只取两端偏移点的稀疏写法，其绕向会随拐弯方向翻转，无法保证 CCW。该不变量由单测 16（`test_polygon_winding_is_ccw`）钉住。
+>
+> ⚠️ **但 CCW 只是必要条件，不是充分条件**（2026-09-17 补，同日已修）：上面这套「两条链都含全部路径点」的写法保证的是**绕向**，它**不保证多边形简单（不自交）**。此前偏移只沿 y 方向做，路径一旦拐弯，两条链就会互相穿插 —— CST 会以 `The specified curve is not closed and planar.` 拒绝拉伸。**现已修复**：两条链改为按**段法向 + miter** 偏移，且弯折路径改由 `build_segment_band_polygons()` 以「逐段四边形 + 布尔并」表达（§4.3、§4.5 第 9 条）。
 
-### 4.3 `TopoPath` 公开成员（19 个方法 / 属性）
+### 4.3 `TopoPath` 公开成员（20 个方法 / 属性）
 
 构造入口还有 `TopoPath.from_lattice(points, a, name='path', param_values=None)`（从 `(r,c)` 列表直接创建，兼容旧代码）；另有 `len(path)`、`path[i]`、`repr(path)`、公开属性 `path_lattice`（原始、可能含符号）、构造函数参数 `a` / `name` / `param_values`。
 
@@ -215,13 +217,14 @@ xy_dn = pos_to_xy((0, 3), (0, 4), 1.0, r=2, c=3, triangle_type='down')    # (3.5
 | `lattice_symbolic` | property → `list[tuple]` | 原始晶格坐标（可能含 `str`），用于生成 CST 表达式 |
 | `has_symbols` | property → `bool` | 是否含符号坐标 |
 | `lattice_to_cst_expr(r, c)` | staticmethod → `(px, py)` | **纯静态换算**，不需要实例：把 `(r,c)`（可含符号）编成 CST 表达式字符串。阶段 5.6 起做规范化：**去零项**（`(0,0)` 不再产出 `'0*a'`）、**合并同类项**（整数坐标按 `(2c+r)*a/2` 精确合并，`(14,4)` → `'11*a'`）、省略系数 1（`'a'` 而非 `'1*a'`）、平方根一律写 `sqr(3)`（**不是** Python 的 `sqrt(3)`）；含 `+`/`-` 的符号表达式自动加括号。**py 保持 `r*a/2*sqr(3)` 的写法**，与符号式及参考工程一致，便于逐条对照 |
-| `auto_define_cst_params(app, prefix=None)` | 方法 | 逐点调用 `app.para(f'{pfx}{i+1}x', px)` / `app.para(f'{pfx}{i+1}y', py)`；`pfx` 默认取 `self.name` |
+| `auto_define_cst_params(app, prefix=None)` | 方法 | 逐点调用 `app.para(f'{pfx}{i+1}x', px)` / `app.para(f'{pfx}{i+1}y', py)`；`pfx` 默认取 `self.name`。✅ **幂等**（P4/V4 修复，2026-09-17）：**同一个 `TopoPath` + 同一个 `app` + 同一前缀只登记一次**；换 `app` 或换 `prefix` 仍会正常登记，参数化能力不受影响。原因：`build_substrate()` / `build_vpc_regions()` 与模板的 `_define_all_params()` 都会调用它，重复登记**同名同值**参数会被守卫层判成「改了已存在参数」→ 刷 `[LOG_FLAG_NO_REBUILD]`（T7'/T13）噪声告警（天线模板实测曾有 **6 条**误报）。真机证据见 [`../validation/p4_real_machine_evidence.md`](../validation/p4_real_machine_evidence.md) §5 |
 | `get_cst_point(idx, prefix=None)` | 方法 | 返回第 `idx` 个点的参数名元组，如 `('path3x', 'path3y')` |
 | `get_cst_polygon(indices, prefix=None)` | 方法 | 返回指定索引点组成的 CST 表达式顶点列表 `[[px, py], ...]` |
 | `get_bounding_box(margin_c=1, margin_r=1)` | 方法 | 用 `(r_min-1, c_min-1) … (r_max+1, c_max+1)` 四个角换算后取包络，返回 `(xmin, xmax, ymin, ymax)`。需数值坐标 |
-| `get_array_range()` | 方法 | 自动推导光子晶体阵列复制范围 `(xup, yup, ydn)` = `(c_max + abs(r_max)//2 + 1, abs(r_max) + 1, abs(r_min) + 1)`（源码写法 `int(c_max) + int(abs(r_max)/2) + 1`、`int(abs(r_max)) + 1`、`int(abs(r_min)) + 1`）。需数值坐标 |
-| `build_substrate_polygon(y_margin='e2', prefix=None)` | 方法 | 基板带状多边形顶点（CST 表达式形式）。顶点顺序：**下侧偏移链正向**（各点 `py - y_margin`，`i=0…N-1`）→ **上侧偏移链反向**（各点 `py + y_margin`，`i=N-1…0`）→ 回到首点 ⇒ 顶点数 `2N + 1`。**绕向固定为逆时针（CCW，有向面积 > 0）** |
-| `build_vpc_area_polygon(side='upper', y_margin='e2', prefix=None)` | 方法 | VPC-A / VPC-B 裁剪区域顶点，同样保证 **CCW**、两条边界链都含全部路径点 ⇒ 顶点数 `2N + 1`。`side='upper'`（路径是下边界）：路径链正向 → 上侧偏移链反向（`py + y_margin`）→ 首点；`side='lower'`（路径是上边界）：下侧偏移链正向（`py - y_margin`）→ 路径链反向 → 首点。`side` 不是 `'upper'` / `'lower'` 时抛 `ValueError` |
+| `get_array_range()` | 方法 | 自动推导光子晶体阵列复制范围 `(xup, yup, ydn)` = `(c_max + abs(r_max)//2 + 1, abs(r_max) + 1, abs(r_min) + 1)`（源码写法 `int(c_max) + int(abs(r_max)/2) + 1`、`int(abs(r_max)) + 1`、`int(abs(r_min)) + 1`）。需数值坐标。⚠️ 它只按**路径**推断，与基板/臂的覆盖范围无关（限见 4.5 第 7 条）；`UnitAntenna` 自 2026-09-17 起**已不再使用**它，改用参考工程的 `xup/yup/ydn` 公式 |
+| `build_substrate_polygon(y_margin='e2', prefix=None)` | 方法 | 基板带状多边形顶点（CST 表达式形式）。顶点顺序：**下侧偏移链正向**（`i=0…N-1`）→ **上侧偏移链反向**（`i=N-1…0`）→ 回到首点 ⇒ 顶点数 `2N + 1`。**绕向固定为逆时针（CCW，有向面积 > 0）**。✅ **已修（2026-09-17）**：偏移由「只在 y 方向」改为**按段法向 + 拐点 miter 连接**，偏移量仍全部由 CST 表达式（`sqr(3)`、`y_margin`）表达、无硬编码数值；**直线路径的产物与旧实现逐字节相同**。⚠️ 但弯折路径下它仍是**单个**多边形，而**恒定宽度的整条带在折回路径上会自覆盖**，单多边形表达不了 —— 构建器已不再使用它，改用 `build_segment_band_polygons()`，见 §4.5 第 9 条 |
+| `build_vpc_area_polygon(side='upper', y_margin='e2', prefix=None)` | 方法 | VPC-A / VPC-B 裁剪区域顶点，同样保证 **CCW**、两条边界链都含全部路径点 ⇒ 顶点数 `2N + 1`。`side='upper'`（路径是下边界）：路径链正向 → 上侧偏移链反向（按段法向 + miter）→ 首点；`side='lower'`（路径是上边界）：下侧偏移链正向（按段法向 + miter）→ 路径链反向 → 首点。`side` 不是 `'upper'` / `'lower'` 时抛 `ValueError`。✅ **已修**：与 `build_substrate_polygon` 同一处修复（段法向 + miter，直线路径逐字节兼容）；⚠️ 弯折路径下同为**单多边形**，构建器已改用 `build_segment_band_polygons(side=…)`，见 §4.5 第 9 条 |
+| `build_segment_band_polygons(y_margin='e2', prefix=None, side=None)` | 方法 | **弯折路径带状区域的正解**（P4/V1 修复，2026-09-17）。把带状区域拆成**每段一个平行四边形 + 拐角补块**，返回**若干**个闭合顶点的列表（`list[list]`），每个都是 CCW 的**简单多边形**，可逐个拉伸后布尔并。`side` 取值：`None` = 整条带（路径两侧各 `y_margin`）、`'upper'` = 路径**上侧**半带（含路径本身）、`'lower'` = 路径**下侧**半带（含路径本身）；其它取值抛 `ValueError("side 必须是 None / 'upper' / 'lower'…")`。拐角补块只在**外侧**补（左转补 `lower`、右转补 `upper`，用整数晶格步判号），因此整条带不重不漏；单个半带则只补自己那一侧。⚠️ **适用条件**：拐角补块基于「带宽远小于段长」的常规用量；**超宽带宽**（如把 `y_margin` 取到远大于段长）自交仍可能出现，**不在保证范围内**（属输入不当）。**180° 折返**（原路折回，带宽无定义）抛 `ValueError("路径在某个顶点处 180° 折返…")`。直线路径只有一段 ⇒ 产物与旧实现逐字节相同。回归：`mesh_grid/tri_grid/tests/test_band_polygon.py` |
 | `segment_directions()` | 方法 | 每段的方向单位向量 `(dr, dc)` 列表（按 `gcd` 归一）。需数值坐标 |
 | `segment_angles()` | 方法 | 每段的物理角度（度，`arctan2` 值域 `(-180, 180]`）。需数值坐标 |
 | `is_straight()` | 方法 | `len(path_lattice) <= 2` |
@@ -266,9 +269,10 @@ path = (TopoPath.builder(a=0.2425)
 | `path.segment_angles()` | `[0.0, 120.0]` |
 | 各点 CST 表达式 | `('-1*a+0*a/2', '0*a/2*sqr(3)')`、`('18*a+0*a/2', '0*a/2*sqr(3)')`、`('4*a+14*a/2', '14*a/2*sqr(3)')` |
 | `has_bend()` | `True` |
-| `build_substrate_polygon()` | 顶点数 `7`（= `2×3+1`）：`[['path1x','path1y-e2'], ['path2x','path2y-e2'], ['path3x','path3y-e2'], ['path3x','path3y+e2'], ['path2x','path2y+e2'], ['path1x','path1y+e2'], ['path1x','path1y-e2']]`（CCW） |
-| `build_vpc_area_polygon('upper')` 顶点数 | `7`（= `2×3+1`）：路径链正向 → 上侧偏移链反向 → 首点 |
+| `build_substrate_polygon()` | 顶点数 `7`（= `2×3+1`）：下侧偏移链正向 → 上侧偏移链反向 → 首点（CCW）。**弯折路径的偏移自 2026-09-17 起按段法向 + miter**，实测 `[['path1x','path1y-e2'], ['path2x+sqr(3)*e2','path2y-e2'], ['path3x+sqr(3)*e2/2','path3y+e2/2'], ['path3x-sqr(3)*e2/2','path3y-e2/2'], ['path2x-sqr(3)*e2','path2y+e2'], ['path1x','path1y+e2'], ['path1x','path1y-e2']]`。⚠️ 弯折路径下这个**单多边形仍会自覆盖**，构建器已改用 `build_segment_band_polygons()`，见 §4.5 第 9 条 |
+| `build_vpc_area_polygon('upper')` 顶点数 | `7`（= `2×3+1`）：路径链正向 → 上侧偏移链反向 → 首点；实测后三点为 `['path3x-sqr(3)*e2/2','path3y-e2/2']`、`['path2x-sqr(3)*e2','path2y+e2']`、`['path1x','path1y+e2']` |
 | `build_vpc_area_polygon('lower')` 顶点数 | `7`（= `2×3+1`）：下侧偏移链正向 → 路径链反向 → 首点；`side='middle'` 抛 `ValueError` |
+| `build_segment_band_polygons()` | **3 个四边形**（2 段平行四边形 + 1 个拐角补块）；`side='upper'` 2 个、`side='lower'` 3 个 |
 | `get_array_range()` | `(26, 15, 1)` |
 
 **(c) 符号坐标参数化路径**（路径长度变成 CST 参数）
@@ -313,6 +317,23 @@ app.para('path3y', 'y1*a/2*sqr(3)')         # 展开即 y1*a*√3/2
 6. **`.move(0, ...)` / 负步数是静默无操作**（`steps <= 0` 直接 `return self`）；`.turn()` 之后若不 `move()` 就 `build()`，只会得到一条 warning，旋转不会产生新点。
 7. **`get_array_range()` 是按路径推断的，不是按基板。** `docs/ARCHITECTURE.md` §6 硬约定 3 明确要求「光子晶体阵列的 `xup/yup/ydn` 必须覆盖整个基板，不能只按路径推断」—— 所以把 `TopoPath.get_array_range()` 当作**下界参考**，落地时由 `topo_modeler` 依据基板尺寸取更大值。
 8. **`line_to()` 推断不出 6 主方向时**会 `warnings.warn` 并把当前方向置为 `None`；此后若再用 `direction='along'`，`_resolve_move_direction` 会抛 `RuntimeError("当前方向未定义…")`。
+9. ✅ **已修（2026-09-17）：弯折路径的偏移多边形自交。** 原先 `build_substrate_polygon()` / `build_vpc_area_polygon()` 只做 y 向偏移（`py ± y_margin`），拐弯路径上两条链互相穿插 → 自交多边形 → CST 报 `(&H8000ffff) The specified curve is not closed and planar.`（`ExtrudeCurve .Create`），建模在 `build_substrate` 一步中断。
+   **修复分两层**：
+
+   - **① 偏移方式**：两条边界链改为**按段法向 + 拐点 miter 连接**（内部 `_step_vectors()` / `_normal_coeff()` / `_vertex_offset_coeffs()` / `_offset_chains()`，用 `Fraction` 有理数运算，miter 公式 `(n1+n2)/(1+n1·n2)`），偏移量仍全部由 CST 表达式（`sqr(3)`、`y_margin`）表达，**不引入硬编码数值**；
+   - **② 更本质的一层**：**恒定宽度的整条带在折回路径上会自覆盖**，单个简单多边形**根本无法表达**（120° 折回的天线路径就是这种情形）。因此新增 **`build_segment_band_polygons(y_margin='e2', prefix=None, side=None)`**：**每段一个平行四边形 + 拐角补块**（只补**外侧**，用整数晶格步 `_turn_cross()` 判定左/右转），返回若干 CCW 简单多边形，由调用方逐段拉伸后**布尔并**。`side=None` 整条带、`'upper'` / `'lower'` 取半带；`side` 非法抛 `ValueError`。
+
+   `topo_modeler/builders/substrate.py` 与 `builders/vpc_region.py` 已改用 `build_segment_band_polygons()` 逐段建模 + 布尔并（与既有的 `build_substrate_multi` 同一套路）；`build_substrate_polygon()` / `build_vpc_area_polygon()` **保留**（弯折路径下仍是单多边形，仅供兼容与查看），构建器已不再使用它们。
+
+   **向后兼容**：直线路径只有一段 ⇒ 产物与旧实现**逐字节相同**（单测 `test_band_polygon.py::test_straight_path_quads_equal_legacy_polygons` 钉住）。
+   **180° 折返**（原路折回，带宽无定义）抛明确的 `ValueError`，不再产出垃圾多边形。
+   ⚠️ **适用条件（如实记录）**：拐角补块基于「带宽远小于段长」的常规用量；**超宽带宽**（例如把 `y_margin` 取到远大于段长）自交仍可能出现 —— 这属于输入不当，**不在保证范围内**。
+
+   **真机复验（2026-09-17，CST 2026）**：弯折路径 `[(0,-1),(0,18),(14,4)]` 下 AB / BA 两种拓扑各 **8/8 通过**，`build_substrate` 与 `build_vpc_regions` 均**建模成功且 0 条 CST 消息** —— `UnitAntenna` 模板**现在可以建模了**。实测证据与随后仍待确认的 `bend_angle` 语义见
+   [`../validation/p4_real_machine_evidence.md`](../validation/p4_real_machine_evidence.md) §4.3/§4.4（`bend_angle` 语义已于 2026-09-17 离线查清，见 §4.5：它就是**转角**，参考「120D」对应 `±60`）。离线回归 `mesh_grid/tri_grid/tests/test_band_polygon.py`（平行四边形不自交、CCW、直线路径逐字节兼容、带内采样点覆盖性、miter 表达式含 `sqr(3)` 且无硬编码小数、180° 折返报错）。
+10. ✅ **已修（2026-09-17）：重复登记同名同值参数会被守卫层误报。** `auto_define_cst_params()` 原先每次调用都无条件下发一遍 `app.para(...)`，而 `build_substrate()`、`build_vpc_regions()` 与模板的 `_define_all_params()` **都会**调用它 —— 第二次及以后登记时参数**已存在**、几何**已建了一部分**，守卫层便按「改了已存在参数但没重建历史」判脏，刷出 6 条 `[LOG_FLAG_NO_REBUILD]`（T7'/T13）警告（点名 `p1x…p3y`），但登记的是**同一个表达式**，路径晶格根本没变，属于**纯误报**。
+   **修复**：`auto_define_cst_params(app, prefix=None)` 现在**幂等** —— 同一个 `TopoPath` 对象在**同一个 `app`**（且同一前缀）上只登记一次；换成另一个 `app` 或另一个 `prefix` 仍会正常登记，**参数化能力不受影响**。修复后真机复验：直波导与天线两个模板在 warn 模式下均 **0 条 CST 消息 / 0 守卫 finding / 0 噪声警告**。
+   离线回归 `mesh_grid/tri_grid/tests/test_param_definition.py`（4 项：重复调用只登记一次、换 app 仍登记、换前缀仍登记、登记值仍是表达式而非数值）。真机证据见 [`../validation/p4_real_machine_evidence.md`](../validation/p4_real_machine_evidence.md) §5.1。
 
 ---
 
@@ -480,7 +501,7 @@ python mesh_grid/tri_grid/tests/test_topo_path.py
 2. **`mesh_grid` 永不 import CST。**
    它是纯计算包（`numpy` + `matplotlib`，`tqdm` 进度条，`ezdxf` / `shapely` 用于 DXF 与几何运算）。它只产出 CST **表达式字符串**；实际的 CST 下发永远发生在 `cst_solver` / `topo_modeler` / `topo_templates`。这条是 `skills/developer/WORKFLOW.md` §10 的禁止事项之一（「❌ 在 `mesh_grid` 里引入 CST 依赖（它必须保持纯计算）」），也是 `docs/ARCHITECTURE.md` §2 单向依赖图的一部分。相应地，`auto_define_cst_params(app)` 只做鸭子类型调用（要求 `app.para(name, expr)`），不 import 任何 CST 模块。
 3. **新增公开 API 必须导出到子包 `__init__.py` 的 `__all__`。**
-   `mesh_grid/__init__.py` 自动导入两个子包，`mesh_grid/tri_grid/__init__.py` 与 `mesh_grid/hex_grid/__init__.py` 各自维护 `__all__`。只在 `core.py` 里写函数而不导出，等于对外不可见，且 `docs/guides/api/*.html` 与技能文档都会与代码脱节。删除/改名公开符号时按 `WORKFLOW.md` §5 保留别名并登记弃用。
+   `mesh_grid/__init__.py` 按需导入子包，`mesh_grid/tri_grid/__init__.py` 与 `mesh_grid/hex_grid/__init__.py` 各自维护 `__all__`。只在 `core.py` 里写函数而不导出，等于对外不可见，且 `docs/guides/api/*.html` 与技能文档都会与代码脱节。删除/改名公开符号时按 `WORKFLOW.md` §5 保留别名并登记弃用。
 4. **改动公开 API 后重新生成 `docs/guides/api/{hex,tri}_grid_api.html`。**
    ```bash
    python scripts/gen_mesh_docs.py        # → docs/guides/api/{hex,tri}_grid_api.html
@@ -520,3 +541,7 @@ python mesh_grid/tri_grid/tests/test_topo_path.py
 | [`../../skills/developer/WORKFLOW.md`](../../skills/developer/WORKFLOW.md) | 开发宪法：改动归属、标准工作流、各包验收清单、命名/文档同步/提交规范 |
 
 **包内文档**：`mesh_grid/tri_grid/README.md`（三角晶格函数分类表与网格结构）、`mesh_grid/hex_grid/README.md`（六边形核心类与坐标系统）。
+
+## 中文字体与无副作用导入
+
+绘图共用 `mesh_grid.plotting.configure_chinese_font()`，用户脚本推荐 `chinese_plot_style()`；不再在包导入时设置全局字体。支持实际字形检测、TPC_CJK_FONT、负号和 PDF/SVG 导出，见 [中文绘图指南](../guides/chinese_plotting.md)。

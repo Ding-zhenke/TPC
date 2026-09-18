@@ -49,23 +49,33 @@ def build_vpc_regions(app, path, name_prefix='vpc', height='h',
     vpca_name = f"{name_prefix}_A"
     vpcb_name = f"{name_prefix}_B"
 
+    # ⚠️ 弯折路径上「恒定宽度的整条半带」会自覆盖，单个多边形表达不了（见
+    #    TopoPath.build_segment_band_polygons 的说明）；因此按**每段一个四边形 + 布尔并**
+    #    来建。直线路径只有一段 ⇒ 四边形与原来的多边形逐字节相同，行为不变。
+    def _build_half(side, target_name):
+        rings = path.build_segment_band_polygons(y_margin=y_margin, prefix='p',
+                                                 side=side)
+        solids = []
+        for index, ring in enumerate(rings):
+            curve = (f"{target_name}_curve" if index == 0
+                     else f"{target_name}_curve{index + 1}")
+            solid = target_name if index == 0 else f"{target_name}_seg{index + 1}"
+            app.polyline(ring, name=curve, curve='curve1')
+            app.extrude(f"curve1:{curve}", name=solid, thickness=height,
+                        component=component, material=material)
+            app.translate(solid, ['0', '0', f'-{height}/2'],
+                          component=component, log_flag=1)
+            solids.append(solid)
+        for extra in solids[1:]:
+            app.add(target_name, extra, component1=component,
+                    component2=component)
+        return target_name
+
     # ---- VPC-A（下半区，对齐参考工程）----
-    polygon_a = path.build_vpc_area_polygon(side='lower', y_margin=y_margin, prefix='p')
-    curve_a = f"{vpca_name}_curve"
-    app.polyline(polygon_a, name=curve_a, curve='curve1')
-    app.extrude(f"curve1:{curve_a}", name=vpca_name, thickness=height,
-                component=component, material=material)
-    app.translate(vpca_name, ['0', '0', f'-{height}/2'],
-                  component=component, log_flag=1)
+    _build_half('lower', vpca_name)
 
     # ---- VPC-B（上半区，对齐参考工程）----
-    polygon_b = path.build_vpc_area_polygon(side='upper', y_margin=y_margin, prefix='p')
-    curve_b = f"{vpcb_name}_curve"
-    app.polyline(polygon_b, name=curve_b, curve='curve1')
-    app.extrude(f"curve1:{curve_b}", name=vpcb_name, thickness=height,
-                component=component, material=material)
-    app.translate(vpcb_name, ['0', '0', f'-{height}/2'],
-                  component=component, log_flag=1)
+    _build_half('upper', vpcb_name)
 
     return vpca_name, vpcb_name
 
@@ -88,4 +98,73 @@ def intersect_vpc_with_substrate(app, substrate_name, vpca_name, vpcb_name,
     # VPC-B 与基板相交
     app.intersect(substrate_name, vpcb_name,
                   component1=component, component2=component)
+    return vpca_name, vpcb_name
+
+
+def build_vpc_regions_multi(app, paths, name_prefix='vpc', height='h',
+                            material='Silicon (lossy)', y_margin='e2',
+                            component='component1', prefix='p', unite=True):
+    """
+    多路径 VPC 区域：**每条路径各做上/下半区带，再按侧布尔并**。
+
+    为什么需要它（与 `build_substrate_multi` 同源，阶段 8 模块 6.1）：
+    功分器 / MZI / 多端口器件的 VPC 区域必须覆盖**所有分支**；只按主干路径
+    生成的 VPC 区域盖不住分支，分支上的光子晶体就会被裁掉（或整块露在区域外）。
+
+    与 `build_vpc_regions`（单路径）的关系
+    --------------------------------------
+    * **实体名**：第一条路径的第一段沿用规范名（`vpc_A` / `vpc_B`），
+      单条路径 ⇒ 与单路径版本**实体名与调用顺序逐条相同**；
+      多条路径 ⇒ 后续各段/各路径命名 ``{vpc_A}_p{i}_seg{j}``（`i` 从 1 起，
+      因为第 0 条路径的第 0 段已经用了规范名），最后 `Add` 进规范名里
+      （CST 的 `Add` 结果留在**第一个操作数**，见 `docs/ARCHITECTURE.md` §6 硬约定 2）。
+    * **CST 参数前缀**：**多条路径**时必须各用各的，否则 `p1x/p1y…` 互相覆盖 ⇒
+      按顺序生成 ``{prefix}0`` / ``{prefix}1`` / …（与 `build_substrate_multi` 一致）；
+      **单条路径**时直接用 `prefix`（= `p`），于是与单路径版本**连参数名都相同**。
+
+    :param app: cst_solver.setup 实例
+    :param paths: dict, ``{名字: TopoPath}``（单条也可，等价于单路径版本）
+    :param name_prefix: str, 名称前缀，默认 'vpc'
+    :param height: str/float, 区域厚度
+    :param material: str, 材料
+    :param y_margin: str, 半宽参数名
+    :param component: str, 归属组件
+    :param prefix: str, CST 参数前缀基名（多路径时每条路径加序号）
+    :param unite: bool, 是否把各条带并成一个实体（False 保留多个，便于排错）
+    :return: tuple, (vpca_name, vpcb_name) —— 规范名，承载布尔并的结果
+    :raises ValueError: paths 为空
+    """
+    if not paths:
+        raise ValueError('paths 不能为空')
+
+    vpca_name = f"{name_prefix}_A"
+    vpcb_name = f"{name_prefix}_B"
+    multi = len(paths) > 1
+
+    parts = {'lower': [], 'upper': []}
+    for i, (_path_name, path) in enumerate(paths.items()):
+        pfx = f'{prefix}{i}' if multi else prefix
+        path.auto_define_cst_params(app, prefix=pfx)
+        for side, target in (('lower', vpca_name), ('upper', vpcb_name)):
+            rings = path.build_segment_band_polygons(y_margin=y_margin,
+                                                     prefix=pfx, side=side)
+            for index, ring in enumerate(rings):
+                first = (i == 0 and index == 0)
+                # 第一条路径的第一段用规范名（单路径时与旧实现逐字节相同）
+                solid = target if first else f'{target}_p{i}_seg{index + 1}'
+                curve = (f'{target}_curve' if first
+                         else f'{target}_p{i}_curve{index + 1}')
+                app.polyline(ring, name=curve, curve='curve1')
+                app.extrude(f'curve1:{curve}', name=solid, thickness=height,
+                            component=component, material=material)
+                app.translate(solid, ['0', '0', f'-{height}/2'],
+                              component=component, log_flag=1)
+                parts[side].append(solid)
+
+    if unite:
+        for side, target in (('lower', vpca_name), ('upper', vpcb_name)):
+            for extra in parts[side][1:]:
+                app.add(target, extra, component1=component,
+                        component2=component)
+
     return vpca_name, vpcb_name

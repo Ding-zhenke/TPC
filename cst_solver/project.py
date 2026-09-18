@@ -8,6 +8,7 @@ CST 项目操作 Mixin 模块
 """
 
 import os
+import logging
 
 from cst_solver._guards import get_guard_state
 
@@ -30,7 +31,7 @@ class ProjectMixin:
         self.cst_file = self.project.open_project(filename)
         self.cst_file.activate()
         get_guard_state(self).mark_opened()
-        print('项目已打开并激活')
+        logging.getLogger(__name__).info('项目已打开并激活')
 
     def open_project(self, filename):
         """
@@ -44,9 +45,10 @@ class ProjectMixin:
     def project_close(self):
         """关闭当前 CST 工程（保留设计环境）"""
         get_guard_state(self).check_before_close()
-        self.cst_file.close()
+        if not get_guard_state(self).closed and getattr(self, 'cst_file', None) is not None:
+            self.cst_file.close()
         get_guard_state(self).mark_closed()
-        print('项目已关闭')
+        logging.getLogger(__name__).info('项目已关闭')
 
     def close_project(self):
         """关闭当前 CST 工程（保留设计环境），蛇形命名"""
@@ -61,10 +63,19 @@ class ProjectMixin:
         关闭前若检测到未保存的改动（建了几何但没 save），会给一条 warning。
         """
         state = get_guard_state(self)
-        state.check_before_close()
-        self.cst_file.close()
-        self.project.close()
-        state.mark_closed()
+        if not state.closed or getattr(self, '_environment_closed', False):
+            state.check_before_close()
+        if getattr(self, '_environment_closed', False):
+            return
+        try:
+            if not state.closed and getattr(self, 'cst_file', None) is not None:
+                self.cst_file.close()
+                state.mark_closed()
+        finally:
+            # 即使工程关闭报错，也尝试释放由 setup 创建的设计环境。
+            self.project.close()
+            self._environment_closed = True
+            state.mark_closed()
 
     def save(self, filename=None, include_results=True, allow_overwrite=False):
         """
@@ -116,7 +127,8 @@ class ProjectMixin:
             ``ProjectType.MWS``；其它可选值见 ``cst.interface.ProjectType``
             （FD3D / EMS / PS / CS / DS / MPS / PCBS）
         """
-        from cst.interface import ProjectType
+        from cst_solver.environment import _load_cst_module
+        ProjectType = _load_cst_module('cst.interface').ProjectType
         if project_type is None:
             project_type = ProjectType.MWS
         self.cst_file = self.project.new_project(project_type)

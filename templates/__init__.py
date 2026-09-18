@@ -9,7 +9,7 @@ templates — **已弃用的旧包名**（转发到 `topo_templates`）
 
 请改用::
 
-    from topo_templates import StraightWaveguide, UnitAntenna   # ✅ 新名
+    from topo_templates import StraightWaveguide, UnitAntenna, GRINLensAntenna   # ✅ 新名
 
 旧写法仍然可用，但会发 `DeprecationWarning`::
 
@@ -33,8 +33,16 @@ warnings.warn(
 
 from topo_templates.straight_waveguide import StraightWaveguide  # noqa: E402
 from topo_templates.unit_antenna import UnitAntenna              # noqa: E402
+from topo_templates.grin_lens_antenna import GRINLensAntenna      # noqa: E402
+from topo_templates.multiport_antenna import MultiPortAntenna     # noqa: E402
+from topo_templates.mzi_switch import MZISwitch                   # noqa: E402
+from topo_templates.power_divider import PowerDivider             # noqa: E402
 
 __all__ = [
     "StraightWaveguide",
     "UnitAntenna",
+    "GRINLensAntenna",
+    "MultiPortAntenna",
+    "MZISwitch",
+    "PowerDivider",
 ]

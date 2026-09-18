@@ -21,12 +21,7 @@
 @author: PC
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
-
-# === 在这里设置中文字体 ===
-plt.rcParams['font.sans-serif'] = ['SimHei']  # macOS 用 'Heiti TC'，Linux 可尝试 'WenQuanYi Micro Hei'
-plt.rcParams['axes.unicode_minus'] = False    # 解决负号 '-' 显示为方块的问题
 
 
 def cal_phi(r, fp, lambda1):

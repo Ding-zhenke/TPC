@@ -891,11 +891,11 @@ path.auto\_define\_cst\_params(app)
 
 1. **pick\_face 面编号硬编码**：当前端口面编号（'10','22'）从旧 notebook 提取，后续优化为按法向量自动查找
 
-2. **透镜未实现**：GRIN 透镜（阶段 4）尚未实现，含透镜的 notebook 暂不能用模板
+2. **透镜状态已更新**：GRIN 透镜与 `GRINLensAntenna` 模板现已实现；见[当前模板说明](../packages/topo_templates.md)
 
-3. **结果读取未实现**：S 参数 / 远场 / E 场结果读取（阶段 5）尚未实现
+3. **结果读取状态已更新**：S 参数读取与报告已有入口；远场物理验收仍待真实求解，见[统一计划](../next_plan/README.md)
 
-4. **多端口未实现**：3 端口 / 4 端口天线（阶段 6）尚未实现
+4. **多端口状态已更新**：`MultiPortAntenna` 已有 3 端口模板；其余端口数按[当前模板说明](../packages/topo_templates.md)判断
 
 5. **符号路径阵列范围**：符号路径的 `get_array_range()` 需要 `param_values` 才能数值化，后续可优化为返回 CST 表达式
 

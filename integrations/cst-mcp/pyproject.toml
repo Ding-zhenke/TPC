@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tpc-cst-mcp"
+version = "0.1.0"
+description = "TPC 的 CST MCP 服务：把同一套 Python 能力暴露为 MCP 工具（不重写几何/VBA/数值逻辑）"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+# ⚠️ 版本是**锁定的**（计划 P3 要求「锁定 MCP SDK 与 Python 版本」）。
+#    已验证组合（2026-09-17，Windows / Anaconda）：
+#      Python 3.11.7 + mcp 1.29.1 + pydantic 2.13.4 + anyio 4.14.2
+#    核心包 tpc-cst 支持 Python >=3.9，但 **MCP SDK 要求 >=3.10**，
+#    所以本发行项目的下限是 3.10 —— 不能拿核心包的下限当这里的下限。
+dependencies = [
+    "tpc-cst>=2.0.0,<3",
+    "mcp==1.29.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+tpc-cst-mcp = "cst_mcp.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/Ding-zhenke/TPC"
+Documentation = "https://github.com/Ding-zhenke/TPC/blob/main/docs/README.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["cst_mcp*"]
+exclude = ["cst_mcp.tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q"

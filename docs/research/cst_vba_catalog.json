@@ -1,0 +1,4458 @@
+{
+  "source": "C:\\SOFTWARE\\CST Studio Suite 2026\\Online Help",
+  "scope": "mergedProjects/VBA_3D",
+  "file_count": 647,
+  "family_counts": {
+    "3d": 14,
+    "VBA_3D": 31,
+    "cable_types": 4,
+    "cablebundles": 9,
+    "cablegroups": 8,
+    "cableinstance": 3,
+    "coaxialcables": 6,
+    "common_examples": 2,
+    "common_vbaapp": 1,
+    "common_vbabasicsolids": 8,
+    "common_vbabending": 1,
+    "common_vbacablestudio": 2,
+    "common_vbacurves": 21,
+    "common_vbadomaindecomposition": 1,
+    "common_vbaedaimportdefaults": 1,
+    "common_vbaextrude": 1,
+    "common_vbafaces": 1,
+    "common_vbageneral": 29,
+    "common_vbaimpexp": 24,
+    "common_vbalayoutdb": 1,
+    "common_vbaloft": 1,
+    "common_vbapicko": 1,
+    "common_vbaplot": 8,
+    "common_vbapostproc": 4,
+    "common_vbarotateo": 1,
+    "common_vbasolido": 3,
+    "common_vbaunitso": 1,
+    "common_vbawcso": 2,
+    "connection_to_3d": 12,
+    "connectors": 11,
+    "currentmonitors": 6,
+    "data_import": 1,
+    "de": 3,
+    "defaults": 2,
+    "junctions": 10,
+    "material": 6,
+    "nodes": 13,
+    "overview": 1,
+    "ribboncables": 6,
+    "schematic": 6,
+    "segments": 16,
+    "singlewires": 6,
+    "special_vba3dxcoupling": 1,
+    "special_vbacharge": 1,
+    "special_vbacoil": 2,
+    "special_vbacontact": 1,
+    "special_vbacurrentpath": 1,
+    "special_vbacurrentport": 1,
+    "special_vbadimension": 1,
+    "special_vbadiscreteelements": 2,
+    "special_vbadriftdiffusionsolver": 6,
+    "special_vbaforce": 1,
+    "special_vbaimpexp": 3,
+    "special_vbalayer": 4,
+    "special_vbamagnet": 1,
+    "special_vbamechanics": 4,
+    "special_vbamesh": 3,
+    "special_vbamonitors": 15,
+    "special_vbaobjects": 4,
+    "special_vbaparametersweep": 1,
+    "special_vbaparticlesource": 2,
+    "special_vbapicsolver": 1,
+    "special_vbaports": 8,
+    "special_vbapostproc": 23,
+    "special_vbapotential": 1,
+    "special_vbapredefinedfield": 1,
+    "special_vbarigidbodymotion": 2,
+    "special_vbasignals": 1,
+    "special_vbasolver": 14,
+    "special_vbasourcefield": 1,
+    "special_vbastaticsolver": 6,
+    "special_vbathermalsolver": 18,
+    "special_vbatransformo": 2,
+    "special_vbatransientsolvers": 2,
+    "special_vbavoltagewire": 1,
+    "special_vbawakefieldsolver": 2,
+    "tl_modeling": 4,
+    "twistedcables": 6,
+    "whdata": 5,
+    "whgdata": 207
+  },
+  "entries": [
+    {
+      "path": "mergedProjects/VBA_3D/common_examples/common_examples_create_an_analytical_3d_curve.htm",
+      "family": "common_examples",
+      "title": "Create an Analytical 3D Curve",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_examples/common_examples_create_an_anayltical_2d_curve_.htm",
+      "family": "common_examples",
+      "title": "Create an Anayltical 2D Curve",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaapp/common_vbaappapplication_object.htm",
+      "family": "common_vbaapp",
+      "title": "Project Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbabasicsolids/common_vbaanalyticalface_object.htm",
+      "family": "common_vbabasicsolids",
+      "title": "AnalyticalFace Object",
+      "headings": [
+        "AnalyticalFace Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbabasicsolids/common_vbabrick_object.htm",
+      "family": "common_vbabasicsolids",
+      "title": "Brick Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbabasicsolids/common_vbacone_object.htm",
+      "family": "common_vbabasicsolids",
+      "title": "Cone Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbabasicsolids/common_vbacylinder_object.htm",
+      "family": "common_vbabasicsolids",
+      "title": "Cylinder Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbabasicsolids/common_vbaecylinder_object.htm",
+      "family": "common_vbabasicsolids",
+      "title": "ECylinder Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbabasicsolids/common_vbasphere_object.htm",
+      "family": "common_vbabasicsolids",
+      "title": "Sphere Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbabasicsolids/common_vbatorus_object.htm",
+      "family": "common_vbabasicsolids",
+      "title": "Torus Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbabasicsolids/common_vbawire_object.htm",
+      "family": "common_vbabasicsolids",
+      "title": "Wire Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbabending/common_vbabending_object.htm",
+      "family": "common_vbabending",
+      "title": "Bending Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/cablegroups/cablegroupdefine.htm",
+      "family": "cablegroups",
+      "title": "CableGroupDefine",
+      "headings": [
+        "CableGroupDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/cablegroups/cablegroupdelete.htm",
+      "family": "cablegroups",
+      "title": "CableGroupDelete",
+      "headings": [
+        "CableGroupDelete"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/cablegroups/cablegroupdeleteunused.htm",
+      "family": "cablegroups",
+      "title": "CableGroupDeleteUnused",
+      "headings": [
+        "CableGroupDeleteUnused"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/cablegroups/cablegroupduplicate.htm",
+      "family": "cablegroups",
+      "title": "CableGroupDuplicate",
+      "headings": [
+        "CableGroupDuplicate"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/cablegroups/cablegrouprename.htm",
+      "family": "cablegroups",
+      "title": "CableGroupRename",
+      "headings": [
+        "CableGroupRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/cablegroups/cablegrouprenamescreen.htm",
+      "family": "cablegroups",
+      "title": "CableGroupRenameScreen",
+      "headings": [
+        "CableGroupRenameScreen"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/cablegroups/cablegrouprenamesubcable.htm",
+      "family": "cablegroups",
+      "title": "CableGroupRenameSubcable",
+      "headings": [
+        "CableGroupRenameSubcable"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/cablegroups/querycablegroups.htm",
+      "family": "cablegroups",
+      "title": "QueryCableGroups",
+      "headings": [
+        "QueryCableGroups",
+        "Alternative using a Variant type:"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/coaxialcables/coaxialcabledefine.htm",
+      "family": "coaxialcables",
+      "title": "CoaxialCableDefine",
+      "headings": [
+        "CoaxialCableDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/coaxialcables/coaxialcabledelete.htm",
+      "family": "coaxialcables",
+      "title": "CoaxialCableDelete",
+      "headings": [
+        "CoaxialCableDelete"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/coaxialcables/coaxialcabledeleteunused.htm",
+      "family": "coaxialcables",
+      "title": "CoaxialCableDeleteUnused",
+      "headings": [
+        "CoaxialCableDeleteUnused"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/coaxialcables/coaxialcableduplicate.htm",
+      "family": "coaxialcables",
+      "title": "CoaxialCableDuplicate",
+      "headings": [
+        "CoaxialCableDuplicate"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/coaxialcables/coaxialcablerename.htm",
+      "family": "coaxialcables",
+      "title": "CoaxialCableRename",
+      "headings": [
+        "CoaxialCableRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/coaxialcables/querycoaxialcables.htm",
+      "family": "coaxialcables",
+      "title": "QueryCoaxialCables",
+      "headings": [
+        "QueryCoaxialCables",
+        "Alternative using a Variant type:"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/exporttransferimpedance.htm",
+      "family": "cable_types",
+      "title": "ExportTransferImpedance",
+      "headings": [
+        "ExportTransferImpedance"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/hierarchical_structure_definition.htm",
+      "family": "cable_types",
+      "title": "Hierarchical structure definition",
+      "headings": [
+        "Hierarchical structure definition"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/querycablelib.htm",
+      "family": "cable_types",
+      "title": "QueryCableLib",
+      "headings": [
+        "QueryCableLib"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/ribboncables/queryribboncables.htm",
+      "family": "ribboncables",
+      "title": "QueryRibbonCables",
+      "headings": [
+        "QueryRibbonCables",
+        "Alternative using a Variant type:"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/ribboncables/ribboncabledefine.htm",
+      "family": "ribboncables",
+      "title": "RibbonCableDefine",
+      "headings": [
+        "RibbonCableDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/ribboncables/ribboncabledelete.htm",
+      "family": "ribboncables",
+      "title": "RibbonCableDelete",
+      "headings": [
+        "RibbonCableDelete"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/ribboncables/ribboncabledeleteunused.htm",
+      "family": "ribboncables",
+      "title": "RibbonCableDeleteUnused",
+      "headings": [
+        "RibbonCableDeleteUnused"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/ribboncables/ribboncableduplicate.htm",
+      "family": "ribboncables",
+      "title": "RibbonCableDuplicate",
+      "headings": [
+        "RibbonCableDuplicate"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/ribboncables/ribboncablerename.htm",
+      "family": "ribboncables",
+      "title": "RibbonCableRename",
+      "headings": [
+        "RibbonCableRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/singlewires/querysinglewires.htm",
+      "family": "singlewires",
+      "title": "QuerySingleWires",
+      "headings": [
+        "QuerySingleWires",
+        "Alternative using a Variant type:"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/singlewires/singlewiredefine.htm",
+      "family": "singlewires",
+      "title": "SingleWireDefine",
+      "headings": [
+        "SingleWireDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/singlewires/singlewiredelete.htm",
+      "family": "singlewires",
+      "title": "SingleWireDelete",
+      "headings": [
+        "SingleWireDelete"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/singlewires/singlewiredeleteunused.htm",
+      "family": "singlewires",
+      "title": "SingleWireDeleteUnused",
+      "headings": [
+        "SingleWireDeleteUnused"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/singlewires/singlewireduplicate.htm",
+      "family": "singlewires",
+      "title": "SingleWireDuplicate",
+      "headings": [
+        "SingleWireDuplicate"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/singlewires/singlewirerename.htm",
+      "family": "singlewires",
+      "title": "SingleWireRename",
+      "headings": [
+        "SingleWireRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/twistedcables/querytwistedcables.htm",
+      "family": "twistedcables",
+      "title": "QueryTwistedCables",
+      "headings": [
+        "QueryTwistedCables",
+        "Alternative using a Variant type:"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/twistedcables/twistedcabledefine.htm",
+      "family": "twistedcables",
+      "title": "TwistedCableDefine",
+      "headings": [
+        "TwistedCableDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/twistedcables/twistedcabledelete.htm",
+      "family": "twistedcables",
+      "title": "TwistedCableDelete",
+      "headings": [
+        "TwistedCableDelete"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/twistedcables/twistedcabledeleteunused.htm",
+      "family": "twistedcables",
+      "title": "TwistedCableDeleteUnused",
+      "headings": [
+        "TwistedCableDeleteUnused"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/twistedcables/twistedcableduplicate.htm",
+      "family": "twistedcables",
+      "title": "TwistedCableDuplicate",
+      "headings": [
+        "TwistedCableDuplicate"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/twistedcables/twistedcablerename.htm",
+      "family": "twistedcables",
+      "title": "TwistedCableRename",
+      "headings": [
+        "TwistedCableRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cable_types/uploadcables.htm",
+      "family": "cable_types",
+      "title": "UploadCables",
+      "headings": [
+        "UploadCables"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cablebundles/bundlerename.htm",
+      "family": "cablebundles",
+      "title": "BundleRename",
+      "headings": [
+        "BundleRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cablebundles/cablebundledefine.htm",
+      "family": "cablebundles",
+      "title": "CableBundleDefine",
+      "headings": [
+        "CableBundleDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cablebundles/cablebundledelete.htm",
+      "family": "cablebundles",
+      "title": "CableBundleDelete",
+      "headings": [
+        "CableBundleDelete"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cablebundles/cablebundlefromcurve.htm",
+      "family": "cablebundles",
+      "title": "BundleFromCurve",
+      "headings": [
+        "BundleFromCurve"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cablebundles/cablebundlefromstartandendnode.htm",
+      "family": "cablebundles",
+      "title": "CableBundleFromStartAndEndNode",
+      "headings": [
+        "CableBundleFromStartAndEndNode"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cablebundles/cablebundlerename.htm",
+      "family": "cablebundles",
+      "title": "CableBundleRename",
+      "headings": [
+        "CableBundleRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cablebundles/cableinstancerename.htm",
+      "family": "cablebundles",
+      "title": "CableInstanceRename",
+      "headings": [
+        "CableInstanceRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cablebundles/nodesetgrounded.htm",
+      "family": "cablebundles",
+      "title": "NodeSetGrounded",
+      "headings": [
+        "NodeSetGrounded"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cablebundles/querycablebundles.htm",
+      "family": "cablebundles",
+      "title": "QueryCableBundles",
+      "headings": [
+        "QueryCableBundles",
+        "Alternative using a Variant type:"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cableinstance/querysignals.htm",
+      "family": "cableinstance",
+      "title": "QuerySignals",
+      "headings": [
+        "QuerySignals"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cableinstance/signaldefine.htm",
+      "family": "cableinstance",
+      "title": "DefineSignal",
+      "headings": [
+        "DefineSignal"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cableinstance/signalrename.htm",
+      "family": "cableinstance",
+      "title": "SignalRename",
+      "headings": [
+        "SignalRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connection_to_3d/connectionsegmentapplyterminals.htm",
+      "family": "connection_to_3d",
+      "title": "ConnectionSegmentApplyTerminals",
+      "headings": [
+        "ConnectionSegmentApplyTerminals"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connection_to_3d/connectionsegmentautoconnect.htm",
+      "family": "connection_to_3d",
+      "title": "ConnectionSegmentAutoConnect",
+      "headings": [
+        "ConnectionSegmentAutoConnect"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connection_to_3d/connectionsegmentbundle.htm",
+      "family": "connection_to_3d",
+      "title": "ConnectionSegmentBundle",
+      "headings": [
+        "ConnectionSegmentBundle"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connection_to_3d/connectionsegmentchangenodes.htm",
+      "family": "connection_to_3d",
+      "title": "ConnectionSegmentChangeNodes",
+      "headings": [
+        "ConnectionSegmentChangeNodes"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connection_to_3d/connectionsegmentdefine.htm",
+      "family": "connection_to_3d",
+      "title": "ConnectionSegmentDefine",
+      "headings": [
+        "ConnectionSegmentDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connection_to_3d/connectionsegmentdelete.htm",
+      "family": "connection_to_3d",
+      "title": "ConnectionSegmentDelete",
+      "headings": [
+        "ConnectionSegmentDelete"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connection_to_3d/connectionsegmentenvironmentmaterial.htm",
+      "family": "connection_to_3d",
+      "title": "ConnectionSegmentEnvironmentMaterial",
+      "headings": [
+        "ConnectionSegmentEnvironmentMaterial"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connection_to_3d/connectionsegmentrename.htm",
+      "family": "connection_to_3d",
+      "title": "ConnectionSegmentRename",
+      "headings": [
+        "ConnectionSegmentRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connection_to_3d/connectionsegmentsnapfirstnodetopick.htm",
+      "family": "connection_to_3d",
+      "title": "ConnectionSegmentSnapFirstNodeToPick",
+      "headings": [
+        "ConnectionSegmentSnapFirstNodeToPick"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connection_to_3d/connectionsegmentsnapfirstnodetoshape.htm",
+      "family": "connection_to_3d",
+      "title": "ConnectionSegmentSnapFirstNodeToShape",
+      "headings": [
+        "ConnectionSegmentSnapFirstNodeToShape"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connection_to_3d/connectionsegmentsnaplastnodetoshape.htm",
+      "family": "connection_to_3d",
+      "title": "ConnectionSegmentSnapLastNodeToShape",
+      "headings": [
+        "ConnectionSegmentSnapLastNodeToShape"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connection_to_3d/connectionsegmentwiretype.htm",
+      "family": "connection_to_3d",
+      "title": "ConnectionSegmentWireType",
+      "headings": [
+        "ConnectionSegmentWireType"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connectors/connectorautocreate.htm",
+      "family": "connectors",
+      "title": "ConnectorAutoCreate",
+      "headings": [
+        "ConnectorAutoCreate"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connectors/connectordefine.htm",
+      "family": "connectors",
+      "title": "ConnectorDefine",
+      "headings": [
+        "ConnectorDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connectors/connectordelete.htm",
+      "family": "connectors",
+      "title": "ConnectorDelete",
+      "headings": [
+        "ConnectorDelete"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connectors/connectordeleteunused.htm",
+      "family": "connectors",
+      "title": "ConnectorDeleteUnused",
+      "headings": [
+        "ConnectorDeleteUnused"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connectors/connectorduplicate.htm",
+      "family": "connectors",
+      "title": "ConnectorDuplicate",
+      "headings": [
+        "ConnectorDuplicate"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connectors/connectorfrompickpoint.htm",
+      "family": "connectors",
+      "title": "ConnectorFromPickPoint",
+      "headings": [
+        "ConnectorFromPickPoint"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connectors/connectorpinrename.htm",
+      "family": "connectors",
+      "title": "ConnectorPinRename",
+      "headings": [
+        "ConnectorPinRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connectors/connectorpluginrename.htm",
+      "family": "connectors",
+      "title": "ConnectorPluginRename",
+      "headings": [
+        "ConnectorPluginRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connectors/connectorrename.htm",
+      "family": "connectors",
+      "title": "ConnectorRename",
+      "headings": [
+        "ConnectorRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connectors/connectorsnaptopickpoint.htm",
+      "family": "connectors",
+      "title": "ConnectorSnapToPickPoint",
+      "headings": [
+        "ConnectorSnapToPickPoint"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/connectors/queryconnectors.htm",
+      "family": "connectors",
+      "title": "QueryConnectors",
+      "headings": [
+        "QueryConnectors",
+        "Alternative using a Variant type:"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/cst_cablestudio_objects_overview.htm",
+      "family": "common_vbacablestudio",
+      "title": "CST Cable Studio Objects Overview",
+      "headings": [
+        "CST Cable Studio Objects Overview"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/currentmonitors/currentmonitordefine.htm",
+      "family": "currentmonitors",
+      "title": "CurrentMonitorDefine",
+      "headings": [
+        "CurrentMonitorDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/currentmonitors/currentmonitordelete.htm",
+      "family": "currentmonitors",
+      "title": "CurrentMonitorDelete",
+      "headings": [
+        "CurrentMonitorDelete"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/currentmonitors/currentmonitorduplicate.htm",
+      "family": "currentmonitors",
+      "title": "CurrentMonitorsDuplicate",
+      "headings": [
+        "CurrentMonitorsDuplicate"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/currentmonitors/currentmonitorrename.htm",
+      "family": "currentmonitors",
+      "title": "CurrentMonitorsRename",
+      "headings": [
+        "CurrentMonitorsRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/currentmonitors/querycurrentmonitorproperty.htm",
+      "family": "currentmonitors",
+      "title": "QueryCurrentMonitorProperty",
+      "headings": [
+        "QueryCurrentMonitorProperty"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/currentmonitors/querycurrentmonitors.htm",
+      "family": "currentmonitors",
+      "title": "QueryCurrentMonitors",
+      "headings": [
+        "QueryCurrentMonitors"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/data_import/import_data.htm",
+      "family": "data_import",
+      "title": "Data import",
+      "headings": [
+        "Import Data"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/defaults/defaultsdefine.htm",
+      "family": "defaults",
+      "title": "DefaultsDefine",
+      "headings": [
+        "DefaultsDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/defaults/querydefaults.htm",
+      "family": "defaults",
+      "title": "QueryDefaults",
+      "headings": [
+        "QueryDefaults"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/junctions/csjunctiondefine.htm",
+      "family": "junctions",
+      "title": "CSJunctionDefine",
+      "headings": [
+        "CSJunctionDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/junctions/csjunctiondelete.htm",
+      "family": "junctions",
+      "title": "CSJunctionDelete",
+      "headings": [
+        "CSJunctionDelete"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/junctions/csjunctionmodify.htm",
+      "family": "junctions",
+      "title": "CSJunctionModify",
+      "headings": [
+        "CSJunctionModify"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/junctions/csjunctionprobe.htm",
+      "family": "junctions",
+      "title": "CSJunctionProbe",
+      "headings": [
+        "CSJunctionProbe"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/junctions/csjunctionrename.htm",
+      "family": "junctions",
+      "title": "CSJunctionRename",
+      "headings": [
+        "CSJunctionRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/junctions/cspinresistortorefdefine.htm",
+      "family": "junctions",
+      "title": "CSPinResistorToRefDefine",
+      "headings": [
+        "CSPinResistorToRefDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/junctions/cstermresistortorefdefine.htm",
+      "family": "junctions",
+      "title": "CSTermResistorToRefDefine",
+      "headings": [
+        "CSTermResistorToRefDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/junctions/nodeinternaldefine.htm",
+      "family": "junctions",
+      "title": "NodeInternalDefine",
+      "headings": [
+        "NodeInternalDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/junctions/nodeinternaldelete.htm",
+      "family": "junctions",
+      "title": "NodeNodeInternalDelete",
+      "headings": [
+        "NodeNodeInternalDelete"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/junctions/queryjunctions.htm",
+      "family": "junctions",
+      "title": "QueryJunctions",
+      "headings": [
+        "QueryJunctions"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/material/materialdefine.htm",
+      "family": "material",
+      "title": "MaterialDefine",
+      "headings": [
+        "MaterialDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/material/materialdelete.htm",
+      "family": "material",
+      "title": "MaterialDelete",
+      "headings": [
+        "MaterialDelete"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/material/materialdeleteunused.htm",
+      "family": "material",
+      "title": "MaterialDeleteUnused",
+      "headings": [
+        "MaterialDeleteUnused"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/material/materialduplicate.htm",
+      "family": "material",
+      "title": "MaterialDuplicate",
+      "headings": [
+        "MaterialDuplicate"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/material/materialrename.htm",
+      "family": "material",
+      "title": "MaterialRename",
+      "headings": [
+        "MaterialRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/material/querymaterials.htm",
+      "family": "material",
+      "title": "QueryMaterials",
+      "headings": [
+        "QueryMaterials"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/nodes/importnodes.htm",
+      "family": "nodes",
+      "title": "ImportNodes",
+      "headings": [
+        "ImportNodes"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/nodes/nodeatpickpoint.htm",
+      "family": "nodes",
+      "title": "NodeAtPickPoint",
+      "headings": [
+        "NodeAtPickPoint"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/nodes/nodedefine.htm",
+      "family": "nodes",
+      "title": "NodeDefine",
+      "headings": [
+        "NodeDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/nodes/nodedelete.htm",
+      "family": "nodes",
+      "title": "NodeDelete",
+      "headings": [
+        "NodeDelete"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/nodes/nodedeleteunused.htm",
+      "family": "nodes",
+      "title": "NodeDeleteUnused",
+      "headings": [
+        "NodeDeleteUnused"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/nodes/nodeduplicate.htm",
+      "family": "nodes",
+      "title": "NodesDuplicate",
+      "headings": [
+        "NodesDuplicate"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/nodes/nodemove.htm",
+      "family": "nodes",
+      "title": "NodeMove",
+      "headings": [
+        "NodeMove"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/nodes/noderename.htm",
+      "family": "nodes",
+      "title": "NodesRename",
+      "headings": [
+        "NodesRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/nodes/nodesetgrounded.htm",
+      "family": "nodes",
+      "title": "NodeSetGrounded",
+      "headings": [
+        "NodeSetGrounded"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/nodes/nodesnaptopickpoint.htm",
+      "family": "nodes",
+      "title": "NodeSnapToPickPoint",
+      "headings": [
+        "NodeSnapToPickPoint"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/nodes/nodesnaptoshape.htm",
+      "family": "nodes",
+      "title": "NodeSnapToShape",
+      "headings": [
+        "NodeSnapToShape"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/nodes/querynodeproperty.htm",
+      "family": "nodes",
+      "title": "QueryNodeProperty",
+      "headings": [
+        "QueryNodeProperty",
+        "Alternative using a Variant type:"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/nodes/querynodes.htm",
+      "family": "nodes",
+      "title": "QueryNodes",
+      "headings": [
+        "QueryNodes",
+        "Alternative using a Variant type:"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/query_parameters.htm",
+      "family": "common_vbacablestudio",
+      "title": "Query parameters",
+      "headings": [
+        "Query parameters",
+        "Array parameters from GetArray() can be extracted and used similar to this:",
+        "An alternative is code like this:"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/activatecompressforall.htm",
+      "family": "segments",
+      "title": "ActivateCompressForAll",
+      "headings": [
+        "ActivateCompressForAll"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/calculateimpedance.htm",
+      "family": "segments",
+      "title": "CalculateImpedance",
+      "headings": [
+        "CalculateImpedance"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/querysegments.htm",
+      "family": "segments",
+      "title": "QuerySegments",
+      "headings": [
+        "QuerySegments",
+        "Alternative using a Variant type:"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/segmentautobundleall.htm",
+      "family": "segments",
+      "title": "SegmentAutobundleAll",
+      "headings": [
+        "SegmentAutobundleAll"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/segmentbundle.htm",
+      "family": "segments",
+      "title": "SegmentBundle",
+      "headings": [
+        "SegmentBundle"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/segmentchangenodes.htm",
+      "family": "segments",
+      "title": "SegmentChangeNodes",
+      "headings": [
+        "SegmentChangeNodes"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/segmentdefine.htm",
+      "family": "segments",
+      "title": "SegmentDefine",
+      "headings": [
+        "SegmentDefine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/segmentdelete.htm",
+      "family": "segments",
+      "title": "SegmentDelete",
+      "headings": [
+        "SegmentDelete"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/segmentdeleteunused.htm",
+      "family": "segments",
+      "title": "SegmentDeleteUnused",
+      "headings": [
+        "SegmentDeleteUnused"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/segmentenvironmentmaterial.htm",
+      "family": "segments",
+      "title": "SegmentEnvironmentMaterial",
+      "headings": [
+        "SegmentEnvironmentMaterial"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/segmentrename.htm",
+      "family": "segments",
+      "title": "SegmentRename",
+      "headings": [
+        "SegmentRename"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/segmentresetbundle.htm",
+      "family": "segments",
+      "title": "SegmentResetBundle",
+      "headings": [
+        "SegmentResetBundle"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/segmentsetbundlefixed.htm",
+      "family": "segments",
+      "title": "SegmentSetBundleFixed",
+      "headings": [
+        "SegmentSetBundleFixed"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/segmentsplitsubnodes.htm",
+      "family": "segments",
+      "title": "SegmentSplitSubNodes",
+      "headings": [
+        "SegmentSplitSubNodes"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/segmentsubdivide.htm",
+      "family": "segments",
+      "title": "SegmentSubdivide",
+      "headings": [
+        "SegmentSubdivide"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/segments/segmentto3d.htm",
+      "family": "segments",
+      "title": "SegmentTo3D",
+      "headings": [
+        "SegmentTo3D"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/tl_modeling/cable_solver.htm",
+      "family": "tl_modeling",
+      "title": "Cable Solver Settings",
+      "headings": [
+        "CableSolverSettings"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/tl_modeling/tlmnodesettings.htm",
+      "family": "tl_modeling",
+      "title": "TLMNodeSettings",
+      "headings": [
+        "TLMNodeSettings"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/tl_modeling/tlmodelexport.htm",
+      "family": "tl_modeling",
+      "title": "TLModelExport",
+      "headings": [
+        "TLModelExport"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacablestudio/tl_modeling/tlstartmodelling.htm",
+      "family": "tl_modeling",
+      "title": "Run2D_TL",
+      "headings": [
+        "Run2D_TL"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_analyticalcurve_object.htm",
+      "family": "common_vbacurves",
+      "title": "AnalyticalCurve Object",
+      "headings": [
+        "AnalyticalCurve Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_arc_object.htm",
+      "family": "common_vbacurves",
+      "title": "Arc Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_bending_object.htm",
+      "family": "common_vbacurves",
+      "title": "Bending Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_blendcurve_object.htm",
+      "family": "common_vbacurves",
+      "title": "BlendCurve Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_chamfercurve_object.htm",
+      "family": "common_vbacurves",
+      "title": "ChamferCurve Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_circle_object.htm",
+      "family": "common_vbacurves",
+      "title": "Circle Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_covercurve_object.htm",
+      "family": "common_vbacurves",
+      "title": "CoverCurve Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_curve_object.htm",
+      "family": "common_vbacurves",
+      "title": "Curve Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_edgecurve_object.htm",
+      "family": "common_vbacurves",
+      "title": "EdgeCurve Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_ellipse_object.htm",
+      "family": "common_vbacurves",
+      "title": "Ellipse Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_extrudecurve_object.htm",
+      "family": "common_vbacurves",
+      "title": "ExtrudeCurve Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_line_object.htm",
+      "family": "common_vbacurves",
+      "title": "Line Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_loftcurves_object.htm",
+      "family": "common_vbacurves",
+      "title": "LoftCurves Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_polygon3d.htm",
+      "family": "common_vbacurves",
+      "title": "Polygon3D Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_polygon_object.htm",
+      "family": "common_vbacurves",
+      "title": "Polygon Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_projection_object.htm",
+      "family": "common_vbacurves",
+      "title": "Projection Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_rectangle_object.htm",
+      "family": "common_vbacurves",
+      "title": "Rectangle Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_spline_object.htm",
+      "family": "common_vbacurves",
+      "title": "Spline Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_sweepcurve_object.htm",
+      "family": "common_vbacurves",
+      "title": "SweepCurve Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_tracefromcurve_object.htm",
+      "family": "common_vbacurves",
+      "title": "TraceFromCurve Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbacurves/common_vbacurves_trimcurves_object.htm",
+      "family": "common_vbacurves",
+      "title": "TrimCurves Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbadomaindecomposition/common_domaindecomposition_object.htm",
+      "family": "common_vbadomaindecomposition",
+      "title": "DomainDecomposition Object",
+      "headings": [
+        "DomainDecomposition Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaedaimportdefaults/common_vbaedaimportdefaults.htm",
+      "family": "common_vbaedaimportdefaults",
+      "title": "EDA Import Defaults Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaextrude/common_vbaextrudeextrude_object.htm",
+      "family": "common_vbaextrude",
+      "title": "Extrude Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbafaces/common_vbafaces_face_object.htm",
+      "family": "common_vbafaces",
+      "title": "Face Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_bool_data_type.htm",
+      "family": "common_vbageneral",
+      "title": "Bool Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_bool_ref_data_type.htm",
+      "family": "common_vbageneral",
+      "title": "Bool_Ref Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_coordinates.htm",
+      "family": "common_vbageneral",
+      "title": "Coordinate Systems",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_curve_names.htm",
+      "family": "common_vbageneral",
+      "title": "Curve_Names",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_double.htm",
+      "family": "common_vbageneral",
+      "title": "Double Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_double_ref.htm",
+      "family": "common_vbageneral",
+      "title": "Double_Ref Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_enum.htm",
+      "family": "common_vbageneral",
+      "title": "Enum Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_expression.htm",
+      "family": "common_vbageneral",
+      "title": "Numerical expressions",
+      "headings": [
+        "Numerical expressions may be any VBA compatible expression of a double result type."
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_false_keyword.htm",
+      "family": "common_vbageneral",
+      "title": "False Keyword",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_filename.htm",
+      "family": "common_vbageneral",
+      "title": "Filename Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_global_name_data_type.htm",
+      "family": "common_vbageneral",
+      "title": "Global Name Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_global_names.htm",
+      "family": "common_vbageneral",
+      "title": "Global Names",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_integer.htm",
+      "family": "common_vbageneral",
+      "title": "INTEGER",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_integer_ref.htm",
+      "family": "common_vbageneral",
+      "title": "INTEGER_REF",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_long.htm",
+      "family": "common_vbageneral",
+      "title": "Long Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_long_ref.htm",
+      "family": "common_vbageneral",
+      "title": "Long_Ref Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_name.htm",
+      "family": "common_vbageneral",
+      "title": "Name Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_solid_names.htm",
+      "family": "common_vbageneral",
+      "title": "Solid Names",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_string.htm",
+      "family": "common_vbageneral",
+      "title": "String Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_string_ref.htm",
+      "family": "common_vbageneral",
+      "title": "String_Ref Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_true_keyword.htm",
+      "family": "common_vbageneral",
+      "title": "True Keyword",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_variablename.htm",
+      "family": "common_vbageneral",
+      "title": "Variable names",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_variant.htm",
+      "family": "common_vbageneral",
+      "title": "Variant Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/common_general_variant_ref.htm",
+      "family": "common_vbageneral",
+      "title": "Variant_Ref Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/long_array_data_type.htm",
+      "family": "common_vbageneral",
+      "title": "Long Array Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/single_array_data_type.htm",
+      "family": "common_vbageneral",
+      "title": "Single Array Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/single_data_type.htm",
+      "family": "common_vbageneral",
+      "title": "Single Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/single_ref_data_type.htm",
+      "family": "common_vbageneral",
+      "title": "Single_Ref Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbageneral/string_array_data_type.htm",
+      "family": "common_vbageneral",
+      "title": "String Array Data Type",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/asciiexport_object.htm",
+      "family": "common_vbaimpexp",
+      "title": "ASCIIExport Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/autodeskinventor_object.htm",
+      "family": "common_vbaimpexp",
+      "title": "Autodesk Inventor Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaie_dxf.htm",
+      "family": "common_vbaimpexp",
+      "title": "DXF Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaie_gdsii.htm",
+      "family": "common_vbaimpexp",
+      "title": "GDSII Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaie_iges.htm",
+      "family": "common_vbaimpexp",
+      "title": "IGES Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaie_obj.htm",
+      "family": "common_vbaimpexp",
+      "title": "OBJ Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaie_sat.htm",
+      "family": "common_vbaimpexp",
+      "title": "SAT Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaie_stl.htm",
+      "family": "common_vbaimpexp",
+      "title": "STL Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaimp_exp_catia_object.htm",
+      "family": "common_vbaimpexp",
+      "title": "CATIA Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaimp_exp_conventorware_object.htm",
+      "family": "common_vbaimpexp",
+      "title": "CoventorWare Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaimp_exp_gerber.htm",
+      "family": "common_vbaimpexp",
+      "title": "GERBER Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaimp_exp_hfss_object.htm",
+      "family": "common_vbaimpexp",
+      "title": "HFSS Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaimp_exp_humanmodel.htm",
+      "family": "common_vbaimpexp",
+      "title": "HumanModel",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaimp_exp_mecadtron_object.htm",
+      "family": "common_vbaimpexp",
+      "title": "Mecadtron Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaimp_exp_proe_object.htm",
+      "family": "common_vbaimpexp",
+      "title": "PROE Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaimp_exp_step.htm",
+      "family": "common_vbaimpexp",
+      "title": "STEP Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaimpexp_nastran_object.htm",
+      "family": "common_vbaimpexp",
+      "title": "NASTRAN Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/common_vbaimpexp_nfs.htm",
+      "family": "common_vbaimpexp",
+      "title": "NFSFile Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/meshimport_object.htm",
+      "family": "common_vbaimpexp",
+      "title": "MeshImport Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/parasolid_object.htm",
+      "family": "common_vbaimpexp",
+      "title": "Parasolid Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/siemensnx_object.htm",
+      "family": "common_vbaimpexp",
+      "title": "Siemens NX Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/solidedge_object.htm",
+      "family": "common_vbaimpexp",
+      "title": "Solid Edge Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/solidworks_object.htm",
+      "family": "common_vbaimpexp",
+      "title": "SolidWorks Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaimpexp/vdafs_object.htm",
+      "family": "common_vbaimpexp",
+      "title": "VDAFS Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbalayoutdb/common_vbalayoutdb.htm",
+      "family": "common_vbalayoutdb",
+      "title": "LayoutDB Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaloft/common_vbaloftloft_object.htm",
+      "family": "common_vbaloft",
+      "title": "Loft Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbapicko/common_vbapicko_pick_object.htm",
+      "family": "common_vbapicko",
+      "title": "Pick Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaplot/colourmapplot_object.htm",
+      "family": "common_vbaplot",
+      "title": "ColourMapPlot Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaplot/common_vbaplot_plot1d_object.htm",
+      "family": "common_vbaplot",
+      "title": "Plot1D Object",
+      "headings": [
+        "Plot1D Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaplot/common_vbaplot_plot_object.htm",
+      "family": "common_vbaplot",
+      "title": "Plot Object",
+      "headings": [
+        "Plot Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaplot/common_vbaplot_scalarplot2d_object.htm",
+      "family": "common_vbaplot",
+      "title": "ScalarPlot2D Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaplot/common_vbaplot_scalarplot3d_object.htm",
+      "family": "common_vbaplot",
+      "title": "ScalarPlot3D Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaplot/common_vbaplot_vectorplot2d_object.htm",
+      "family": "common_vbaplot",
+      "title": "VectorPlot2D Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaplot/common_vbaplot_vectorplot3d_object.htm",
+      "family": "common_vbaplot",
+      "title": "VectorPlot3D Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaplot/plot2d3d.htm",
+      "family": "common_vbaplot",
+      "title": "Plot2D3D Object",
+      "headings": [
+        "Plot2D3D Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbapostproc/common_vbapostproc_colorramp_object.htm",
+      "family": "common_vbapostproc",
+      "title": "ColorRamp Object",
+      "headings": [
+        "ColorRamp Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbapostproc/common_vbapostproc_evaluatefieldalongcurve.htm",
+      "family": "common_vbapostproc",
+      "title": "EvaluateFieldAlongCurve Object",
+      "headings": [
+        "EvaluateFieldAlongCurve Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbapostproc/common_vbapostproc_evaluatefieldonface_object.htm",
+      "family": "common_vbapostproc",
+      "title": "EvaluateFieldOnFace Object",
+      "headings": [
+        "EvaluateFieldOnFace Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbapostproc/common_vbapostproc_resultdatabase_object.htm",
+      "family": "common_vbapostproc",
+      "title": "ResultDatabase Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbarotateo/common_vbarotateo_rotate_object.htm",
+      "family": "common_vbarotateo",
+      "title": "Rotate Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbasolido/common_vbaobjectso_local_modifications_object.htm",
+      "family": "common_vbasolido",
+      "title": "LocalModification Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbasolido/common_vbasolido_facedistortion_object.htm",
+      "family": "common_vbasolido",
+      "title": "FaceDistortion Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbasolido/common_vbasolido_solid_object.htm",
+      "family": "common_vbasolido",
+      "title": "Solid Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbaunitso/common_vbaunitso_units_object.htm",
+      "family": "common_vbaunitso",
+      "title": "Units Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbawcso/common_vbawcso_anchorpoint_object.htm",
+      "family": "common_vbawcso",
+      "title": "Anchorpoint Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/common_vbawcso/common_vbawcso_wcs_object.htm",
+      "family": "common_vbawcso",
+      "title": "WCS Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/cshdat_robohelp.htm",
+      "family": "VBA_3D",
+      "title": "CST Studio Suite VBA Help",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/cshdat_webhelp.htm",
+      "family": "VBA_3D",
+      "title": "CST Studio Suite VBA Help",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/index.htm",
+      "family": "VBA_3D",
+      "title": "CST Studio Suite VBA Help",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/index_csh.htm",
+      "family": "VBA_3D",
+      "title": "CST Studio Suite VBA Help",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/index_rhc.htm",
+      "family": "VBA_3D",
+      "title": "CST Studio Suite VBA Help",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/3d/common_ribbons_1dplot.htm",
+      "family": "3d",
+      "title": "1D Plot",
+      "headings": [
+        "1D Results"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/3d/common_ribbons_1dplot_tlm.htm",
+      "family": "3d",
+      "title": "1D Plot TLM",
+      "headings": [
+        "1D Results"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/3d/common_ribbons_2d3dplot.htm",
+      "family": "3d",
+      "title": "2D/3D Plot",
+      "headings": [
+        "2D/3D Plot"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/3d/common_ribbons_2d3dplot_tlm.htm",
+      "family": "3d",
+      "title": "2D/3D Plot TLM",
+      "headings": [
+        "2D/3D Plot"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/3d/common_ribbons_cables.htm",
+      "family": "3d",
+      "title": "Cables",
+      "headings": [
+        "Cables"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/3d/common_ribbons_farfield_plot.htm",
+      "family": "3d",
+      "title": "Farfield Plot",
+      "headings": [
+        "Farfields"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/3d/common_ribbons_home3d.htm",
+      "family": "3d",
+      "title": "Home",
+      "headings": [
+        "Home"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/3d/common_ribbons_homesam.htm",
+      "family": "3d",
+      "title": "Home SAM",
+      "headings": [
+        "Home"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/3d/common_ribbons_macros.htm",
+      "family": "3d",
+      "title": "Macro Editor",
+      "headings": [
+        "Macro Editor"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/3d/common_ribbons_mesh.htm",
+      "family": "3d",
+      "title": "Mesh",
+      "headings": [
+        "Mesh"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/3d/common_ribbons_modeling.htm",
+      "family": "3d",
+      "title": "Modeling",
+      "headings": [
+        "Modeling"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/3d/common_ribbons_postprocessing_hf.htm",
+      "family": "3d",
+      "title": "Post-Processing",
+      "headings": [
+        "Post-Processing"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/3d/common_ribbons_simulation_hf.htm",
+      "family": "3d",
+      "title": "Simulation",
+      "headings": [
+        "Simulation"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/3d/common_ribbons_view3d.htm",
+      "family": "3d",
+      "title": "View",
+      "headings": [
+        "View"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/de/backstageview.htm",
+      "family": "de",
+      "title": "File",
+      "headings": [
+        "File (Backstage View)"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/de/homede.htm",
+      "family": "de",
+      "title": "Home",
+      "headings": [
+        "Home"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/de/project_template.htm",
+      "family": "de",
+      "title": "Project Templates",
+      "headings": [
+        "Project Templates",
+        "File: New and Recent > New Project from Template"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/overview/ribbon_overview.htm",
+      "family": "overview",
+      "title": "Ribbon",
+      "headings": [
+        "Ribbon"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/schematic/arraytask.htm",
+      "family": "schematic",
+      "title": "Array Task",
+      "headings": [
+        "Array Task"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/schematic/homeschematic.htm",
+      "family": "schematic",
+      "title": "Home",
+      "headings": [
+        "Home"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/schematic/machineribbon.htm",
+      "family": "schematic",
+      "title": "ElectricalMachine",
+      "headings": [
+        "Electrical Machine"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/schematic/postprocessingschematic.htm",
+      "family": "schematic",
+      "title": "Post-Processing",
+      "headings": [
+        "Post-Processing"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/schematic/simulationproject.htm",
+      "family": "schematic",
+      "title": "Simulation Project",
+      "headings": [
+        "Simulation Project"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/ribbons/schematic/viewschematic.htm",
+      "family": "schematic",
+      "title": "View",
+      "headings": [
+        "View"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/search_redirect.htm",
+      "family": "VBA_3D",
+      "title": "",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vba3dxcoupling/special_vba3dxcoupling_smamphysinterface.htm",
+      "family": "special_vba3dxcoupling",
+      "title": "SMAMPhysInterface Object",
+      "headings": [
+        "SMAMPhysInterface Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbacharge/special_vbacharge_charge_object.htm",
+      "family": "special_vbacharge",
+      "title": "Charge Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbacoil/special_vbacoil_coil_object.htm",
+      "family": "special_vbacoil",
+      "title": "Coil Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbacoil/special_vbacoilcoil_group_object.htm",
+      "family": "special_vbacoil",
+      "title": "Coil Group Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbacontact/special_vbacontact_contactproperties_object.htm",
+      "family": "special_vbacontact",
+      "title": "ContactProperties Object",
+      "headings": [
+        "ContactProperties Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbacurrentpath/special_vbacurrentpath_currentpath_object.htm",
+      "family": "special_vbacurrentpath",
+      "title": "CurrentPath Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbacurrentport/special_vbacurrentport_current_port_object.htm",
+      "family": "special_vbacurrentport",
+      "title": "Current Port Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbadimension/dimension.htm",
+      "family": "special_vbadimension",
+      "title": "Dimension",
+      "headings": [
+        "Dimension Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbadiscreteelements/special_vbalumpedelement_object.htm",
+      "family": "special_vbadiscreteelements",
+      "title": "LumpedElement Object",
+      "headings": [
+        "LumpedElement Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbadiscreteelements/special_vbalumpedfaceelement_object.htm",
+      "family": "special_vbadiscreteelements",
+      "title": "LumpedFaceElement Object",
+      "headings": [
+        "LumpedFaceElement Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbadriftdiffusionsolver/special_vbadriftdiffusionsolver_dopingdensity_object.htm",
+      "family": "special_vbadriftdiffusionsolver",
+      "title": "Doping Density Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbadriftdiffusionsolver/special_vbadriftdiffusionsolver_dopingdensityfieldimport_object.htm",
+      "family": "special_vbadriftdiffusionsolver",
+      "title": "Doping Density Field Import",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbadriftdiffusionsolver/special_vbadriftdiffusionsolver_driftdiffusionsolver_object.htm",
+      "family": "special_vbadriftdiffusionsolver",
+      "title": "Drift-Diffusion Solver Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbadriftdiffusionsolver/special_vbadriftdiffusionsolver_fieldmonitor_object.htm",
+      "family": "special_vbadriftdiffusionsolver",
+      "title": "Field Monitor Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbadriftdiffusionsolver/special_vbadriftdiffusionsolver_interfacemodel_object.htm",
+      "family": "special_vbadriftdiffusionsolver",
+      "title": "Interface Model Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbadriftdiffusionsolver/special_vbadriftdiffusionsolver_opticalcarriergeneration_object.htm",
+      "family": "special_vbadriftdiffusionsolver",
+      "title": "Optical Carrier Generation Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaforce/special_vba_force_object.htm",
+      "family": "special_vbaforce",
+      "title": "Force Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaimpexp/adscomponentexport.htm",
+      "family": "special_vbaimpexp",
+      "title": "ADSComponentExport",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaimpexp/parametricimport.htm",
+      "family": "special_vbaimpexp",
+      "title": "ParametricImport",
+      "headings": [
+        "LiveLink Object (Parametric Import)"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaimpexp/special_vbaimp_exp_touchstone.htm",
+      "family": "special_vbaimpexp",
+      "title": "TOUCHSTONE",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbalayer/materiallibrary_object.htm",
+      "family": "special_vbalayer",
+      "title": "MaterialLibrary Object",
+      "headings": [
+        "MaterialLibrary Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbalayer/special_vbalayerocomponent_object.htm",
+      "family": "special_vbalayer",
+      "title": "Component Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbalayer/special_vbalayerolayer_object.htm",
+      "family": "special_vbalayer",
+      "title": "Material Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbalayer/spwcial_vbalayerogroup_object.htm",
+      "family": "special_vbalayer",
+      "title": "Group Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamagnet/special_vbamagnet_magnet_object.htm",
+      "family": "special_vbamagnet",
+      "title": "Magnet Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamechanics/displacement_object.htm",
+      "family": "special_vbamechanics",
+      "title": "Displacement Object",
+      "headings": [
+        "Displacement Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamechanics/mechfieldsettings_object.htm",
+      "family": "special_vbamechanics",
+      "title": "MechFieldSettings Object",
+      "headings": [
+        "MechFieldSettings Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamechanics/structuralmechanicssolver_object.htm",
+      "family": "special_vbamechanics",
+      "title": "StructuralMechanicsSolver Object",
+      "headings": [
+        "StructuralMechanicsSolver Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamechanics/traction_object.htm",
+      "family": "special_vbamechanics",
+      "title": "Traction Object",
+      "headings": [
+        "Traction Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamesh/meshshapes_object.htm",
+      "family": "special_vbamesh",
+      "title": "MeshShapes Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamesh/special_vbamesh_meshadaption3d_object.htm",
+      "family": "special_vbamesh",
+      "title": "MeshAdaption3D Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamesh/special_vbamesho.htm",
+      "family": "special_vbamesh",
+      "title": "Mesh Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamonitors/particle_reader_objects.htm",
+      "family": "special_vbamonitors",
+      "title": "Particle Reader Objects",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamonitors/special_vbamonitors_currentmonitor_object.htm",
+      "family": "special_vbamonitors",
+      "title": "CurrentMonitor Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamonitors/special_vbamonitors_monitor_object.htm",
+      "family": "special_vbamonitors",
+      "title": "Monitor Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamonitors/special_vbamonitors_particlemonitor_object.htm",
+      "family": "special_vbamonitors",
+      "title": "ParticleMonitor Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamonitors/special_vbamonitors_particlemonitoronsolid.htm",
+      "family": "special_vbamonitors",
+      "title": "ParticleMonitorOnSolid Object",
+      "headings": [
+        "ParticleMonitorOnSolid Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamonitors/special_vbamonitors_pic2dmonitor_object.htm",
+      "family": "special_vbamonitors",
+      "title": "PIC2DMonitor Object",
+      "headings": [
+        "PIC2DMonitor Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamonitors/special_vbamonitors_picphasespacemonitor_object.htm",
+      "family": "special_vbamonitors",
+      "title": "PICPhaseSpaceMonitor Object",
+      "headings": [
+        "PICPhaseSpaceMonitor Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamonitors/special_vbamonitors_picpositionmonitor_object.htm",
+      "family": "special_vbamonitors",
+      "title": "PICPositionMonitor Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamonitors/special_vbamonitors_probe_object.htm",
+      "family": "special_vbamonitors",
+      "title": "Probe Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamonitors/special_vbamonitors_timemonitor0d_object.htm",
+      "family": "special_vbamonitors",
+      "title": "TimeMonitor0D Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamonitors/special_vbamonitors_timemonitor1d_object.htm",
+      "family": "special_vbamonitors",
+      "title": "TimeMonitor1D Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamonitors/special_vbamonitors_timemonitor2d_object.htm",
+      "family": "special_vbamonitors",
+      "title": "TimeMonitor2D Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamonitors/special_vbamonitors_timemonitor3d_object.htm",
+      "family": "special_vbamonitors",
+      "title": "TimeMonitor3D Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamonitors/special_vbamonitors_timemonitor_object.htm",
+      "family": "special_vbamonitors",
+      "title": "TimeMonitor Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbamonitors/special_vbamonitors_voltagemonitor_object.htm",
+      "family": "special_vbamonitors",
+      "title": "VoltageMonitor Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaobjects/special_vbaobjects_dsvbaobjects.htm",
+      "family": "special_vbaobjects",
+      "title": "CST Design Studio VBA Objects",
+      "headings": [
+        "CST Design Studio VBA Objects"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaobjects/special_vbaobjects_examples.htm",
+      "family": "special_vbaobjects",
+      "title": "VBA Examples",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaobjects/special_vbaobjects_examples_overview.htm",
+      "family": "special_vbaobjects",
+      "title": "VBA Examples Overview",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaobjects/special_vbaobjects_vbaobjects.htm",
+      "family": "special_vbaobjects",
+      "title": "VBA Objects Overview",
+      "headings": [
+        "VBA Obje cts Overview"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaparametersweep/special_vbaparametersweepo_parametersweep_object.htm",
+      "family": "special_vbaparametersweep",
+      "title": "ParameterSweep Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaparticlesource/special_vbaparticlesource_particleinterface_object.htm",
+      "family": "special_vbaparticlesource",
+      "title": "ParticleInterface Object",
+      "headings": [
+        "ParticleInterface Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaparticlesource/special_vbaparticlesource_particlesource_object.htm",
+      "family": "special_vbaparticlesource",
+      "title": "ParticleSource Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapicsolver/special_vbasolver_picsolver_object.htm",
+      "family": "special_vbapicsolver",
+      "title": "PICSolver Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaports/farfieldsource_object.htm",
+      "family": "special_vbaports",
+      "title": "FarfieldSource Object",
+      "headings": [
+        "FarfieldSource Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaports/floquetport_object.htm",
+      "family": "special_vbaports",
+      "title": "FloquetPort Object",
+      "headings": [
+        "FloquetPort Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaports/special_vbaports_cable_port_object.htm",
+      "family": "special_vbaports",
+      "title": "CablePort Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaports/special_vbaports_discrete_face_port_object.htm",
+      "family": "special_vbaports",
+      "title": "DiscreteFacePort Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaports/special_vbaports_discrete_port_object.htm",
+      "family": "special_vbaports",
+      "title": "DiscretePort Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaports/special_vbaports_fieldsource_object.htm",
+      "family": "special_vbaports",
+      "title": "FieldSource Object",
+      "headings": [
+        "FieldSource Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaports/special_vbaports_planewave_object.htm",
+      "family": "special_vbaports",
+      "title": "PlaneWave Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbaports/special_vbaports_port_object.htm",
+      "family": "special_vbaports",
+      "title": "Port Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/rayresultcreator_object.htm",
+      "family": "special_vbapostproc",
+      "title": "RayResultCreator Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/result_0d_object.htm",
+      "family": "special_vbapostproc",
+      "title": "Result0D Object",
+      "headings": [
+        "Result0D Object",
+        "This object offers access and manipulation functions to 0D solver results. A Result0D object can hold a real or a complex number."
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/result_1d_complex_object.htm",
+      "family": "special_vbapostproc",
+      "title": "Result1DComplex Object",
+      "headings": [
+        "Result1DComplex Object",
+        "This object offers access and manipulation functions to complex 1D results. A Result1DComplex object can hold a number of points ( x, y ) where x is a real number and y is a complex number. Access to the points is possible by specifying an zero-based index."
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/result_2d.htm",
+      "family": "special_vbapostproc",
+      "title": "Result2D Object",
+      "headings": [
+        "Result2D Object",
+        "This object offers access and manipulation functions for 2D results. This object is available in 3D Simulation and Circuits & Systems.",
+        "A Result2D object represents a rectangular domain holding data values. The domain is defined on a two dimensional coordinate system with x- and y-axis with a minimum and maximum value on each axis. The data within the domain can be arranged in two different ways, either using discrete samples on a regular grid or triangle based. In both arrangements the data values can hold real or complex data values."
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/result_matrix_object.htm",
+      "family": "special_vbapostproc",
+      "title": "ResultMatrix Object",
+      "headings": [
+        "ResultMatrix Object",
+        "This object offers access functions to matrix results. A ResultMatrix object can hold a two dimensional array of numbers."
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/scatterresult_object.htm",
+      "family": "special_vbapostproc",
+      "title": "ScatterResult Object",
+      "headings": [
+        "ScatterResult Object",
+        "This object offers access and manipulation functions for scatter results. This object is available in 3D Simulation and Circuits & Systems.",
+        "A ScatterResult object represents an arbitrary number of discrete data points in 3D space. Each data point can hold an arbitrary number of data values representing a physical quantity. The data values can consist of scalar or vector values with real or complex components."
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostproc_combineresults_object.htm",
+      "family": "special_vbapostproc",
+      "title": "CombineResults Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostproc_farfieldarray_object.htm",
+      "family": "special_vbapostproc",
+      "title": "FarfieldArray Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostproc_farfieldcalculator_object.htm",
+      "family": "special_vbapostproc",
+      "title": "FarfieldCalculator Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostproc_farfieldploto.htm",
+      "family": "special_vbapostproc",
+      "title": "FarfieldPlot Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostproc_nearfieldscan_object.htm",
+      "family": "special_vbapostproc",
+      "title": "NearfieldScan Object",
+      "headings": [
+        "NearfieldScan Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostproc_networkparameterextractiono.htm",
+      "family": "special_vbapostproc",
+      "title": "NetworkParameterExtraction Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostproc_postprocess1d_object.htm",
+      "family": "special_vbapostproc",
+      "title": "PostProcess1D Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostproc_qfactor_object.htm",
+      "family": "special_vbapostproc",
+      "title": "QFactor Object",
+      "headings": [
+        "QFactor Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostproc_result_3d_object.htm",
+      "family": "special_vbapostproc",
+      "title": "Result3D Object",
+      "headings": [
+        "Result3D Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostproc_result_trackingplot_object.htm",
+      "family": "special_vbapostproc",
+      "title": "TrackingPlot Object",
+      "headings": [
+        "TrackingPlot Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostproc_resulttreeo.htm",
+      "family": "special_vbapostproc",
+      "title": "ResultTree Object",
+      "headings": [
+        "ResultTree Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostproc_sar_object.htm",
+      "family": "special_vbapostproc",
+      "title": "SAR Object",
+      "headings": [
+        "SAR Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostproc_type_method.htm",
+      "family": "special_vbapostproc",
+      "title": "Result Type Overview",
+      "headings": [
+        "Result Type Overview",
+        "The following list shows result types handled by the ResultTree object:"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostproc_yield_analysis_object.htm",
+      "family": "special_vbapostproc",
+      "title": "Yield Analysis Object",
+      "headings": [
+        "Yield Analysis Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostprocarfiltero.htm",
+      "family": "special_vbapostproc",
+      "title": "Arfilter Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostprocres1do.htm",
+      "family": "special_vbapostproc",
+      "title": "Result1D Object",
+      "headings": [
+        "Result1D Object",
+        "This object offers access and manipulation functions to 1D results.",
+        "When this object is constructed an argument specifies what result will be represented by this object. The corresponding data is read from file and stored within the memory of this object.",
+        "As an Result1D object represents a signal it stores x-values and the corresponding y-values. If, for instance, the object represents a magnitude over frequency, the x-values are the frequency values and the y-values are the corresponding magnitude values.",
+        "All data is stored in arrays so that access to the values is possible by specifying an zero-based index."
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapostproc/special_vbapostprocresultmap_object.htm",
+      "family": "special_vbapostproc",
+      "title": "ResultMap Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapotential/special_vbapotential_potential_object.htm",
+      "family": "special_vbapotential",
+      "title": "Potential Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbapredefinedfield/special_vbapredefinedfield.htm",
+      "family": "special_vbapredefinedfield",
+      "title": "PredefinedField Object",
+      "headings": [
+        "PredefinedField"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbarigidbodymotion/motiongap_object.htm",
+      "family": "special_vbarigidbodymotion",
+      "title": "MotionGap Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbarigidbodymotion/rigidbodymotion_object.htm",
+      "family": "special_vbarigidbodymotion",
+      "title": "RigidBodyMotion Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasignals/special_vbasignals_timesignal_object.htm",
+      "family": "special_vbasignals",
+      "title": "TimeSignal Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasolver/special_vba_ems_solver_object.htm",
+      "family": "special_vbasolver",
+      "title": "Solver Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasolver/special_vbasolver_adscosimulation.htm",
+      "family": "special_vbasolver",
+      "title": "ADSCosimulation",
+      "headings": [
+        "ADSCosimulation"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasolver/special_vbasolver_asymptoticsolver_object.htm",
+      "family": "special_vbasolver",
+      "title": "AsymptoticSolver Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasolver/special_vbasolver_background_object.htm",
+      "family": "special_vbasolver",
+      "title": "Background Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasolver/special_vbasolver_boundary_object.htm",
+      "family": "special_vbasolver",
+      "title": "Boundary Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasolver/special_vbasolver_eigenmodesolver_object.htm",
+      "family": "special_vbasolver",
+      "title": "EigenmodeSolver Object",
+      "headings": [
+        "EigenmodeSolver Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasolver/special_vbasolver_fdsolver_object.htm",
+      "family": "special_vbasolver",
+      "title": "FDSolver Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasolver/special_vbasolver_iesolver_object.htm",
+      "family": "special_vbasolver",
+      "title": "IESolver Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasolver/special_vbasolver_layerstacking_object.htm",
+      "family": "special_vbasolver",
+      "title": "LayerStacking Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasolver/special_vbasolver_optimizer_object.htm",
+      "family": "special_vbasolver",
+      "title": "Optimizer Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasolver/special_vbasolver_sensitivityanalysis_object.htm",
+      "family": "special_vbasolver",
+      "title": "SensitivityAnalysis Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasolver/special_vbasolver_simuliacse_object.htm",
+      "family": "special_vbasolver",
+      "title": "SimuliaCSE Object",
+      "headings": [
+        "SimuliaCSE Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasolver/special_vbasolver_solver_object.htm",
+      "family": "special_vbasolver",
+      "title": "Solver Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasolver/special_vbasolver_solver_parameter_object.htm",
+      "family": "special_vbasolver",
+      "title": "SolverParameter Object",
+      "headings": [
+        "SolverParameter Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbasourcefield/special_vbasourcefield_sourcefield_object.htm",
+      "family": "special_vbasourcefield",
+      "title": "SourceField Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbastaticsolver/special_vbasolver_trackingsolver_object.htm",
+      "family": "special_vbastaticsolver",
+      "title": "TrackingSolver Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbastaticsolver/special_vbastaticsolver_eqssolver_object.htm",
+      "family": "special_vbastaticsolver",
+      "title": "EQSSolver Object",
+      "headings": [
+        "EQSSolver Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbastaticsolver/special_vbastaticsolver_estaticsolver_object.htm",
+      "family": "special_vbastaticsolver",
+      "title": "EStaticSolver Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbastaticsolver/special_vbastaticsolver_lfsolver_object.htm",
+      "family": "special_vbastaticsolver",
+      "title": "LFSolver Object",
+      "headings": [
+        "LFSolver Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbastaticsolver/special_vbastaticsolver_mstaticsolver_object.htm",
+      "family": "special_vbastaticsolver",
+      "title": "MStaticSolver Object",
+      "headings": [
+        "MStaticSolver Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbastaticsolver/special_vbastaticsolver_stationarycurrentsolver_object.htm",
+      "family": "special_vbastaticsolver",
+      "title": "StationaryCurrentSolver Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_chtsolver.htm",
+      "family": "special_vbathermalsolver",
+      "title": "CHTSolver Object",
+      "headings": [
+        "CHTSolver Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_compactthermalmodel_object.htm",
+      "family": "special_vbathermalsolver",
+      "title": "CompactThermalModel Object",
+      "headings": [
+        "CompactThermalModel Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_delphimodel.htm",
+      "family": "special_vbathermalsolver",
+      "title": "DelphiModel Object",
+      "headings": [
+        "DelphiModel Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_ecxml.htm",
+      "family": "special_vbathermalsolver",
+      "title": "ECXML",
+      "headings": [
+        "ECXML Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_fan.htm",
+      "family": "special_vbathermalsolver",
+      "title": "Fan Object",
+      "headings": [
+        "Fan Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_fluiddomain.htm",
+      "family": "special_vbathermalsolver",
+      "title": "FluidDomain Object",
+      "headings": [
+        "FluidDomain Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_generalcompactthermalmodel.htm",
+      "family": "special_vbathermalsolver",
+      "title": "GeneralCompactThermalModel Object",
+      "headings": [
+        "GeneralCompactThermalModel Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_heatpipe_object.htm",
+      "family": "special_vbathermalsolver",
+      "title": "HeatPipe Object",
+      "headings": [
+        "HeatPipe Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_heatsource.htm",
+      "family": "special_vbathermalsolver",
+      "title": "HeatSource Object",
+      "headings": [
+        "HeatSource Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_initialcondition.htm",
+      "family": "special_vbathermalsolver",
+      "title": "InitialCondition Object",
+      "headings": [
+        "InitialCondition Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_interiorboundary.htm",
+      "family": "special_vbathermalsolver",
+      "title": "InteriorBoundary Object",
+      "headings": [
+        "InteriorBoundary Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_movingmedia.htm",
+      "family": "special_vbathermalsolver",
+      "title": "MovingMedia Object",
+      "headings": [
+        "MovingMedia Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_temperaturesource.htm",
+      "family": "special_vbathermalsolver",
+      "title": "TemperatureSource Object",
+      "headings": [
+        "TemperatureSource Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_thermallossimport.htm",
+      "family": "special_vbathermalsolver",
+      "title": "ThermalLossImport Object",
+      "headings": [
+        "ThermalLossImport Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_thermalsolver.htm",
+      "family": "special_vbathermalsolver",
+      "title": "ThermalSolver Object",
+      "headings": [
+        "ThermalSolver Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_thermalsourceparameter.htm",
+      "family": "special_vbathermalsolver",
+      "title": "ThermalSourceParameter Object",
+      "headings": [
+        "ThermalSourceParameter Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_thermalsurfaceproperty.htm",
+      "family": "special_vbathermalsolver",
+      "title": "ThermalSurfaceProperty Object",
+      "headings": [
+        "ThermalSurfaceProperty Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbathermalsolver/special_vbathermalsolver_thermoelectriccooler_object.htm",
+      "family": "special_vbathermalsolver",
+      "title": "ThermoelectricCooler Object",
+      "headings": [
+        "ThermoelectricCooler Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbatransformo/special_vbatransformo_align_object.htm",
+      "family": "special_vbatransformo",
+      "title": "Align Object",
+      "headings": [
+        "AlignObject"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbatransformo/special_vbatransformo_transform_object.htm",
+      "family": "special_vbatransformo",
+      "title": "Transform Object",
+      "headings": [
+        "Transform Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbatransientsolvers/special_vbatransientsolvers_mqstdsolver_object.htm",
+      "family": "special_vbatransientsolvers",
+      "title": "MQSTDSolver Object",
+      "headings": [
+        "MQSTDSolver Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbatransientsolvers/special_vbatransientsolvers_thermaltdsolver_object.htm",
+      "family": "special_vbatransientsolvers",
+      "title": "ThermalTDSolver Object",
+      "headings": [
+        "ThermalTDSolver Object"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbavoltagewire/special_vbavoltagewire_voltage_wire_object.htm",
+      "family": "special_vbavoltagewire",
+      "title": "Voltage Wire Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbawakefieldsolver/special_vbawakefieldsolver_particle_beam.htm",
+      "family": "special_vbawakefieldsolver",
+      "title": "ParticleBeam Object",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/special_vbawakefieldsolver/special_vbawakefieldsolver_wakefield_postprocessor.htm",
+      "family": "special_vbawakefieldsolver",
+      "title": "Wakefield Postprocessor",
+      "headings": [
+        "Wakefield Postprocessor"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whcsh_home.htm",
+      "family": "VBA_3D",
+      "title": "",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whdata/whglo.htm",
+      "family": "whdata",
+      "title": "",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whdata/whidata0.htm",
+      "family": "whdata",
+      "title": "",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whdata/whidx.htm",
+      "family": "whdata",
+      "title": "",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whdata/whtdata0.htm",
+      "family": "whdata",
+      "title": "",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whdata/whtoc.htm",
+      "family": "whdata",
+      "title": "",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whfbody.htm",
+      "family": "VBA_3D",
+      "title": "Search Result",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whfdhtml.htm",
+      "family": "VBA_3D",
+      "title": "Search Frame",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whfform.htm",
+      "family": "VBA_3D",
+      "title": "Search Form",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgbody.htm",
+      "family": "VBA_3D",
+      "title": "Glossary Term",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf0.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf1.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf10.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf11.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf12.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf13.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf14.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf15.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf16.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf17.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf18.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf19.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf2.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf20.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf21.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf22.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf23.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf24.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf25.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf26.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf27.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf28.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf29.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf3.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf30.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf31.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf32.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf33.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf34.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf35.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf36.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf37.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf38.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf39.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf4.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf40.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf41.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf42.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf43.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf44.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf45.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf46.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf47.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf48.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf49.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf5.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf50.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf51.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf52.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf53.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf54.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf55.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf56.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf57.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf58.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf59.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf6.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf60.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf61.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf62.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf63.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf64.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf65.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf66.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf67.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf68.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf69.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf7.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf70.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf71.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf72.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf73.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf74.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf75.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf76.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf77.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf78.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf79.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf8.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf80.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf81.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf82.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf83.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf84.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf85.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf86.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf87.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf88.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf89.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf9.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf90.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf91.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf92.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf93.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf94.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf95.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf96.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf97.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstf98.htm",
+      "family": "whgdata",
+      "title": "Search Words List",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl0.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl1.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl10.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl11.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl12.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl13.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl14.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl15.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl16.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl17.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl18.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl19.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl2.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl20.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl21.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl22.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl23.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl24.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl25.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl3.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl4.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl5.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl6.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl7.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl8.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstfl9.htm",
+      "family": "whgdata",
+      "title": "Search Words letter",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstg0.htm",
+      "family": "whgdata",
+      "title": "Glossary words list",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlsti0.htm",
+      "family": "whgdata",
+      "title": "Index words list",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlsti1.htm",
+      "family": "whgdata",
+      "title": "Index words list",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlsti2.htm",
+      "family": "whgdata",
+      "title": "Index words list",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlsti3.htm",
+      "family": "whgdata",
+      "title": "Index words list",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt0.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt1.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt10.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt11.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt12.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt13.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt14.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt15.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt16.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt17.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt18.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt19.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt2.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt20.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt21.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt22.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt23.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt24.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt25.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt26.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt27.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt28.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt29.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt3.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt30.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt31.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt32.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt33.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt34.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt35.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt36.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt37.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt38.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt39.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt4.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt40.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt41.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt42.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt43.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt44.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt45.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt46.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt47.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt48.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt49.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt5.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt50.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt51.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt52.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt53.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt54.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt55.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt56.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt57.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt58.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt59.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt6.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt60.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt61.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt7.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt8.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whlstt9.htm",
+      "family": "whgdata",
+      "title": "Content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whnvf30.htm",
+      "family": "whgdata",
+      "title": "toc frame",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whnvf31.htm",
+      "family": "whgdata",
+      "title": "Index frame",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whnvf32.htm",
+      "family": "whgdata",
+      "title": "search frame",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whnvf33.htm",
+      "family": "whgdata",
+      "title": "Glossary frame",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whnvl31.htm",
+      "family": "whgdata",
+      "title": "Index Letters",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whnvl32.htm",
+      "family": "whgdata",
+      "title": "Search Letters",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whnvl33.htm",
+      "family": "whgdata",
+      "title": "Glossary Letters",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whnvp30.htm",
+      "family": "whgdata",
+      "title": "Content Navigation Pane",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whnvp31.htm",
+      "family": "whgdata",
+      "title": "Index Navigation Pane",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whnvp32.htm",
+      "family": "whgdata",
+      "title": "Search Navigation Pane",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whnvp33.htm",
+      "family": "whgdata",
+      "title": "Glossary Navigation Pane",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whnvt30.htm",
+      "family": "whgdata",
+      "title": "Content Navigation Tab",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whnvt31.htm",
+      "family": "whgdata",
+      "title": "Index Navigation Tab",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whnvt32.htm",
+      "family": "whgdata",
+      "title": "Search Navigation Tab",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdata/whnvt33.htm",
+      "family": "whgdata",
+      "title": "Glossary Navigation Tab",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdef.htm",
+      "family": "VBA_3D",
+      "title": "Glossary Definition",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whgdhtml.htm",
+      "family": "VBA_3D",
+      "title": "Glossary",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whibody.htm",
+      "family": "VBA_3D",
+      "title": "Index content",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whidhtml.htm",
+      "family": "VBA_3D",
+      "title": "Index",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whiform.htm",
+      "family": "VBA_3D",
+      "title": "Index form",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whnjs.htm",
+      "family": "VBA_3D",
+      "title": "CST Studio Suite VBA Help",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whproj.htm",
+      "family": "VBA_3D",
+      "title": "project description",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whskin_banner.htm",
+      "family": "VBA_3D",
+      "title": "About WebHelp",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whskin_blank.htm",
+      "family": "VBA_3D",
+      "title": "Blank Page",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whskin_frmset01.htm",
+      "family": "VBA_3D",
+      "title": "",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whskin_frmset010.htm",
+      "family": "VBA_3D",
+      "title": "",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whskin_homepage.htm",
+      "family": "VBA_3D",
+      "title": "CST Studio Suite VBA Help",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whskin_info.htm",
+      "family": "VBA_3D",
+      "title": "WebHelp 5.50",
+      "headings": [
+        "WebHelp 5.50 System Info"
+      ]
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whskin_mbars.htm",
+      "family": "VBA_3D",
+      "title": "WebHelp Navigation Mini-bar",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whskin_pdhtml.htm",
+      "family": "VBA_3D",
+      "title": "Navigation Pane",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whskin_pickup.htm",
+      "family": "VBA_3D",
+      "title": "Select a Topic",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whskin_plist.htm",
+      "family": "VBA_3D",
+      "title": "Navigation Pane",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whskin_tbars.htm",
+      "family": "VBA_3D",
+      "title": "WebHelp Navigation Toolbar",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whskin_tw.htm",
+      "family": "VBA_3D",
+      "title": "",
+      "headings": []
+    },
+    {
+      "path": "mergedProjects/VBA_3D/whtdhtml.htm",
+      "family": "VBA_3D",
+      "title": "Table of contents",
+      "headings": []
+    }
+  ]
+}

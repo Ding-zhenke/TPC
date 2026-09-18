@@ -215,12 +215,34 @@ class PickMixin:
         except Exception:
             return None
 
+    def _pick_succeeded(self) -> bool:
+        """
+        判断「刚做的这次拾取」是否成功：**优先看已选面数**，取不到再退回消息判定。
+
+        实测依据（P4/V5，2026-09，CST 2026 真机）：
+        工程历史里只要留下**一条失败命令**，``get_messages()`` 就会**反复**报那条
+        历史失败（不是「读一次就干净」）。此时「按消息判定拾取」会**一直判失败** ——
+        即使拾取其实成功了（实测 ``GetNumberOfPickedFaces() == 1`` 而消息非空）。
+
+        :return: bool, 本次拾取是否成功（已选面数 == 1）
+        """
+        try:
+            count = self.get_picked_count('face')
+        except Exception:                             # noqa: BLE001
+            count = None
+        if count is not None:
+            try:
+                return int(count) == 1
+            except (TypeError, ValueError):
+                pass
+        return not self.cst_file.get_messages()
+
     def pick_face_auto(self, name, points=None, candidates=(), component='component1'):
         """
         稳健拾取表面：先按**坐标点**逐个试，再退回按**面编号**逐个试。
 
-        以 ``cst_file.get_messages()`` 是否报错判断是否成功
-        （CST 对不存在的面/点会给出消息；该方法读取后即清空消息）。
+        成功判定优先用 ``GetNumberOfPickedFaces()``（见 :meth:`_pick_succeeded`），
+        取不到时才退回 ``cst_file.get_messages()`` 是否报错。
 
         :param name: str, 实体名称
         :param points: list, 候选点 [[x, y, z], ...]（坐标为 float 或 CST 表达式）
@@ -232,12 +254,12 @@ class PickMixin:
             px, py = p[0], p[1]
             pz = p[2] if len(p) > 2 else 0     # 允许只给 (x, y)，z 默认 0
             self.pick_face_at(name, px, py, pz, component=component)
-            if not self.cst_file.get_messages():
+            if self._pick_succeeded():
                 return ('point', (px, py, pz))
             self.pick_clear()                 # 失败的点可能留下无效选取，先清掉
         for fid in (candidates or ()):
             self.pick_face(name, fid, component=component)
-            if not self.cst_file.get_messages():
+            if self._pick_succeeded():
                 return ('id', fid)
             self.pick_clear()
         return None

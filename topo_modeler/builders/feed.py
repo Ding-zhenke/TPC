@@ -20,6 +20,132 @@ from typing import Optional
 
 
 # ============================================================
+# 多端口馈源族（lf4 / lf5 / lf6 / wf2）—— 2026-09-17 从参考 notebook 取证
+# ============================================================
+#
+# 取证来源（只读解析 12 个多端口/功分 notebook 的 code cell）：
+#   `多端口\Ant6_undiretional\ANT6_undirectional.ipynb` 里有**权威注释**：
+#       wf2 = 0.2   # 探针颈部宽度
+#       lf4 = 0.2   # 探针颈部长度
+#       lf5 = 3.0   # 椭圆过渡段长度
+#       lf6 = 0.2   # 铜波导端口段长度
+#   同族的 `ANT6_C6_hexring.ipynb` 的 CST_PARAMS 表给出**派生量**：
+#       ('wg_out', 'rin-lf4',          '铜波导径向外端 = 探针颈部起点')
+#       ('wg_in',  'wg_out-lf5-lf6',   '铜波导径向内端 = 波端口所在半径')
+#
+# ⚠️ **为什么必须单独登记 `lf6`**：多端口族铜波导的 x 范围写法是
+# `x_min='-lf5-lf6-lf4'` —— 它**引用 lf6**，而本库的 `UnitAntenna` /
+# `StraightWaveguide` 都**没有**登记 `lf6`。参数未定义时 CST 会弹
+# 「请输入变量值」**模态对话框**把脚本挂住（不是抛异常！见 P4/V6 教训），
+# 所以这里显式登记，并在缺 `rin` 时提前失败。
+MULTIPORT_FAMILY_PARAMS = {
+    'wf2': '探针颈部宽度',
+    'lf4': '探针颈部长度',
+    'lf5': '椭圆过渡段长度',
+    'lf6': '铜波导端口段长度（椭圆过渡段之外多出的部分）',
+}
+
+#: 多端口族铜波导的默认 x 范围（CST 表达式；与参考 notebook 逐字一致）
+MULTIPORT_WG_X_MIN = '-lf5-lf6-lf4'
+MULTIPORT_WG_X_MAX = '-lf4'
+
+
+def register_multiport_params(app, *, wf2=0.2, lf4=0.2, lf5=3.0, lf6=0.2,
+                              rin=None, rin_expression=None):
+    """
+    登记**多端口馈源族**的 CST 参数（`wf2/lf4/lf5/lf6`，可选派生的 `wg_out/wg_in`）。
+
+    ``rin`` 不给（且没给 ``rin_expression``）时**只登记那四个族参数** ——
+    直波导/天线这类**不需要径向半径**的器件就是这种用法（它们只用到
+    `lf5+lf6+lf4` 这段波导长度，不需要 `wg_out/wg_in`）。
+
+    给了 ``rin`` 时，另按参考 notebook 的 `CST_PARAMS` 表登记**表达式形式**的派生量：
+    ``wg_out = rin - lf4``、``wg_in = wg_out - lf5 - lf6``。
+
+    :param app: cst_solver.setup 实例
+    :param wf2: 探针颈部宽度 [mm]，默认 0.2（参考取值 12/12 一致）
+    :param lf4: 探针颈部长度 [mm]，默认 0.2
+    :param lf5: 椭圆过渡段长度 [mm]，默认 3.0（参考里 3.0×9 / 0.2×2 / 0.45×1）
+    :param lf6: 铜波导端口段长度 [mm]，默认 0.2
+    :param rin: str 可选, **已存在的** CST 参数名（铜波导外端所在的半径基准）
+    :param rin_expression: str 可选, 不给就要求 `rin` 已存在；给了就直接 `para(rin, 表达式)`
+    :return: dict, ``{'params': [...], 'derived': {...}}``（没给 rin 时 derived 为空）
+    :raises ValueError: 给了 `rin`、但它既没有表达式又查不到
+    """
+    for name, value in (('wf2', wf2), ('lf4', lf4), ('lf5', lf5), ('lf6', lf6)):
+        app.para(name, value, expression=MULTIPORT_FAMILY_PARAMS[name])
+    result = {'params': list(MULTIPORT_FAMILY_PARAMS), 'derived': {}}
+    if rin is None and rin_expression is None:
+        return result
+
+    from cst_solver._guards import get_guard_state
+
+    if rin_expression is not None:
+        app.para(rin, rin_expression, expression='多端口族铜波导外端基准半径')
+    else:
+        guard = get_guard_state(app)
+        # 与 build_grin_lens 同一套前置检查：真机 app 在第一次 para() 后接上探针；
+        # 离线假 app 没有探针 ⇒ 不做拦截（否则单测必然误报）。
+        if getattr(guard, '_param_probe', None) is not None \
+                and guard.param_existed(rin) is False:
+            raise ValueError(
+                f"register_multiport_params 需要 CST 参数 {rin!r} 先存在"
+                f"（派生量 wg_out = {rin}-lf4 依赖它）。\n"
+                f"  请先 `app.para({rin!r}, ...)`，或用 rin_expression=... 让本函数登记。\n"
+                f"  ⚠️ 缺参数时 CST 会弹「输入变量值」模态对话框把脚本挂住，"
+                f"而不是抛异常 —— 所以这里提前拦下。")
+
+    app.para('wg_out', f'{rin}-lf4',
+             expression='铜波导径向外端 = 探针颈部起点')
+    app.para('wg_in', 'wg_out-lf5-lf6',
+             expression='铜波导径向内端 = 波端口所在半径')
+    result['derived'] = {'wg_out': f'{rin}-lf4', 'wg_in': 'wg_out-lf5-lf6'}
+    return result
+
+
+def build_multiport_waveguide(app, name='wg2', material='Copper (annealed)',
+                              x_min=None, x_max=None, y_center='0',
+                              port_number=None, port_face='10',
+                              orientation='positive', shield='electric',
+                              wg_b='wg_b', wg_a='wg_a', wg_t='wg_t'):
+    """
+    多端口族的**铜波导**（+ 可选波端口），x 范围默认 ``[-lf5-lf6-lf4, -lf4]``。
+
+    与 `build_waveguide` 的区别只有默认值：多端口族的波导长在**椭圆过渡段之外**
+    （`lf5`+`lf6` 那段），不是直波导族的 `lf1`+`lf2`+`lf3` 那段。
+    ⚠️ 因此**依赖 `lf4/lf5/lf6` 三个参数已登记**（先用
+    :func:`register_multiport_params`，或用登记过它们的模板）。
+
+    :param app: cst_solver.setup 实例
+    :param name: str, 波导实体名
+    :param material: str, 材料
+    :param x_min: str 可选, 默认 `'-lf5-lf6-lf4'`
+    :param x_max: str 可选, 默认 `'-lf4'`
+    :param y_center: str, 波导 y 中心（多端口族在轴线上 ⇒ `'0'`）
+    :param port_number: int 可选, 给了就在 `port_face` 上加波导端口
+    :param port_face: str, 端面编号（默认 `'10'`：轴向口径端面，12/12 notebook 一致）
+    :param orientation: str, 端口法向
+    :param shield: str, 端口屏蔽（多端口族用 `'electric'`）
+    :param wg_b/wg_a/wg_t: str, 波导内宽/内高/壁厚参数名
+    :return: dict, ``{'name': ..., 'x_min': ..., 'x_max': ..., 'port': ...}``
+    """
+    from topo_modeler.builders.waveguide import build_waveguide
+    from topo_modeler.builders.port import add_waveguide_port
+
+    x_min = x_min or MULTIPORT_WG_X_MIN
+    x_max = x_max or MULTIPORT_WG_X_MAX
+    build_waveguide(app, name=name, material=material, x_min=x_min, x_max=x_max,
+                    y_center=y_center, wg_b=wg_b, wg_a=wg_a, wg_t=wg_t)
+
+    port = None
+    if port_number is not None:
+        port = add_waveguide_port(app, solid_name=name, port_number=port_number,
+                                  face_id=port_face, orientation=orientation,
+                                  shield=shield)
+    return {'name': name, 'x_min': x_min, 'x_max': x_max, 'port': port}
+
+
+# ============================================================
 # AB 型椭圆探针（对应旧代码 feed1）
 # ============================================================
 def build_ab_elliptical_feed(app, name='feed1', material='Silicon (lossy)'):

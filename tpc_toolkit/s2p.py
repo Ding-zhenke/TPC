@@ -26,7 +26,11 @@ def read_s2p_groups(filepath):
         for k, v in params.items():
             try:
                 params[k] = float(v) if '.' in v or 'e' in v else int(v)
-            except:
+            except (TypeError, ValueError):
+                # ⚠️ 这里**故意保留原文**（参数值不是数字就按字符串留着，标签照旧可读）。
+                #    原先写的是裸 `except:` —— 那会连 KeyboardInterrupt / SystemExit
+                #    一起吞掉（用户按 Ctrl-C 都停不下来）。收窄到解析异常即可，
+                #    行为对「非数字参数」完全一致。
                 pass
         param_strs.append(params)
     

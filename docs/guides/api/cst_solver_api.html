@@ -421,9 +421,9 @@ body {
     <h1><i class="fas fa-cubes"></i> CST Solver Python API 文档</h1>
     <p>cst_solver 包 — 基于 Mixin 多继承模式的 CST Studio Suite 自动化 Python 接口</p>
     <div class="header-stats">
-        <span><i class="fas fa-code"></i> 225 个方法</span>
+        <span><i class="fas fa-code"></i> 226 个方法</span>
         <span><i class="fas fa-layer-group"></i> 24 个类别</span>
-        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-16 00:56:35</span>
+        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-17 22:08:36</span>
     </div>
     <div class="search-bar">
         <i class="fas fa-search"></i>
@@ -467,7 +467,7 @@ body {
             <div class="category-header" onclick="this.nextElementSibling.nextElementSibling.querySelector('input')?.focus()">
                 <div class="icon" style="background:#2563eb"><i class="fas fa-microchip"></i></div>
                 <h2>求解器</h2>
-                <span class="count">25 方法 + 2 别名</span>
+                <span class="count">26 方法 + 2 别名</span>
             </div>
             
             <div class="method-card">
@@ -1024,6 +1024,53 @@ body {
                     
                     
                     
+                    <div class="source-file">
+                        源文件: <code>cst_solver\simulation\solver.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">run_checked</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">契约化求解入口：提交求解，并返回**结构化运行结论**。</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">run_checked(self, project_path=None, *, sink=None, note='', probe=None, read_messages=True) -&gt; dict</div>
+                    </div>
+                    <div class="desc-text"><p>契约化求解入口：提交求解，并返回**结构化运行结论**。</p><p>与 :meth:`run` 的区别（``docs/next_plan/README.md`` P1「运行/结果契约」）：
+- :meth:`run` 只把 VBA 交下去、返回 ``None`` —— 「返回了」不代表「算完了」；
+- 本方法在提交**前后各取一次结果指纹**，并要求
+「提交未抛异常 + CST 消息为空 + 结果存在 + 结果指纹发生变化」
+**同时成立**才算 ``status='succeeded'``，否则如实给出
+``failed`` / ``unverified``。
+⚠️ ``run()`` 的行为**一字未改**（仍返回 ``None``），本方法是 opt-in 的
+契约入口；``results_changed`` 是必要条件而非充分条件，真机判据见 P4/V7。</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">project_path</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">str 可选, ``.cst`` 工程路径；默认从 ``cst_file`` 推断 （取不到时结论落到 ``unverified``，不会假装成功）</td></tr>
+<tr><td class="param-name">sink</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">对象 可选, 有 ``write(record) -&gt; path`` 的落盘器； 默认写工程目录下的 ``run_contract.jsonl`` （CST 消息读取即清空，不落盘就事后无据可查）</td></tr>
+<tr><td class="param-name">note</td><td></td><td class="param-desc">str, 本次运行备注，写进记录</td></tr>
+<tr><td class="param-name">probe</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">可调用 可选, 自定义结果指纹探测函数</td></tr>
+<tr><td class="param-name">read_messages</td><td><span style="color:#f59e0b;font-size:12px">= True</span></td><td class="param-desc">bool, 是否在提交后读 CST 消息（默认 True）</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                <div class="section">
+                    <div class="section-title">返回值</div>
+                    <div class="return-section">dict, 见 :meth:`cst_solver.run_contract.RunContract.after_submit`</div>
+                </div>
+                
                     <div class="source-file">
                         源文件: <code>cst_solver\simulation\solver.py</code>
                     </div>
@@ -2169,7 +2216,7 @@ End With</p></div>
                     
                 <div class="section">
                     <div class="section-title">返回值</div>
-                    <div class="return-section">str 或 None, 完整路径或 None（未找到时）</div>
+                    <div class="return-section">str 或 None, 完整路径或 None（未找到时）  ⚠️ 未找到时返回 ``None``（与旧版一致），同时记录一条结构化失败 （``material_file_missing``）—— ``None`` 不等于「路径为空」。</div>
                 </div>
                 
                     <div class="source-file">
@@ -2196,7 +2243,7 @@ End With</p></div>
                     
                 <div class="section">
                     <div class="section-title">返回值</div>
-                    <div class="return-section">list[str], 材料名称列表（不含 .mtd 后缀）  用法: &gt;&gt;&gt; app = setup(&quot;project.cst&quot;) &gt;&gt;&gt; materials = app.list_library_materials() &gt;&gt;&gt; print(materials) ['Copper (annealed)', 'Silicon (lossy)', ...]</div>
+                    <div class="return-section">list[str], 材料名称列表（不含 .mtd 后缀）  用法: &gt;&gt;&gt; app = setup(&quot;project.cst&quot;) &gt;&gt;&gt; materials = app.list_library_materials() &gt;&gt;&gt; print(materials) ['Copper (annealed)', 'Silicon (lossy)', ...]  ⚠️ 材料库路径不存在时返回 ``[]``（与旧版一致），但会记录一条结构化失败 （``material_library_missing``）—— 空列表不等于「库里没有材料」。</div>
                 </div>
                 
                     <div class="source-file">
@@ -2332,7 +2379,12 @@ End With</p></div>
 支持的预设材料:
 - 'Copper (annealed)' — 退火铜（损耗金属）
 - 'Silicon (lossy)' — 损耗硅
-- 'Quartz (Fused) (lossy)' — 损耗熔融石英</p></div>
+- 'Quartz (Fused) (lossy)' — 损耗熔融石英
+⚠️ 名字不在预设表里时**行为与旧版一致**：写一条日志后返回 ``None``，
+什么也不建；同时这条失败会进入**结构化失败通道**
+（``cst_solver.failures``），因此共用服务不会把它当成功。
+需要「直接抛异常」时可开 ``cst_solver.failures.set_failure_strict(True)``；
+上层 ``topo_modeler.builders.build_materials`` 就是提前校验后抛 ``ValueError``。</p></div>
                     
                 <div class="alias-info">
                     <i class="fas fa-info-circle"></i>
@@ -3851,8 +3903,8 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                         <div class="section-title">签名</div>
                         <div class="signature">pick_face_auto(self, name, points=None, candidates=(), component='component1')</div>
                     </div>
-                    <div class="desc-text"><p>稳健拾取表面：先按**坐标点**逐个试，再退回按**面编号**逐个试。</p><p>以 ``cst_file.get_messages()`` 是否报错判断是否成功
-（CST 对不存在的面/点会给出消息；该方法读取后即清空消息）。</p></div>
+                    <div class="desc-text"><p>稳健拾取表面：先按**坐标点**逐个试，再退回按**面编号**逐个试。</p><p>成功判定优先用 ``GetNumberOfPickedFaces()``（见 :meth:`_pick_succeeded`），
+取不到时才退回 ``cst_file.get_messages()`` 是否报错。</p></div>
                     
                     
                 <div class="section">
@@ -5013,7 +5065,7 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                         <tbody><tr><td class="param-name">name</td><td></td><td class="param-desc">str, 参数名称</td></tr>
 <tr><td class="param-name">value</td><td></td><td class="param-desc">float/str, 参数赋值</td></tr>
 <tr><td class="param-name">log_flag</td><td><span style="color:#f59e0b;font-size:12px">= 0</span></td><td class="param-desc">int, 刷新标识 0-不刷新历史 1-全量刷新工程历史使参数立即生效</td></tr>
-<tr><td class="param-name">expression</td><td></td><td class="param-desc">str, 参数说明文本（常用于备注），默认空字符串</td></tr>
+<tr><td class="param-name">expression</td><td></td><td class="param-desc">str, 参数说明文本（常用于备注），默认空字符串  ⚠️ 参数名、表达式、说明文本会先过一遍 :mod:`cst_solver.expressions` 的 校验；发现问题时记进**结构化失败通道**（``cst_solver.failures``）并照旧 下发 —— 旧 notebook 的行为一字不变，需要硬拦截就开 ``cst_solver.failures.set_failure_strict(True)``。</td></tr>
 </tbody>
                     </table>
                 </div>

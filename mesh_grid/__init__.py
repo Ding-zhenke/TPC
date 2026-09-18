@@ -8,10 +8,19 @@ mesh_grid — 网格算法库
     hex_grid — 六边形网格核心算法 (HexLib, HexGridVisualizer, DXF 导出等)
     tri_grid — 三角形网格核心算法 (网格生成、坐标转换、空间分析等)
 
-导入本包时会自动加载子包，触发 matplotlib 中文字体等初始化。
+子包按需加载；导入时不修改 matplotlib 字体，也不要求 DXF 可选依赖。
 
 @author: PC
 """
 
-# 自动导入子包，确保 matplotlib 中文字体配置等初始化代码被执行
-from mesh_grid import hex_grid, tri_grid
+import importlib
+
+__all__ = ['hex_grid', 'tri_grid', 'plotting']
+
+
+def __getattr__(name):
+    if name in __all__:
+        module = importlib.import_module(f'{__name__}.{name}')
+        globals()[name] = module
+        return module
+    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')

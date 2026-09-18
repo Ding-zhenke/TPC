@@ -31,7 +31,8 @@ _TPC_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if _TPC_ROOT not in sys.path:
     sys.path.insert(0, _TPC_ROOT)
 
-_EXPECTED = ('StraightWaveguide', 'UnitAntenna')
+_EXPECTED = ('StraightWaveguide', 'UnitAntenna', 'GRINLensAntenna', 'MultiPortAntenna',
+             'MZISwitch', 'PowerDivider')
 
 
 @pytest.fixture(scope='module')

@@ -80,6 +80,6 @@ app.close()
 - 新方法需同时创建 snake_case 名和旧名别名
 - 永远不要直接修改 `cst_solver/config.py` 的逻辑（它是针对每台机器的本地配置）
 - 当前共有 **207 个公开方法**，分布在 **22 个 Mixin 类** 中
-- 待实现功能列表见 `docs/next_plan/cst_solver_TODO_LIST.md`
+- 待实现功能列表见 `docs/next_plan/README.md`
 - 包文档见 `docs/packages/cst_solver.md`
 - 文档生成: `python scripts/gen_cst_solver_docs.py` → `docs/guides/api/cst_solver_api.html`

@@ -52,11 +52,14 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
+from cst_solver.failures import record_failure        # 只依赖失败通道，不拉 CST
+
 __all__ = [
     'BatchModeler',
     'BatchEntry',
     'BatchError',
     'design_environment_baseline',
+    'design_environment_query',
     'close_extra_design_environments',
     'running_design_environments',
 ]
@@ -70,6 +73,50 @@ class BatchError(RuntimeError):
 # 设计环境（DE）清点 —— 只关自己开的
 # ============================================================
 
+_de_query_failure_seen = None
+
+
+def design_environment_query() -> Dict:
+    """
+    查询当前活着的 CST 设计环境 —— **区分「没有 DE」与「问不到」**。
+
+    为什么单独有这个函数（P4/V8 教训 + 静默失败审计）：
+    :func:`running_design_environments` 在 `cst.interface` 导不进来时**返回空列表**
+    （为了无 CST 环境也能跑编排逻辑），于是「一个 DE 都没有」与
+    「根本查不了」在返回值上**长得一模一样**。实测踩过：本机 Anaconda 解释器
+    默认没把 CST 的 `python_cst_libraries` 放进 `sys.path`，`running_design_environments()`
+    **必然**返回 `[]`，与是否真有 DE 无关 —— 当时差点把「空列表」当成否定证据。
+
+    :return: dict, ``{'ok': bool, 'pids': list[int], 'reason': str}``；
+        ``ok=False`` 时 ``pids`` 恒为空、``reason`` 说明为什么查不到
+    """
+    global _de_query_failure_seen
+
+    def _note(reason: str, code: str) -> None:
+        """登记结构化失败；**同样的原因连续出现只记一次**（探针会被反复调用）。"""
+        global _de_query_failure_seen
+        if _de_query_failure_seen != reason:
+            _de_query_failure_seen = reason
+            record_failure('running_design_environments', code, reason,
+                           log=False, reason=reason)
+
+    try:
+        from cst.interface import running_design_environments as _query
+    except Exception as exc:                            # pragma: no cover - 环境相关
+        reason = f'cst.interface 不可导入（{type(exc).__name__}: {exc}）'
+        _note(f'{reason}：「没有 DE」与「问不到」无法区分',
+              'cst_interface_unavailable')
+        return {'ok': False, 'pids': [], 'reason': reason}
+    try:
+        pids = [int(pid) for pid in _query()]
+    except Exception as exc:                            # pragma: no cover
+        reason = f'查询 DE 列表失败（{type(exc).__name__}: {exc}）'
+        _note(reason, 'cst_query_failed')
+        return {'ok': False, 'pids': [], 'reason': reason}
+    _de_query_failure_seen = None                       # 查到了就复位
+    return {'ok': True, 'pids': pids, 'reason': ''}
+
+
 def running_design_environments() -> List[int]:
     """
     当前活着的 CST 设计环境进程号。
@@ -77,16 +124,13 @@ def running_design_environments() -> List[int]:
     **需要 CST**（惰性导入 `cst.interface`）。没有 CST 时返回空列表并**不抛异常** ——
     调用方在无 CST 环境里也应该能走完编排逻辑。
 
+    ⚠️ **返回值区分不了「没有 DE」与「问不到」**（两者都是 `[]`）。
+    需要区分时用 :func:`design_environment_query`（它同时会走结构化失败通道）；
+    判「有没有 DE 活着」这类**结论性**用途，不要拿空列表当否定证据。
+
     :return: list[int]
     """
-    try:
-        from cst.interface import running_design_environments as _rde
-    except Exception:                                  # pragma: no cover - 环境相关
-        return []
-    try:
-        return list(_rde())
-    except Exception:                                  # pragma: no cover
-        return []
+    return list(design_environment_query()['pids'])
 
 
 def design_environment_baseline() -> set:
@@ -110,9 +154,15 @@ def close_extra_design_environments(baseline: Optional[set] = None,
     :param verbose: bool, 是否打印
     :return: list[int], 实际关闭（或清点到）的 DE 列表
     """
-    current = list(running_design_environments())
+    query = design_environment_query()
+    current = list(query['pids'])
+    if not query['ok'] and verbose:
+        print(f'  ⚠️ DE 清点不可用（{query["reason"]}）：'
+              f'本次无法区分「没有 DE」与「问不到」，不做任何关闭动作')
     if baseline is None:
         return current
+    if not query['ok']:
+        return []                                      # 清点不可用 ⇒ 一个都不动
     extra = [pid for pid in current if pid not in baseline]
     if not extra:
         return []

@@ -8,8 +8,12 @@ CST 仿真结果读取类
 """
 
 import csv
+import re
 import numpy as np
-import cst.results
+from cst_solver.environment import _load_cst_module
+
+#: CST 的 S 参数命名（``S1,1``；允许空格）
+_S_PARAMETER_NAME_RE = re.compile(r'^S\s*\d+\s*,\s*\d+$')
 
 
 # ============================================================
@@ -42,9 +46,82 @@ def _to_db(value):
     :return: float 数组；幅度为 0 时取 -300 dB（与 scripts/compare_s_parameters.py 一致）
     """
     mag = np.abs(_as_complex(value))
-    with np.errstate(divide='ignore'):
-        db = 20.0 * np.log10(mag)
+    with np.errstate(divide='ignore'):        db = 20.0 * np.log10(mag)
     return np.where(mag > 0, db, -300.0)
+
+
+def describe_result_open_failure(cst_file, exc) -> str:
+    """
+    把「打不开工程结果」的原因翻译成**可执行**的话（不吞掉原始异常）。
+
+    实测（2026-09-17，CST 2026 + Python 3.11）：
+
+    * 路径**不存在**且含非 ASCII 字符时，`cst.results.ProjectFile()` 抛的是
+      ``UnicodeDecodeError: 'utf-8' codec can't decode byte 0xb2 ...`` ——
+      看起来像编码问题，其实是「文件不存在」（错误消息里带着按本地代码页编码的路径，
+      读取器又按 UTF-8 解它）。纯 ASCII 的不存在路径则正常报
+      ``FileNotFoundError: File does not exist``。
+      所以我们**先自己判存在性**，别让用户去猜一个莫名其妙的 UnicodeDecodeError。
+    * `allow_interactive=False` 时，若该工程被认为「正在 CST 里打开」，会抛
+      ``UserWarning: Project is opened in CST Studio Suite``（本库统一用
+      `allow_interactive=True`，因此这条只在别的调用方出现）。
+
+    ⚠️ **非 ASCII 路径本身不影响读取**：中文路径下的已求解工程实测能正常读出 31 个结果树条目
+    （与复制到纯 ASCII 路径的结果一致）—— 这一点最初被误判过，已更正。
+
+    :param cst_file: str, 工程路径
+    :param exc: Exception, 原始异常
+    :return: str, 面向用户的说明
+    """
+    import os as _os
+    if not _os.path.isfile(cst_file):
+        message = f'工程文件不存在：{cst_file}（原始错误：{type(exc).__name__}: {exc}）'
+        try:
+            str(cst_file).encode('ascii')
+        except UnicodeEncodeError:
+            message += ('。⚠️ 路径含非 ASCII 字符时，CST 的离线读取器会把「文件不存在」'
+                        '报成 UnicodeDecodeError，容易误判成编码问题')
+        return message
+    message = f'打开工程结果失败（{type(exc).__name__}: {exc}）：{cst_file}'
+    if 'opened in CST Studio Suite' in str(exc):
+        message += ('。该工程可能正在 CST 里打开；本读取器用的是 '
+                    'allow_interactive=True，若仍失败请先在 CST 里保存或关闭该工程')
+    return message
+
+
+def describe_result_item_failure(tree_path, exc, tried) -> str:
+    """
+    把「结果项读不出来」翻译成**可执行**的话（不吞掉原始异常）。
+
+    两类已知情形（2026-09-17 实测，CST 2026）：
+
+    1. ``UserWarning: tree path not found: '…'`` —— 路径写法不对。
+       ⚠️ 本项目里 `read_1D()` 会**自动加** ``1D Results\\`` 前缀，
+       而 `get_tree_items()` 返回的是**完整**路径 —— 直接把后者喂进前者会得到
+       ``1D Results\\1D Results\\…``。所以现在两种写法都接受，并在失败信息里
+       把**试过的候选路径**列出来。
+    2. ``UnicodeDecodeError`` —— CST 的离线读取器在**加载该项元数据**时就解不开
+       （实测：`ANT_LEAKY_EPC_GRID.cst` 的 63 个结果项里 45 个正常、18 个
+       ``1D Results\\farfield (f=…)`` 项在 `get_result_item()` 阶段即失败；
+       同工程的括号名、材料色散、端口信息等条目都正常，**不是路径写法问题**）。
+
+    :param tree_path: str, 调用方给的路径
+    :param exc: Exception, 原始异常
+    :param tried: 序列, 实际尝试过的候选路径
+    :return: str
+    """
+    message = (f'结果项 {tree_path!r} 读取失败（{type(exc).__name__}: {exc}）；'
+               f'已尝试的树路径：{list(tried)}')
+    if isinstance(exc, UnicodeDecodeError):
+        message += ('。该项的**元数据**在 CST 离线读取器里就解不开（实测某些 '
+                    '`1D Results\\farfield (f=…)` 项会这样，同工程其它条目正常）—— '
+                    '可改用 `Tables` 下的远场汇总条目，或从 CST 里把该结果导出成 '
+                    'CSV/ASCII 再读')
+    elif 'tree path not found' in str(exc):
+        message += ('。该路径在结果树里不存在 —— 注意 `read_1D()` 会自动补 '
+                    '`1D Results\\` 前缀，传完整路径也是可以的（两种都支持），'
+                    '也可以先用 `get_tree_items()` 看一下真实路径')
+    return message
 
 
 class Result:
@@ -66,8 +143,13 @@ class Result:
     def __init__(self, cst_file):
         """初始化结果读取器
         :param cst_file: str, CST 工程文件路径（.cst）
+        :raises RuntimeError: 打不开结果时（消息里带可执行的处置建议）
         """
-        self.app_result = cst.results.ProjectFile(cst_file, allow_interactive=True)
+        try:
+            module = _load_cst_module('cst.results')
+            self.app_result = module.ProjectFile(cst_file, allow_interactive=True)
+        except Exception as exc:                       # noqa: BLE001
+            raise RuntimeError(describe_result_open_failure(cst_file, exc)) from exc
         self.result_module = self.app_result.get_3d()
         #: 最近一次批量读取/导出中失败的条目 {名称: 错误字符串}。
         #: 批量接口不因为个别条目失败就整体抛异常（CST 的结果树常常缺项），
@@ -98,35 +180,123 @@ class Result:
         """
         return self.result_module.get_all_run_ids(max_mesh_passes_only)
 
+    # ---- 路径写法统一：完整路径与相对路径都接受 ----
+    # `get_run_ids()` / `get_result_item()` / `read_1D()` 共用下面这份候选展开逻辑，
+    # 不再各写一套（2026-09-17 之前三种方法三种约定，`get_run_ids('S-Parameters\S1,1')`
+    # 会直接报 tree path not found）。
+
+    #: 结果树里的一级分类前缀（`get_tree_items()` 返回的路径以此开头）
+    _TREE_PREFIXES = ('1D Results\\', '2D/3D Results\\', 'Tables\\', 'Farfields\\')
+
+    @classmethod
+    def _candidate_paths(cls, tree_path, prefix=''):
+        """
+        把用户给的路径展开成**候选列表**（完整路径优先，其次补前缀）。
+
+        同一个类里三种路径约定会让人踩坑（2026-09-17 实测）：`read_1D` 接受
+        「完整或相对」，而 `get_run_ids` / `get_result_item` 只接受完整路径 ——
+        于是 `get_run_ids('S-Parameters\\\\S1,1')` 报 `tree path not found`。
+        现在三个方法共用这一份展开逻辑。
+
+        :param tree_path: str, 结果树路径（完整或相对）
+        :param prefix: str, 相对路径时要补的前缀（如 ``'1D Results\\\\'``）
+        :return: list[str], 候选路径（去重、保持顺序）
+        """
+        text = str(tree_path)
+        if text.startswith(cls._TREE_PREFIXES):
+            return [text]
+        candidates = [prefix + text] if prefix else []
+        candidates.append(text)
+        if not prefix:
+            candidates += [p + text for p in cls._TREE_PREFIXES]
+        seen, unique = set(), []
+        for candidate in candidates:
+            if candidate not in seen:
+                seen.add(candidate)
+                unique.append(candidate)
+        return unique
+
+    def _get_item_with_prefix(self, tree_path, run_id, prefix, **kwargs):
+        """
+        取结果项：**两种写法都接受**。
+
+        * 传完整路径（`get_tree_items()` 的返回值，以 ``1D Results\\`` 等开头）→ 原样使用；
+        * 传相对路径（``'S-Parameters\\S1,1'``）→ 自动补 `prefix`。
+
+        历史坑：`read_1D()` 一直是无条件加前缀，于是把 `get_tree_items()` 的返回值
+        再传回来会变成 ``1D Results\\1D Results\\…``，报「tree path not found」。
+
+        :param tree_path: str, 结果树路径（完整或相对）
+        :param run_id: int, 运行 ID
+        :param prefix: str, 相对路径时要补的前缀
+        :param kwargs: 透传给 `get_result_item`
+        :return: `cst.results.ResultItem`
+        :raises RuntimeError: 所有候选都失败时（消息里列出试过的候选路径）
+        """
+        candidates = self._candidate_paths(tree_path, prefix)
+        last_error = None
+        for candidate in candidates:
+            try:
+                return self.result_module.get_result_item(candidate, run_id, **kwargs)
+            except Exception as exc:                      # noqa: BLE001
+                last_error = exc
+        raise RuntimeError(describe_result_item_failure(tree_path, last_error,
+                                                        candidates)) from last_error
+
     def get_run_ids(self, treepath: str, skip_nonparametric: bool = False):
-        """获取指定导航树项目的所有运行 ID
+        """
+        获取指定导航树项目的所有运行 ID。
+
+        路径写法与 `read_1D()` **一致**：完整（``'1D Results\\\\S-Parameters\\\\S1,1'``）
+        或相对（``'S-Parameters\\\\S1,1'``）都可以 —— 此前只接受完整路径，
+        相对写法会在 `cst.results` 里报 `tree path not found`。
+
         :param treepath: str, 导航树路径
         :param skip_nonparametric: True-排除 run_id=0
         :return: list[int], 运行 ID 列表
+        :raises RuntimeError: 所有候选路径都失败时
         """
-        return self.result_module.get_run_ids(treepath, skip_nonparametric)
+        if getattr(self.result_module, 'get_run_ids', None) is None:
+            raise RuntimeError(
+                '当前 CST 结果接口没有 get_run_ids（该版本不支持按结果项查运行 ID）')
+        candidates = self._candidate_paths(treepath, '1D Results\\')
+        last_error = None
+        for candidate in candidates:
+            try:
+                return self.result_module.get_run_ids(candidate, skip_nonparametric)
+            except Exception as exc:                      # noqa: BLE001
+                last_error = exc
+        raise RuntimeError(describe_result_item_failure(treepath, last_error,
+                                                        candidates)) from last_error
 
     def get_result_item(self, treepath: str, run_id=0, load_impedances: bool = True):
-        """获取指定导航树路径的结果项对象
+        """
+        获取指定导航树路径的结果项对象（路径写法同 `read_1D()`：完整或相对）。
+
         :param treepath: str, 导航树路径
         :param run_id: int, 运行 ID（0=最终结果）
         :param load_impedances: False-跳过自动加载参考阻抗
         :return: cst.results.ResultItem
+        :raises RuntimeError: 所有候选路径都失败时
         """
-        return self.result_module.get_result_item(treepath, run_id, load_impedances)
+        return self._get_item_with_prefix(treepath, run_id, '1D Results\\',
+                                          load_impedances=load_impedances)
 
     def read_1D(self, tree_path, run_id: int = 0):
         """读取 1D 结果数据（如 S 参数）
-        :param tree_path: str, 导航树路径（相对 "1D Results\\\\"）
+
+        :param tree_path: str, 结果树路径 —— **完整**（``'1D Results\\S-Parameters\\S1,1'``，
+            即 `get_tree_items()` 的返回值）或**相对**（``'S-Parameters\\S1,1'``）都行
         :param run_id: int, 运行 ID
         :return: ndarray (n,2) [xdata, ydata]
+        :raises RuntimeError: 读不出来时（消息里说明原因与处置办法）
         """
-        data = self.result_module.get_result_item("1D Results\\" + tree_path, run_id)
-        return np.asarray([data.get_xdata(), data.get_ydata()]).T
+        item = self._get_item_with_prefix(tree_path, run_id, '1D Results\\')
+        return np.asarray([item.get_xdata(), item.get_ydata()]).T
 
     def read_2d(self, tree_path, run_id: int = 0):
-        """读取 2D 结果数据"""
-        data = self.result_module.get_result_item("2D Results\\" + tree_path, run_id)
+        """读取 2D 结果数据（路径写法同 :meth:`read_1D`）"""
+        data = self._get_item_with_prefix(tree_path, run_id, '2D Results\\')
         return {
             'x': data.get_xdata(), 'y': data.get_ydata(),
             'z': data.get_zdata() if hasattr(data, 'get_zdata') else None,
@@ -191,17 +361,32 @@ class Result:
         """
         列出工程里所有可读的 S 参数名。
 
+        判定规则（2026-09-17 收紧，修掉一个真实误报）：
+
+        * 必须是 ``S-Parameters`` 目录的**直接子项**（``…\\S-Parameters\\S1,1``）；
+        * 叶子名必须符合 CST 的 S 参数命名 ``S<端口1>,<端口2>``。
+
+        为什么两条都要：``ANT_LEAKY_EPC_GRID.cst`` 里有一条
+        ``1D Results\\Convergence\\S-Parameters\\Reflection S-Parameters [1]``
+        —— **收敛监控曲线**，路径里同样含 ``S-Parameters``、也确实挂在同名目录下，
+        但用它去 `read_s_parameter()` 什么也读不到。旧实现（只看路径里有没有
+        ``'S-Parameter'``）会把它排在第一个返回，于是 ``names[0]`` 之类的调用直接炸。
+
+        **不变式**：本函数返回的每个名字都必须能被 `read_s_parameter()` 读出来。
+
         :param tree_filter: str, 结果树过滤类型，默认 ``'0D/1D'``（1D 曲线）
         :return: list[str], 如 ``['S1,1', 'S2,1']``（已排序去重）
         """
         names = []
         for path in self._tree_paths(tree_filter):
-            if 'S-Parameter' not in path:
-                continue
-            leaf = path.replace('\\', '/').rstrip('/').split('/')[-1].strip()
-            # 跳过文件夹节点本身（叶子名就是分类名）
-            if not leaf or leaf in ('S-Parameters', 'S-Parameter'):
-                continue
+            segments = [s.strip() for s in str(path).replace('/', '\\').split('\\')
+                        if s.strip()]
+            if len(segments) < 2 or segments[-2] not in ('S-Parameters',
+                                                         'S-Parameter'):
+                continue                     # 不是 S-Parameters 目录的直接子项
+            leaf = segments[-1]
+            if not _S_PARAMETER_NAME_RE.match(leaf):
+                continue                     # 例如 'Reflection S-Parameters [1]'
             if leaf not in names:
                 names.append(leaf)
         return sorted(names)

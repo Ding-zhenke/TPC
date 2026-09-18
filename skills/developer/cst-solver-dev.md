@@ -1,6 +1,6 @@
 ---
 name: cst-solver-dev
-description: '**维护 / 扩展 cst_solver 库** —— 为 CST Studio Suite 的 VBA API 增加 Python 封装、修封装层缺陷、统一 Mixin/命名/docstring 规范、重新生成 API 文档。USE FOR: 新增 app.xxx() 方法；修 cst_solver/ 内部 bug；核对 VBA 命令与 CST 帮助；更新 setup.pyi 存根与 docs。DO NOT USE FOR: 用 TPC 库建电磁模型 —— 那属于使用视角，读 ../../SKILL.md。'
+description: '**维护 / 扩展 cst_solver 库** —— 为 CST Studio Suite 的 VBA API 增加 Python 封装、修封装层缺陷、统一 Mixin/命名/docstring 规范、重新生成 API 文档。USE FOR: 新增 app.xxx() 方法；修 cst_solver/ 内部 bug；核对 VBA 命令与 CST 帮助；更新 setup.pyi 存根与 docs。DO NOT USE FOR: 用 TPC 库建电磁模型 —— 那属于使用视角，读 ../user/tpc-usage.md。'
 argument-hint: 描述要新增/修复的 CST VBA 功能（如「增加 EigenmodeSolver 的 … 封装」）
 ---
 
@@ -12,10 +12,20 @@ argument-hint: 描述要新增/修复的 CST VBA 功能（如「增加 Eigenmode
 - **修** `cst_solver/` 内部缺陷（含下表「待修清单」）
 - 统一命名 / docstring / 存根 / 文档
 
-> 用 TPC 库**做设计（建模、跑仿真、读结果）** → 读使用视角手册：`../../SKILL.md`。
-> 栅格算法细节 → `../../mesh_grid/tri_grid/SKILL.md`、`../../mesh_grid/hex_grid/SKILL.md`。
+> 用 TPC 库**做设计（建模、跑仿真、读结果）** → 读使用视角手册：`../user/tpc-usage.md`。
+> 栅格算法细节 → `../user/tri-grid.md`、`../user/hex-grid.md`。
 
 ## 架构速览
+
+### 环境与协议边界
+
+`environment.py` 是路径配置、安装发现与诊断的唯一入口。`setup` 构造和 `Result` 构造分别延迟加载官方接口；禁止在模块顶层导入 `cst`。材料库使用相同配置解析，不能再读 `config_template.py` 或绕回开发者硬编码路径。
+
+新增日志使用 logging；错误通过异常或结构化结果传递。`doctor --probe` 只测试导入，不能据此声称许可/求解可用。会话清理只释放本次创建的环境，错误路径必须测试。
+
+验证环境与会话改动运行 `python -m pytest cst_solver/tests`；这些测试不需要安装 CST，禁止用“缺少 CST”作为跳过理由。真实生命周期验收仍在 [统一计划 P4](../../docs/next_plan/README.md)。
+
+新增能力须同步 [使用者技能](../user/tpc-usage.md) 和 [环境指南](../../docs/guides/cst_environment.md)。MCP 仅作适配，运行服务和数值算法留在 Python 层。
 
 `cst_solver/` 用 **Mixin 多继承**把 23 个模块聚合为 `setup` 主类（24 个 Mixin / 223 个公开方法），
 VBA 命令通过 `self.cst_file.model3d.add_to_history("<日志名>", f1)` 下发。
@@ -74,6 +84,47 @@ VBA 命令通过 `self.cst_file.model3d.add_to_history("<日志名>", f1)` 下�
 
 ⚠️ 已知与上游文档不符：采纳计划提到的 `devkit/tools/vba_defs/`（10 个 TOML 参考实现）
 在该仓库 HEAD 上**不存在**（`git ls-files` 零命中）—— 是上游文档领先于代码，不是 clone 不全。
+
+### 离线内省 CST 接口（2026-09-17 新发现的查法）
+
+CST 的 Python 接口是 pybind11 扩展
+`<CST 安装目录>\AMD64\_cst_interface.cpNN-win_amd64.pyd`。
+**只要 .pyd 的 CPython 版本与当前解释器匹配，就能离线 import 并内省 —— 不用启动 CST**：
+
+```python
+import sys
+sys.path.insert(0, r'C:\SOFTWARE\CST Studio Suite 2026\AMD64')
+sys.path.insert(0, r'C:\SOFTWARE\CST Studio Suite 2026\AMD64\python_cst_libraries')
+import _cst_interface as ci
+[n for n in dir(ci.DesignEnvironment) if not n.startswith('_')]
+```
+
+* 用途：查**静态**成员（如 `DesignEnvironment` 33 个、`Project` 15 个）与其 docstring，
+  回答「这个 API 到底存不存在」这类问题。已在 `scripts/probe_solver_control_api.py` 里固化。
+* ⚠️ **`Model3D` 是 `RemoteObject` 动态 COM 代理**：`dir()` 只给 2 个静态成员，
+  `add_to_history()` 以及 `abort_solver()` 这类扩展方法**看不见** —— 动态能力只能真机 `hasattr`。
+* ⚠️ **不要扫 `.pyd` 二进制找符号名**：实测连天天在用的 `add_to_history`、
+  `StoreDoubleParameter` 都是 **0 命中**（ASCII/UTF-16 都试过），方法名不在明文里。
+  这类扫描**不能当证据**。
+
+### `cst.results` 离线读结果（不需要 DE，也不需要求解）
+
+`cst.results.ProjectFile(path, allow_interactive=True)` 可以在**没有 CST 运行**的情况下
+读已求解工程的结果（官方原话 *"No running instance of CST Studio Suite is required"*）——
+这意味着结果读取路径**可以在真机之外验证**：只要有一份真的算过的工程。
+实测（2026-09-17，CST 2026）：参考工程读出 31 个结果树条目、`S1,1` 曲线 1001 点（300–380 GHz），
+`python scripts/verify_result_reading.py` → 12 OK / 0 FAIL。
+
+两个坑（都已处理）：
+
+| 现象 | 实情 | 处理 |
+|---|---|---|
+| 路径**不存在**且含非 ASCII 字符 ⇒ `UnicodeDecodeError: 'utf-8' codec can't decode byte 0xb2` | **不是编码问题**，是「文件不存在」：错误消息里带着本地代码页编码的路径，读取器又按 UTF-8 解它。纯 ASCII 的不存在路径正常报 `FileNotFoundError` | `_result_core.describe_result_open_failure()` 先判存在性，翻译成「工程文件不存在：…（原始错误：…）」并保留异常链 |
+| 工程被 CST 打开时，`allow_interactive=False` ⇒ `UserWarning: Project is opened in CST Studio Suite` | 库统一用 `allow_interactive=True`，所以正常路径遇不到；别的调用方可能遇到 | 诊断里给出「先在 CST 里保存或关闭工程」的建议 |
+
+> ⚠️ **非 ASCII 路径本身没问题**：中文路径下的已求解工程读取正常（实测与复制到纯 ASCII
+> 路径的结果一致）。这条曾被误判过一次（当时把「路径拼错」当成了「编码限制」），
+> 已在 `docs/validation/p4_real_machine_evidence.md` §8.1 更正 —— **写进文档前先复核**。
 
 ## 并发与资源生命周期（阶段 5.7.2）
 
@@ -140,13 +191,36 @@ VBA 命令通过 `self.cst_file.model3d.add_to_history("<日志名>", f1)` 下�
 ## 硬约定（都是踩过的坑）
 
 - **`add_to_history` 是唯一执行通道**；`log_flag=0` 时**只拼字符串不下发** —— 这是 `triangle()` 等复合命令把「画线+拉伸+旋转+平移」合成一条历史的手法
-- 库**不保证**把 CST 报错抛成 Python 异常 → 验收必须读 `app.cst_file.get_messages()`（读后即清空）
+- 库**不保证**把 CST 报错抛成 Python 异常；实测另有**第二条通道** —— 非法 VBA 可能让
+  `add_to_history()` **直接抛 `RuntimeError`**（异常文本带 CST 原文）。验收要两条都看：
+  `app.cst_file.get_messages()` + 调用是否抛异常；且消息**读一次清一次、但历史失败会反复报出**，
+  所以「消息为空」不能当唯一成功判据（P4/V5 真机修正，见 `docs/validation/p4_real_machine_evidence.md`）
 - `ExtrudeCurve` 沿多边形**法向**拉伸，法向由顶点**绕向**决定：**CCW(有向面积>0) → +z，CW → −z**。
   库内统一「多边形给 CCW + `translate -h/2`」；否则实体间在 z 上差一个 `h`，布尔相交得空集（且不报错）
 - 布尔语义：`Intersect "A","B"` → 结果留 **A**、B 被消耗；`Add/Subtract "A","B"` → 结果在 A、**B 被删除**；`Insert` 则保留 B 供继续引用
 - 相对路径按**当前工作目录**解析（模板 `tmp.cst` 必须放 notebook 同目录）
 - `cst_file.modeler` 已废弃 → 用 `cst_file.model3d`
 - `param` 类改动后需 `log_flag=1`（内部 `full_history_rebuild()`）才生效
+- **（给库开发者）新增会写参数的代码时，要走幂等入口，或避免重复 `para()`。** 调用方
+  （构建器 `build_substrate` / `build_vpc_regions`、模板 `_define_all_params`）**会重复登记同一批参数**，
+  为此 `TopoPath.auto_define_cst_params()` 已改为**幂等**（同一 path + 同一 app + 同一前缀只登记一次，P4/V4，2026-09-17）。
+  若新代码绕过它、对**已存在且表达式相同**的参数再 `para()` 一遍，守卫会把「参数已存在 **且** 几何已建」
+  判成脏，刷出 `[LOG_FLAG_NO_REBUILD]`（T7'/T13）**误报** —— 实测天线模板曾刷 6 条。
+  证据见 [`../../docs/validation/p4_real_machine_evidence.md`](../../docs/validation/p4_real_machine_evidence.md) §5
+- **⚠️ 真机脚本必须检测 CST 弹窗 —— 模态弹窗是「无声死锁」**（P4/V6 真机，2026-09-17）：
+  CST 在交互模式下遇到**未定义参数**会弹「请输入变量值」，**关闭项目 / 退出**时会弹
+  「是否保存更改？」。这类模态对话框**不抛异常、也不写 `get_messages()`**，只是让 Python 侧
+  的下一次 CST 调用**永久阻塞** —— 纯文本运行看起来就是「脚本不动了」。
+  三条纪律：① 能**离线预检**的先预检（例如 `build_grin_lens` 前必须已定义 `Rbig`/`Ls`，
+  否则 CST 立刻弹窗）；② 建/关 DesignEnvironment 前后打印窗口与对话框快照；
+  ③ 重步骤套 `guard(label, timeout)` 看门狗。工具：`scripts/cst_dialog_guard.py`
+  （`describe_windows` / `describe_dialogs` / `save_prompts` / `check_dialogs` /
+  `dismiss_dialogs`，命令行 `python scripts/cst_dialog_guard.py [--dialogs|--all]`）。
+  ⚠️ `Get-Process.MainWindowTitle` **看不到对话框**，必须用 `EnumWindows`；
+  且**不要**每个窗口起一次 `tasklist` 取进程名（947 个顶层窗口下会直接超时），
+  用 `QueryFullProcessImageNameW` + 缓存 + **一次** `tasklist` 兜底（高完整性进程如 `cstd.exe`
+  OpenProcess 会被拒）。`dismiss_dialogs()` 默认只点「否/取消」，**按钮不匹配时绝不盲点**。
+  离线回归 `tests/test_cst_dialog_guard.py`；证据见 §P4 记录 §7。
 - **面/棱边编号不可移植**：`pick_face` / `pick_edge` 的编号（`'10'`、`'22'` …）是 CST 内部编号，与实体几何、生成顺序强相关，扭转/布尔/阵列之后会变
   - 绕开编号：按**坐标**拾取 → `pick_face_at()` / `pick_edge_at()` / `pick_point_at()`
   - 需要编号：由坐标**反查** → `get_face_id_from_point()` / `get_edge_id_from_point()`
@@ -157,7 +231,7 @@ VBA 命令通过 `self.cst_file.model3d.add_to_history("<日志名>", f1)` 下�
 
 ## 待修清单
 
-**当前为空。** 此前 5 行已全部修掉（对照 [`../../docs/next_plan/00_旧版README_整理与历史记录.md`](../../docs/next_plan/00_旧版README_整理与历史记录.md) §5 第 1–5 号），按 [`../../skills/developer/WORKFLOW.md`](./WORKFLOW.md) §6 的「修掉一个已知缺陷 → 删掉对应行」规则清空：
+**当前为空。** 此前 5 行已全部修掉（对照 [`../../docs/next_plan/README.md`](../../docs/next_plan/README.md) §5 第 1–5 号），按 [`../../skills/developer/WORKFLOW.md`](./WORKFLOW.md) §6 的「修掉一个已知缺陷 → 删掉对应行」规则清空：
 
 | 原问题 | 现状 |
 |---|---|
@@ -167,16 +241,23 @@ VBA 命令通过 `self.cst_file.model3d.add_to_history("<日志名>", f1)` 下�
 | `topo_templates/straight_waveguide.py` 传了不被接受的实参 → TypeError | ✅ 已修 |
 | `topo_templates/unit_antenna.py` 同 `topology=` 问题 | ✅ 已修 |
 
-> **注意**：`unit_antenna.py` 仍有一处**已知但未验证**的隐患 ——
-> 它用 `path.get_array_range()` 推导阵列范围，与 `StraightWaveguide` 同源
-> （后者已修为「覆盖整个基板」）。详见
-> [`../../docs/next_plan/stages/04_阶段4_验收与缺陷清账.md`](../../docs/next_plan/stages/04_阶段4_验收与缺陷清账.md) 的 T5。
-> 单元天线是含拐弯的路径，需先确定参考基准再改，**不要照搬直波导的取法**。
+> **注意**：`unit_antenna.py` 的**阵列范围与臂长映射已按参考工程修正并真机核对**
+> （AB `xup=25`/BA `26`、`yup=ydn=14`，两种拓扑 0 条 CST 消息），
+> 弯折路径上的**偏移多边形自交**也已修（逐段四边形 + 布尔并集）。
+> **路径方向语义已查清**（2026-09-17 离线逐位比对）：`bend_angle` 就是**转角**
+> （与 `TopoPath.turn()` 同义）；参考「120D」物理上对应 **`bend_angle = ±60`**
+> （AB `+60` → 臂端 `(6.0625,+2.9402)`；BA `−60` → `(6.0625,−2.9402)`，严格镜像），
+> 而库当前默认 `turn(120)` 的臂端 `(2.6675,+2.9402)` **不匹配任何参考单元天线**。
+> **路径方向语义已查清并实现**（2026-09-17 离线逐位比对）：`UnitAntenna.bend_angle` 是
+> **两侧臂张角**（= 2 × 单臂偏角），实现为 `turn(±bend_angle/2)`（AB `+`、BA `−`，互为镜像）；
+> 参考「120D」的臂端 `(6.0625, ±2.9402)` 与参考工程 `px3/py3` 逐位相同，
+> 合法值因此收紧为 **120 的整数倍**。`TopoPath.turn()` 仍是**转角**，两者差一倍，别混。
+> **遗留**：改用新臂方向后**尚未**重跑真机建模核验（原 8/8 是旧臂方向的结论）。详见
+> [`../../docs/validation/p4_real_machine_evidence.md`](../../docs/validation/p4_real_machine_evidence.md) §4.5。
 
 ## 冒烟测试（最小验证，不污染正式工程）
 
 ```python
-import sys; sys.path.insert(0, r'D:\成电博士生涯\自动建模算法尝试\TPC')
 from cst_solver import setup
 
 app = setup(r'<某个 tmp.cst 的绝对路径>')      # 用临时模板，别用正式工程
@@ -185,6 +266,19 @@ print(app.cst_file.get_messages())              # 应为空
 app.cst_file.model3d.Rebuild()                  # 阻塞式重放历史，最能暴露问题
 print(app.cst_file.get_messages())
 app.close()
+```
+
+真机上跑任何多步脚本时，先看窗口、再套看门狗、关完再确认没有残留弹窗：
+
+```python
+import sys; sys.path.insert(0, 'scripts')
+from cst_dialog_guard import describe_dialogs, check_dialogs, guard
+
+check_dialogs('开工前')                 # 有残留弹窗直接抛，不要继续调 CST
+print(describe_dialogs())
+with guard('build_xxx', timeout=600):   # 卡住 → 报「疑似模态弹窗」+ 窗口快照
+    build_xxx(app, ...)
+check_dialogs('关闭 DE 后')             # 「是否保存更改？」在这里会被抓到
 ```
 
 ## 进阶

@@ -12,12 +12,22 @@ TopoModeler — 拓扑光子晶体核心建模器
 import os
 import numpy as np
 
+#: 本模块经结构化失败通道产出的错误码。
+#: 一致性检查（`scripts/check_api_consistency.py` 的 `error-codes` 项）要求
+#: 代码里用到的码必须出现在某个 `*_ERROR_CODES` 表里。
+MODELER_ERROR_CODES = (
+    'cst_unavailable',      # CST 初始化失败（无 CST 环境）：app=None，建模/求解不可用
+)
+
 from topo_modeler.name_manager import NameManager
 from topo_modeler.builders import (
     build_substrate,
     build_substrate_multi,
     build_vpc_regions,
+    build_vpc_regions_multi,
     build_topological_crystal,
+    build_crystals_multi,
+    clip_crystals_with_vpc,
     build_feed as _build_feed_func,
     build_waveguide as _build_waveguide_func,
     build_grin_lens as _build_grin_lens_func,
@@ -94,6 +104,12 @@ class TopoModeler:
             import warnings
             warnings.warn(f"CST 初始化失败（无 CST 环境？）: {e}。"
                           f"建模功能不可用，但路径/参数/推断功能可用。")
+            # 这条失败必须能被共用服务看见：app=None 之后 run()/save() 会直接
+            # 报 cst_unavailable，而不是静默什么都不做却返回成功
+            from cst_solver.failures import record_failure
+            record_failure('TopoModeler._init_cst', 'cst_unavailable',
+                           f'CST 初始化失败，建模/求解不可用：{e}',
+                           template_cst=self.template_cst, log=False)
 
     # ================================================================
     # 配置方法
@@ -401,26 +417,97 @@ class TopoModeler:
         return cst_name
 
     def build_vpc_regions(self, name_prefix='vpc', height='h',
-                           material='Silicon (lossy)', y_margin='e2'):
+                           material='Silicon (lossy)', y_margin='e2',
+                           paths=None, **kwargs):
         """
         构建 VPC-A 和 VPC-B 区域。
+
+        **多路径时自动走并集**（阶段 8 模块 6.1，与 `build_substrate` 对称）：
+        `self._paths` 里有多条路径时，各路径各做上/下半区带再布尔并 ——
+        否则分支上的光子晶体落在 VPC 区域之外，会被裁掉。
 
         :param name_prefix: str, 名称前缀
         :param height: str, 厚度参数名
         :param material: str, 材料
         :param y_margin: str, 扩展量参数名
+        :param paths: dict 可选, 只针对这些路径建（``{名字: TopoPath}``）
         :return: tuple, (vpca_name, vpcb_name)
         """
         self._check_path()
-        vpca, vpcb = build_vpc_regions(self.app, self.path, name_prefix=name_prefix,
-                                         height=height, material=material, y_margin=y_margin)
+        target = paths or self._paths
+        if len(target) > 1:
+            vpca, vpcb = build_vpc_regions_multi(
+                self.app, target, name_prefix=name_prefix, height=height,
+                material=material, y_margin=y_margin, **kwargs)
+        else:
+            one = next(iter(target.values()))
+            vpca, vpcb = build_vpc_regions(self.app, one, name_prefix=name_prefix,
+                                            height=height, material=material,
+                                            y_margin=y_margin)
         self._built_parts['vpca'] = vpca
         self._built_parts['vpcb'] = vpcb
         self._mark_geometry()
         return vpca, vpcb
 
+    def build_crystals_multi(self, paths=None, topology=None, lattice='a',
+                             height='h', large_hole='l1', small_hole='l2',
+                             y_margin='e2', name_prefix='g', **kwargs):
+        """
+        多路径光子晶体：**每条路径各建一套 A/B 阵列**（阶段 8 模块 6.1）。
+
+        命名沿用 `topo_modeler.builders.build_crystals_multi`：第 1 条路径是
+        `g1A/g1B`（与单路径版本逐名相同），第 2 条是 `g2A/g2B`…
+
+        :param paths: dict 可选, 只针对这些路径建；不给则用全部已设路径
+        :param topology: str 可选, 'AB'/'BA'，默认用 `self.topology`
+        :param kwargs: 传给 `build_topological_crystal`（如 `xup='xup'` 走参数引用）
+        :return: dict, ``{路径名: (crystal_a_name, crystal_b_name)}``
+        """
+        self._check_path()
+        target = paths or self._paths
+        topo = topology or self.topology or 'AB'
+        crystals = build_crystals_multi(
+            self.app, target, topology=topo, lattice=lattice, height=height,
+            large_hole=large_hole, small_hole=small_hole, y_margin=y_margin,
+            name_prefix=name_prefix, **kwargs)
+        self._built_parts['crystals'] = crystals
+        self._mark_geometry()
+        return crystals
+
+    def clip_crystals_with_vpc(self, paths=None):
+        """
+        把各条路径的晶体阵列与（并集后的）VPC 区域求交（阶段 8 模块 6.1）。
+
+        需要在 `build_vpc_regions()` 与 `build_crystals_multi()`（或单路径的
+        `build_crystal()`）之后调用。操作数顺序与参考工程一致：
+        ``vpca intersect g1A`` —— 结果留在 VPC 区域名上，晶体名被消耗。
+
+        :param paths: dict 可选, 只裁这些路径的晶体
+        :return: dict, 见 `builders.clip_crystals_with_vpc`（含被消耗的晶体名）
+        :raises RuntimeError: 还没建过 VPC 区域或晶体
+        """
+        crystals = self._built_parts.get('crystals')
+        if crystals is None:
+            single = (self._built_parts.get('crystal_a'),
+                      self._built_parts.get('crystal_b'))
+            if None in single:
+                raise RuntimeError('还没有晶体可裁剪：请先 build_crystal() 或 '
+                                   'build_crystals_multi()')
+            crystals = {'main': single}
+        if paths:
+            crystals = {name: pair for name, pair in crystals.items()
+                        if name in paths}
+        vpca = self._built_parts.get('vpca')
+        vpcb = self._built_parts.get('vpcb')
+        if not vpca or not vpcb:
+            raise RuntimeError('还没有 VPC 区域可裁剪：请先 build_vpc_regions()')
+        info = clip_crystals_with_vpc(self.app, vpca, vpcb, crystals)
+        self._built_parts['clipped'] = info
+        self._mark_geometry()
+        return info
+
     def build_crystal(self, topology=None, lattice='a', height='h',
-                      large_hole='l1', small_hole='l2', y_margin='e2'):
+                      large_hole='l1', small_hole='l2', y_margin='e2', **kwargs):
         """
         构建光子晶体三角孔阵列。
 
@@ -430,6 +517,11 @@ class TopoModeler:
         :param large_hole: str, 大孔参数名
         :param small_hole: str, 小孔参数名
         :param y_margin: str, Y方向步长参数名
+        :param kwargs: 透传给 `build_topological_crystal`，**尤其是
+            `xup/yup/ydn`**（参数名 ⇒ 历史里写 `int(xup)`）。
+            ⚠️ 不传它们会回退到 `path.get_array_range()` —— 对**单边偏置**的路径
+            （例如 MZI）会给出 `ydn=1`，`int(ydn/2)=0`，CST 直接报
+            `Invalid number of repetitions`（P4/V1 与 P5 MZI 各踩过一次）。
         :return: tuple, (crystal_a_name, crystal_b_name)
         """
         self._check_path()
@@ -437,7 +529,7 @@ class TopoModeler:
         ca, cb = build_topological_crystal(self.app, self.path, topology=topo,
                                             lattice=lattice, height=height,
                                             large_hole=large_hole, small_hole=small_hole,
-                                            y_margin=y_margin)
+                                            y_margin=y_margin, **kwargs)
         self._built_parts['crystal_a'] = ca
         self._built_parts['crystal_b'] = cb
         self._mark_geometry()
@@ -488,7 +580,15 @@ class TopoModeler:
 
         🔴 **开工前必须知道**：CST 的 DXF 导入是"每条多段线建一个实体"，
         耗时随孔数**超线性**增长（参考配置 2215 条 ≈ 184 s）。
-        抬高 ``ratio``（格距 ×k ⇒ 孔数 ÷k²）是唯一有效的提速手段。
+
+        ⚠️ **提速方向别记反**（2026-09-17 实测更正，此前这里写的是「抬高 ratio」）：
+        固定 `nx/ny` 时孔数与 `ratio` **无关**（ratio 0.5→4 都是 713 个，
+        因为 `ec_a = nx·a2` 与格距同比缩放 ⇒ 器件物理尺寸跟着变）；
+        **固定器件物理尺寸**（`nx` 随 ratio 同步缩放）时孔数 **∝ ratio²**
+        （ratio 0.75/1/1.5/2 ⇒ 449/713/1630/2828）。
+        ⇒ 要提速就**降 ratio 并把 nx/ny 同比缩小**，且 `nx > 12` 是硬约束
+        （`d_out > d0 = 12·a2`）—— 所以固定尺寸下提速幅度有限，
+        要大幅减孔只能整体缩小器件。回归：`test_lens_ratio_does_not_change_hole_count`。
 
         :param spec: GrinLensSpec 可选, 透镜参数；不给则用 ``lens_kwargs`` 现拼
             （可传 ``a / ratio / nx / ny / r1_0 / r2_0 / r_big``，也接受旧脚本的
@@ -613,9 +713,18 @@ class TopoModeler:
 
         :param path: str, 保存路径
         :return: self
+        :raises CstOperationError: ``app is None``（CST 环境没起来）——
+            旧版本在这种情况下**什么都不写却返回成功**，会把「没保存」当成
+            「保存成功」，因此改为结构化失败
         """
-        if self.app is not None:
-            self.app.save(path)
+        if self.app is None:
+            from cst_solver.failures import CstOperationError
+            raise CstOperationError(
+                'cst_unavailable',
+                '没有 CST 环境（app is None），save() 无法写出任何东西；'
+                '这是结构化失败，不是空结果',
+                operation='TopoModeler.save')
+        self.app.save(path)
         self._cst_path = path
         return self
 
@@ -628,9 +737,17 @@ class TopoModeler:
         正确的改参姿势是先 ``self.app.update()``（或 ``para(..., log_flag=1)``）。
 
         :return: self
+        :raises CstOperationError: ``app is None``（CST 环境没起来）——
+            旧版本在这种情况下**不提交任何仿真却返回成功**
         """
-        if self.app is not None:
-            self.app.run()
+        if self.app is None:
+            from cst_solver.failures import CstOperationError
+            raise CstOperationError(
+                'cst_unavailable',
+                '没有 CST 环境（app is None），run() 没有提交任何仿真；'
+                '这是结构化失败，不是「跑完了」',
+                operation='TopoModeler.run')
+        self.app.run()
         return self
 
     def validate(self):

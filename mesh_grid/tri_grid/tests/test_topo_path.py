@@ -523,26 +523,22 @@ def test_symbolic_without_param_values():
 def _signed_area_numeric(pts, param_values):
     """把 CST 表达式顶点列表数值化并计算有向面积（>0 表示 CCW）。
 
-    仅支持本测试用到的形式：'<num>' 或 '<param><op><num>' 与 '常量*参数'，
-    以及 'pNx'/'pNy' 这类直接以参数名出现的项。
+    做法：把参数名替换成数值、``sqr(3)`` 替换成 ``3**0.5``、``^`` 替换成 ``**``，
+    然后在受限命名空间里求值。这样既支持 ``p2y-e2`` 这类简单形式，
+    也支持 P4/V1 之后出现的 miter 偏移形式（如 ``p2x-sqr(3)*e2``）。
     """
     import re
 
     def ev(token):
         expr = str(token)
-        # 纯参数名
-        if expr in param_values:
-            return float(param_values[expr])
-        # 形如 '18+1'、'0-1'、'-1'
-        if re.fullmatch(r'-?\d+(\.\d+)?([+-]\d+(\.\d+)?)?', expr):
-            return eval(expr)  # noqa: S307 - 仅测试内部使用，输入受控
-        # 形如 'p2y+e2' / 'p2y-e2'
-        m = re.fullmatch(r'(\w+)([+-])(\w+)', expr)
-        if m:
-            left = param_values.get(m.group(1), re.fullmatch(r'-?\d+(\.\d+)?', m.group(1)) and float(m.group(1)))
-            right = param_values.get(m.group(3), re.fullmatch(r'-?\d+(\.\d+)?', m.group(3)) and float(m.group(3)))
-            return left + float(right) if m.group(2) == '+' else left - float(right)
-        raise AssertionError(f"测试无法解析的表达式: {expr!r}")
+        # 先替换最长优先的参数名，避免 p1x / p1 之类前缀误伤
+        for name in sorted(param_values, key=len, reverse=True):
+            expr = re.sub(rf'\b{re.escape(name)}\b', str(float(param_values[name])), expr)
+        expr = expr.replace('sqr(3)', f'({3 ** 0.5!r})').replace('^', '**')
+        try:
+            return float(eval(expr, {'__builtins__': {}}, {}))  # noqa: S307 - 测试内部，输入受控
+        except Exception as exc:                      # noqa: BLE001
+            raise AssertionError(f"测试无法解析的表达式: {token!r}（{exc}）") from exc
 
     coords = [(ev(p[0]), ev(p[1])) for p in pts]
     area = 0.0

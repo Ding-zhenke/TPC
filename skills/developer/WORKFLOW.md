@@ -9,14 +9,19 @@
 ## 0. 三十秒摘要
 
 ```
-看清需求 → 判定归属包 → 读该包技能 → 改代码 → 同步存根/文档 → 跑测试 → 逐包提交 → push
+看清需求 → 查统一未完成计划 → 判定归属包 → 读对应技能 → 改代码 → 同步两类 skill/存根/文档 → 验证
 ```
 
 三条铁律：
 
-1. **一次只改一个包**，并为这个包单独写一条 commit。
+1. **按包组织变更**；跨包功能可连续实施，提交时按职责拆分。
 2. **改代码必须同步文档**，同步矩阵见 §6，漏了文档视为未完成。
-3. **验收靠 `get_messages()`**，CST 不抛异常，跑通不等于对。
+3. **验收看 CST 的**两条**失败通道**：`add_to_history()` **可能直接抛 Python 异常**
+   （异常文本里带 CST 原文），而**有的失败只写消息** —— 所以 `get_messages()` 与
+   「调用有没有抛」两条都要看，跑通不等于对。⚠️ 消息**不因读取而清空**：工程历史里
+   只要留下过一条失败命令，之后每次读都会**再报一次**，因此**不要用「消息为空」当唯一的
+   成功判据**，有正向判据就优先用它（真机依据见
+   [`../../docs/validation/p4_real_machine_evidence.md`](../../docs/validation/p4_real_machine_evidence.md) §3）。
 
 ---
 
@@ -58,10 +63,11 @@
 
 ### 步骤 0 — 接需求，先判定阶段
 
-读 [`../../docs/next_plan/`](../../docs/next_plan/)，确认这个需求属于哪个阶段：
+读 [统一未完成计划](../../docs/next_plan/README.md)，选择有明确输入、输出和验收条件的任务。用户已授权开始实施 Python 包 + CST MCP 方向；旧“阶段 4+ 只能写计划”的限制已取消。
 
-- 属于**已完成阶段**（阶段 0–3）→ 发现问题**直接改代码**，并同步修计划文档里的描述。
-- 属于**未开始阶段**（阶段 4+）→ **只完善计划**，不写实现代码。
+- 完成项从计划删除，使用说明归入 packages/guides，证据归入 validation。
+- 部分实现只保留剩余部分；离线通过但缺少真机证据的，移至 P4 验收项。
+- 代码与使用方法同步更新 developer skill 和 user skill；不另建重复计划。
 
 ### 步骤 1 — 读对应的技能文档
 
@@ -91,8 +97,12 @@
 1. **公开 API 的签名**是什么？（参数名、类型、默认值、返回值）
 2. **是否需要旧名别名**？（见 §5 命名规则）
 3. **是否新增文件/包**？如果是，是否需要更新 `__init__.py` 的 `__all__` 和 `pyproject.toml`？
-4. **失败时怎么暴露**？CST 不抛异常，要有 `get_messages()` 检查或显式返回状态。
-5. **验收判据**是什么？（能跑通 + `get_messages()` 为空 + 几何量正确）
+4. **失败时怎么暴露**？CST 的失败有**两条**通道：① `add_to_history()` 可能直接抛
+   `RuntimeError`；② 有的失败只安静地写一条 `get_messages()`。两条都要处理
+   （不要假设「CST 不抛异常」，也不要假设「消息一定干净」）。
+5. **验收判据**是什么？（能跑通 + `get_messages()` 为空 + 几何量正确）。
+   ⚠️ 「消息为空」**不得**作为唯一判据 —— 消息在脏工程里会反复报历史失败（见 §0 铁律 3），
+   能拿到正向信号就用正向信号（如拾取用 `get_picked_count('face')`）。
 
 ### 步骤 4 — 写代码
 
@@ -138,12 +148,17 @@ app.close()
 
 `Rebuild()` 是最关键的验收动作：历史树能否无错重放，决定了模型是否真的可复现。
 
-### 步骤 8 — 提交（一个包一条 commit）
+> ⚠️ 上面两条「必须为空」只在**干净工程**（历史里没有失败命令）里成立：`get_messages()`
+> **不会因为读过就清掉历史失败**，工程里留过一条失败命令之后，每次读都会再报一次。
+> 所以脚本要么用干净模板，要么改用正向判据（例：拾取用 `get_picked_count('face')`，
+> 见 `cst_solver/modeling/picks.py` 的 `_pick_succeeded()`）。
+
+### 步骤 8 — 提交（用户要求提交时，按包拆分）
 
 ```bash
 git add <这个包涉及的文件>
 git commit -m "<type>(<scope>): <一句话说清做了什么>" -m "<详细说明：为什么改、改了哪些文件、怎么验证的、有没有破坏兼容>"
-git push origin main
+# 仅在用户要求推送时推送到指定远端/分支
 ```
 
 规范见 §8。
@@ -175,7 +190,8 @@ git push origin main
 - [ ] 新方法有 `snake_case` 名 + 旧名别名
 - [ ] docstring 完整（参数/返回值/说明），长度角度标注 `float | str`
 - [ ] 已同步 `setup.pyi`
-- [ ] 冒烟测试 `get_messages()` 为空，`Rebuild()` 后仍为空
+- [ ] 冒烟测试 `get_messages()` 为空，`Rebuild()` 后仍为空（**须在干净工程里**；
+      脏工程里消息会反复报历史失败，此时以正向判据为准）
 - [ ] 已重新生成 `docs/guides/api/cst_solver_api.html`
 
 ### `mesh_grid/`
@@ -225,7 +241,9 @@ git push origin main
 | 新增/删除包或模块 | `docs/ARCHITECTURE.md`、`docs/packages/*.md`、`pyproject.toml` 的 `packages.find`、`README.md` 的结构图 |
 | 新增 builder / 模板 | `docs/packages/topo_modeler.md` 或 `docs/packages/topo_templates.md` |
 | 新增硬约定或踩坑 | `docs/ARCHITECTURE.md` §6 + 相关 skill |
-| 阶段进度变化 | `docs/next_plan/README.md` 的阶段状态表 |
+| 任务实现或验收状态变化 | `docs/next_plan/README.md`：删除完成项，只保留剩余工作与验收欠项 |
+| 任意用户可见能力变化 | `skills/developer/` 与 `skills/user/` 对应说明同步更新 |
+| 中文绘图 | 共用 `mesh_grid.plotting`；同步 [中文绘图指南](../../docs/guides/chinese_plotting.md)，导出含中文与负刻度的样例验收 |
 | 修掉一个已知缺陷 | 删掉 `cst-solver-dev.md` 的「待修清单」对应行 + `docs/next_plan/` 对应条目 |
 | 新增/移动文件 | 全仓库搜一遍旧路径引用（见 §9） |
 
@@ -279,7 +297,7 @@ fix(topo_modeler): 修正基板与 VPC 区域多边形绕向，消除与晶体�
 兼容性：无破坏；builders 函数签名未变。
 ```
 
-**禁止**：`git commit -m "update"`、把多个包的改动塞进一条 commit、跳过 push。
+**禁止**：含糊提交消息、未说明职责的混合提交。提交和推送按用户要求执行；修改代码本身不意味着要发布到远端。
 
 ---
 
@@ -311,4 +329,11 @@ grep -rn "sys.path.append\|scripts/gen_docs.py\|\.github/skills\|cst_solver/docs
 6. ❌ 删除公开符号而不留别名、不登记弃用。
 7. ❌ 把实验性代码直接写进 `topo_templates/` 或 `topo_modeler/builders/` 的公开路径 —— 先放 `lens_build_standalone.py` 这类沙盒文件验证。
 8. ❌ 用 `print` 代替异常。
-9. ❌ 跳过 `docs/next_plan` 的阶段判定就开工。
+9. ❌ 无视统一计划中的依赖和真实验收条件。
+
+## 11. Python / MCP 与中文绘图的维护边界
+
+- `cst_solver.environment` 负责安装发现、配置和诊断；CST 导入留在实际执行入口。不可重新引入包顶层 `import cst`、安装路径硬编码或 stdout 提示。
+- MCP 首版已实现，只做协议及数据转换，依赖共用 Python 服务；不得把自然语言直接拼入 VBA 或复制已有建模公式。真实 CST 求解闭环尚未验收，不写成已验证能力。
+- 库内绘图不在导入时写 `rcParams`，在绘图入口调用 `configure_chinese_font()`。用户自定义图推荐 `chinese_plot_style(text=实际标签, strict=True)`，在作用域内保存图。
+- 不写死 SimHei/微软雅黑，不屏蔽缺字警告。找不到字体时使用明确字体路径或英文标签；不要自行下载未核实许可的字体。CI 使用 Agg 时须在导入 pyplot 前设置。

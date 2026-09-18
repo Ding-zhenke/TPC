@@ -105,8 +105,17 @@ class GrinLensSpec:
     GRIN 椭圆透镜的输入参数（**全部带单位，长度一律 mm**）。
 
     :param a: float, 晶格常数 a [mm]（与基板工程同一个 ``a``）
-    :param ratio: float, 孔网格细化倍率 [无量纲]；格距 ``a2 = a / ratio``，
-        抬高它 ⇒ 格距变小 ⇒ 孔数按 ``ratio²`` 增长（耗时也随孔数增长）
+    :param ratio: float, 孔网格细化倍率 [无量纲]；格距 ``a2 = a / ratio``。
+        ⚠️ **它与孔数的关系容易被说反**（2026-09-17 实测更正）：
+
+        * **固定 `nx/ny`**：孔数与 ratio **无关**（ratio 0.5/1/2/4 都是 713 个）——
+          因为 `ec_a = nx·a2` 与格距同比缩放，**器件物理尺寸跟着变**；
+        * **固定器件物理尺寸**（`nx` 随 ratio 同步缩放）：孔数 **∝ ratio²**
+          （ratio 0.75/1/1.5/2 ⇒ 449/713/1630/2828）。
+
+        ⇒ 想**减少孔数**（= 提速）要**降 ratio 并把 nx/ny 同比缩小**，而不是抬高它；
+        且 `nx > 12` 是硬约束（`d_out > d0 = 12·a2`），所以 ratio 有下限
+        （a=0.2425、ec_a≈3.9 时约 0.75）。
     :param nx: int, 椭圆长半轴 = ``nx`` 个格距，即 ``ec_a = nx · a2``
     :param ny: int, 椭圆短半轴 = ``ny`` 个格距（还要乘 ``sind(60°)``），
         即 ``ec_b = ny · a2 · sind(60)``
@@ -444,6 +453,9 @@ class GrinLensHoles:
         import matplotlib.pyplot as plt
         from matplotlib.collections import PolyCollection
         from matplotlib.patches import Ellipse as MplEllipse
+        from mesh_grid.plotting import configure_chinese_font
+
+        configure_chinese_font()
 
         spec = self.spec
         if ax is None:
@@ -705,7 +717,8 @@ def build_grin_lens(app, holes: GrinLensHoles, spec: Optional[GrinLensSpec] = No
                     material: str = 'Silicon (lossy)', height: str = 'h',
                     dxf_path: Optional[str] = None, dxf_layer: str = 'gridlens',
                     unite_mirror: bool = True, rotation_repetition: int = 5,
-                    rotation_axis=None, log=None) -> dict:
+                    rotation_axis=None, self_rotation=0, place: bool = True,
+                    log=None) -> dict:
     """
     把孔阵列与椭圆包络做成 CST 里的 GRIN 透镜（**只下发 VBA，不做几何计算**）。
 
@@ -722,6 +735,13 @@ def build_grin_lens(app, holes: GrinLensHoles, spec: Optional[GrinLensSpec] = No
     6. ``translate`` 到 0° 顶点（此时局部原点就是近焦点），z 先居中与板共面；
     7. ``rotation`` 旋转复制 ⇒ 6 个顶点各 1 个透镜。
 
+    可选 ``self_rotation``：**把透镜绕它自己的近焦点转一个角度**（第 ⑤ 步之前做，
+    因为那时局部原点正是近焦点）。这对应参考里的 ``dphi``
+    （`椭圆透镜单元天线` 的 `*_rotation.ipynb`：`para('dphi','10')` 之后
+    `rotation('epc1',['0',0,'dphi'],['px2','py2',0])` —— 就是绕**顶点**自转，
+    而顶点在该工程里就是近焦点）。默认 0 ⇒ **不下发这一步**（默认序列与旧脚本
+    逐字节一致，见 `test_cst_call_sequence_matches_original`）。
+
     ⚠️ **耗时坑（实测，原脚本注释里有记录）**：
 
     - DXF 导入是 ``.AsCurves "False"`` ⇒ **每条多段线建一个实体**，耗时随多段线数
@@ -732,7 +752,9 @@ def build_grin_lens(app, holes: GrinLensHoles, spec: Optional[GrinLensSpec] = No
       独立实体对网格/求解完全等价。
 
     :param app: cst_solver.setup 实例
-    :param holes: GrinLensHoles（来自 :func:`build_grin_lens_holes`）
+    :param holes: GrinLensHoles（来自 :func:`build_grin_lens_holes`）**可选**：
+        给了就用它的 ``spec`` 与孔数统计；用现成 DXF 时（:func:`build_grin_lens_from_dxf`）
+        可以传 ``None``，此时必须显式给 ``spec``
     :param spec: GrinLensSpec 可选, 不给则用 ``holes.spec``
     :param name: str, 椭圆包络（= 透镜本体）的实体名
     :param holes_name: str, DXF 导入产生的实体名（CST 的 ``Id "1"`` ⇒ ``import_1``）
@@ -746,12 +768,18 @@ def build_grin_lens(app, holes: GrinLensHoles, spec: Optional[GrinLensSpec] = No
     :param rotation_repetition: int, 旋转复制的次数（5 ⇒ 连本体共 6 个）
     :param rotation_axis: list 可选, 旋转轴 ``[x, y, z]``，默认 ``[0, 0, 60]``
     :param log: callable 可选, ``log(tag)`` —— 每步之后读一次 ``get_messages()`` 做验收
-    :return: dict，含各实体名、DXF 路径与几何参数
+    :return: dict，含各实体名、DXF 路径与几何参数；用现成 DXF 时
+        ``n_holes_total`` / ``n_holes_dxf`` 为 ``None``（**没有回头数几何**，
+        不猜数字），并多一个 ``holes_imported=True``
     :raises FileNotFoundError: DXF 不存在
-    :raises ValueError: app 为 None
+    :raises ValueError: app 为 None，或 spec 与 holes 都没给
     """
     if app is None:
         raise ValueError("build_grin_lens 需要 cst_solver.setup 实例（app 为 None）")
+    if spec is None and holes is None:
+        raise ValueError(
+            "build_grin_lens 需要 spec（或 holes，spec 可从 holes.spec 取到）—— "
+            "椭圆包络的 ec_a/ec_b/ec_c/r1/r2 都由 spec 推出，缺了没法建")
     spec = spec or holes.spec
     if rotation_axis is None:
         rotation_axis = [0, 0, 60]
@@ -776,6 +804,39 @@ def build_grin_lens(app, holes: GrinLensHoles, spec: Optional[GrinLensSpec] = No
     log('孔阵列 y 镜像复制（补齐下半）')
 
     # ② 登记椭圆相关的 CST 参数（全部由 a 与格距推出，无硬编码数值）
+    #
+    # ⚠️ 先做**前置检查**（P4/V6 真机教训，2026-09-17）：后面两步用到的 `Rbig` 与
+    # `Ls` **不属于本函数**（它们是基板/大六边形工程里的量）。缺了它们时，CST 会
+    # **弹出一个「请输入变量值」的模态对话框**把脚本永久挂住（不是抛异常！），
+    # 而文本运行的调用方根本看不到。所以这里提前失败，并说清该定义什么。
+    from cst_solver._guards import get_guard_state
+    guard = get_guard_state(app)
+    # 真机 app 在**第一次 `para()`** 时就会接上「参数是否存在」探针；离线假 app 没有探针，
+    # 那时 `param_existed()` 只查 `known_params`（必然 False）—— 那种情况不做拦截。
+    #
+    # ⚠️ `self_rotation` 是**参数名**时也必须一起拦（2026-09-18 真机教训）：
+    #    漏登记 `dphi` 时 CST 不会报错，而是**弹出「请输入变量值」模态对话框把脚本挂住**
+    #    （实测挂了 30+ 分钟，`EnumWindows` 还看不到那个框）。这里提前失败。
+    required = ['Ls']
+    if place:
+        required.append('Rbig')
+    if isinstance(self_rotation, str) and self_rotation:
+        required.append(self_rotation)
+    if getattr(guard, '_param_probe', None) is not None:
+        missing = [name for name in required
+                   if guard.param_existed(name) is False]
+    else:
+        missing = []
+    if missing:
+        raise ValueError(
+            f"build_grin_lens 需要这些 CST 参数先存在：{missing}。"
+            f"`Rbig` / `Ls` 来自基板/大六边形工程（约定："
+            f"`Rbig = a*(3*n_small/4 + lx1)`、`Ls = 2.2*Rbig`），本函数不擅自定义；"
+            f"`self_rotation` 给的是参数名时也要先 `app.para(...)` 登记。\n"
+            f"  请在调用前 `app.para('Rbig', ...)` / `app.para('Ls', '2.2*Rbig')`"
+            f"（自转角：`app.para('dphi', 10)`）。\n"
+            f"  ⚠️ 缺参数时 CST 会弹「输入变量值」对话框把脚本挂住，"
+            f"而不是抛异常 —— 所以这里提前拦下。")
     app.para('ratio', spec.ratio, expression='透镜孔网格细化倍率：格距 a2 = a/ratio')
     app.para('Nx', spec.nx, expression='椭圆长半轴 = Nx 个格距')
     app.para('Ny', spec.ny, expression='椭圆短半轴 = Ny 个格距')
@@ -789,6 +850,16 @@ def build_grin_lens(app, holes: GrinLensHoles, spec: Optional[GrinLensSpec] = No
              expression='★ 焦距：椭圆中心在 (ec_c, 0)，近焦点在原点')
 
     # 椭圆包络拉伸 → 减去孔阵列 = GRIN 透镜（长短轴/中心一律用 CST 变量）
+    #
+    # ⚠️ **组件（component）口径**：这里刻意**不**给 `extrude` / `subtract` /
+    #    `translate` / `rotation` 传 `component` —— 即包络与最终透镜实体落在
+    #    `component1` 里，只有 DXF 导入的孔阵列在 `component`（= DXF 层名）里。
+    #    这与被收编的旧脚本 `topo_modeler/lens_build.py` **逐字节一致**
+    #    （`topo_modeler/tests/test_lens.py::test_cst_call_sequence_matches_original`
+    #    钉着这条），也是真机验过的行为。
+    #    ⇒ `lens_component` 在这条路线上只表示「DXF 层名 / 孔阵列的组件」。
+    #    对比：新的就地路线 `build_grin_lens_insitu()` 全程用 `component`
+    #    （它没有旧脚本要兼容），两条路线的这个差异由测试分别钉住，不是疏漏。
     app.ellipse('ec_a', 'ec_b', ['ec_c', '0'], name)
     app.extrude(f'curve1:{name}', name, height, material=material, log_flag=1)
     log('椭圆包络拉伸（ec_a / ec_b / ec_c）')
@@ -796,9 +867,16 @@ def build_grin_lens(app, holes: GrinLensHoles, spec: Optional[GrinLensSpec] = No
     log('椭圆包络 − 孔阵列')
 
     # ③ 剪掉与大六边形重叠的部分（顶点内角 120° ⇒ 内部是 120°→240° 的楔形）
+    #
+    # ⚠️ 顶点坐标**不写三角函数**（P4/V6 真机修复，2026-09-17）：原先用
+    # `Ls*cosd(120)` / `Ls*sind(120)`，实测 CST 2026 直接拒绝
+    # (`Invalid expression: Ls*cosd(120)`)，而同一表达式表里的 `sind(60)` 是能用的
+    # —— 说明该版本没有 `cosd`。这两点其实都是精确值：cos120°=cos240°=−1/2、
+    # sin120°=+√3/2、sin240°=−√3/2，用 `Ls/2` 与 `sqr(3)` 写出来即可，
+    # 既避开不受支持的函数，又不引入任何硬编码数值。
     cut_pts = [[0, 0],
-               ['Ls*cosd(120)', 'Ls*sind(120)'],
-               ['Ls*cosd(240)', 'Ls*sind(240)'],
+               ['-Ls/2', 'Ls*sqr(3)/2'],
+               ['-Ls/2', '-Ls*sqr(3)/2'],
                [0, 0]]                                   # 逆时针 ⇒ 沿 +z 拉伸
     app.polyline(cut_pts, name=cut_name)
     app.extrude(f'curve1:{cut_name}', cut_name, height,
@@ -807,18 +885,336 @@ def build_grin_lens(app, holes: GrinLensHoles, spec: Optional[GrinLensSpec] = No
     app.subtract(name, cut_name)
     log('剪掉与正六边形重叠的部分')
 
-    # ④ 移到 0° 顶点（此时局部原点就是近焦点）
-    app.translate(name, ['0', '0', f'-{height}/2'], copy=False, unite=False, log_flag=1)
-    app.translate(name, ['Rbig', '0', '0'], copy=False, unite=False, log_flag=1)
-    log('透镜移到 0° 顶点（近焦点在顶点）')
+    # ③' 透镜绕**自身近焦点**自转（参考的 `dphi`）。放在平移之前：此刻局部原点
+    #     就是近焦点（椭圆由 `ec_c` 定位 ⇒ 焦点恰在原点），转的就是透镜自己。
+    if self_rotation:
+        app.rotation(name, [0, 0, self_rotation], copy=False, unite=False)
+        log(f'透镜绕自身近焦点自转 {self_rotation}')
 
-    # ⑤ 旋转复制 ⇒ 6 个顶点各 1 个（unite=False，理由见 docstring）
-    app.rotation(name, rotation_axis, repetition=rotation_repetition,
-                 copy=True, unite=False)
-    log('透镜 旋转复制 ×6（unite=False）')
+    # ④ 移到 0° 顶点（此时局部原点就是近焦点）
+    #
+    # `place=False` ⇒ **不移动、不复制**，透镜就以近焦点在原点的姿态留在原地。
+    # 参考的多端口 notebook 就是这么放的（`ellipse(..., [0,0])` → `translate(['ec_c','0','0'])`
+    # → 剪孔，**没有** Rbig 平移、也没有 6 份旋转复制），见
+    # `docs/validation/p5_multiport_evidence.md`。
+    if place:
+        app.translate(name, ['0', '0', f'-{height}/2'], copy=False, unite=False, log_flag=1)
+        app.translate(name, ['Rbig', '0', '0'], copy=False, unite=False, log_flag=1)
+        log('透镜移到 0° 顶点（近焦点在顶点）')
+
+        # ⑤ 旋转复制 ⇒ 6 个顶点各 1 个（unite=False，理由见 docstring）
+        app.rotation(name, rotation_axis, repetition=rotation_repetition,
+                     copy=True, unite=False)
+        log('透镜 旋转复制 ×6（unite=False）')
+    else:
+        log('透镜留在原点（place=False：单枚，近焦点在原点）')
 
     return {'name': name, 'holes_name': holes_name, 'cut_name': cut_name,
             'component': component, 'dxf_path': dxf_path,
-            'n_holes_total': len(holes), 'n_holes_dxf': holes.n_upper,
+            # ⚠️ 最终实体**实际**在哪个组件：本路线为了与旧脚本逐字节一致，
+            #    包络与透镜落在 `component1`（只有 DXF 导入的孔阵列在 `component`）。
+            #    调用方要按**这个**值去寻址实体（真机教训：按 `component` 寻址会报
+            #    `Shape does not exist: gridlens:lens_epc`）。
+            'entity_component': 'component1',
+            'placed': bool(place),
+            'n_lenses': int(rotation_repetition) + 1 if place else 1,
+            'holes_imported': True,                 # 孔阵列来自 DXF 导入
+            'holes_generated': holes is not None,   # False ⇒ 用的是现成 DXF
+            'n_holes_total': len(holes) if holes is not None else None,
+            'n_holes_dxf': holes.n_upper if holes is not None else None,
             'ec_a': spec.ec_a, 'ec_b': spec.ec_b, 'ec_c': spec.shift,
-            'r1': spec.r_in, 'r2': spec.r_out, 'r_big': spec.r_big}
+            'r1': spec.r_in, 'r2': spec.r_out, 'r_big': spec.r_big,
+            'self_rotation': self_rotation}
+
+
+def build_grin_lens_from_dxf(app, dxf_path, spec=None, **kwargs) -> dict:
+    """
+    **现成 DXF 入口**（`method='dxf'`）：用磁盘上已有的孔阵列 DXF 建 GRIN 透镜。
+
+    与 :func:`build_grin_lens` 的唯一区别是**不要求 `holes`** —— 因此也**不回头
+    算几何**：孔阵列由调用方负责（例如同事给的 DXF、旧脚本导出的 DXF）。
+    椭圆包络参数仍要 `spec`（`ec_a/ec_b/ec_c/r1/r2` 由晶格常数与格距推出）。
+
+    ⚠️ DXF 约定与原脚本一致：**只含 y ≥ 0 的一半**，本函数靠一次 y 镜像补齐下半。
+    如果给的是完整阵列，镜像后会重叠（CST 能吞掉，但孔数统计与实际不符）——
+    所以拿别人的 DXF 时先确认这一点。
+
+    :param app: cst_solver.setup 实例
+    :param dxf_path: str, 孔阵列 DXF 路径
+    :param spec: GrinLensSpec, 椭圆包络参数（**必给**）
+    :param kwargs: 其余透传给 :func:`build_grin_lens`（name / holes_name /
+        component / height / rotation_axis / log 等）
+    :return: dict（同 :func:`build_grin_lens`，`holes_generated=False`）
+    :raises FileNotFoundError: DXF 不存在
+    :raises ValueError: spec 没给
+    """
+    if spec is None:
+        raise ValueError(
+            "build_grin_lens_from_dxf 需要 spec —— 现成 DXF 里没有几何参数，"
+            "椭圆包络（ec_a/ec_b/ec_c/r1/r2）只能从 spec 推")
+    return build_grin_lens(app, None, spec=spec, dxf_path=dxf_path, **kwargs)
+
+
+# ============================================================
+# 就地 hexagon 环透镜（P5：覆盖参考里 33 个 notebook 的 GRIB 做法）
+# ============================================================
+#
+# 参考做法（`功分器加天线\1分4\Ant4_1d2d4_2f2s_circle_DF.ipynb` 逐行取证）：
+#
+#   HEX_SIZE = a/sqr(3)/2 ; a2 = HEX_SIZE*sqr(3) ; N = (y[1]+2)*2 ; d0 = 8*HEX_SIZE*2*sqr(3)
+#   grid = HexLib(hex_size=HEX_SIZE, orientation='pointy').create_hex_grid_hexagonal(N)
+#   for hex_coord in grid:
+#       loc = hex_to_pixel(hex_coord) ; distance = |loc|
+#       if loc[1] >= 0 and loc[0] >= 0:                  # **只建第一象限**，靠镜像补齐
+#           if distance < d0: hexagon('r1', ...)
+#           else:             hexagon(f'r1+(r2-r1)*({distance}-d0)/(N*a2-d0)', ...)
+#           add('GRIB-0', f'GRIB-{count}')
+#   mirror('GRIB-0', [0,0,0],[1,0,0], copy=True, unite=True)
+#   cylinder(...) / square(...) / substract(...) / substract('GRIB-sub-180','GRIB-0')  # 取"孔阵的负形"
+#
+# ⇒ 与 `build_grin_lens`（DXF 路线）的区别：**不落 DXF**，直接在 CST 内逐个 `hexagon` 建孔。
+
+#: 就地环透镜的默认层数（参考 `1分4` = `(y[1]+2)*2`，y[1]=13 ⇒ 30）
+DEFAULT_RING_LAYERS = 30
+#: `d0` 的层数系数（参考 = 8 层）
+DEFAULT_D0_LAYERS = 8
+
+
+def grin_ring_holes(a, *, n_layers=DEFAULT_RING_LAYERS, r1_0=0.0505,
+                    r2_0=0.0613, d0_layers=DEFAULT_D0_LAYERS, hex_size=None,
+                    quadrant_only=True):
+    """
+    就地 hexagon 环透镜的**孔心与孔半径**（纯几何，**不需要 CST**）。
+
+    孔半径按参考公式分两段：
+
+    * ``distance < d0`` ⇒ 固定 ``r1``（内圈）；
+    * 否则 ⇒ ``r1 + (r2-r1) * (distance-d0) / (N*a2 - d0)``（渐变）。
+
+    ⚠️ 半径写成 **CST 表达式**（引用 `r1`/`r2`/`HEX_SIZE`/`N`），
+    但其中的 ``distance`` 是**烘进表达式的数字** —— 与参考 notebook 的做法一致
+    （它也是 f-string 写死距离）。
+
+    :param a: float, 晶格常数 [mm]
+    :param n_layers: int, 六边形网格层数 `N`（参考 30）
+    :param r1_0: float, 内圈孔半径 [mm]（参考 50.5e-3）
+    :param r2_0: float, 外圈孔半径 [mm]（参考 61.3e-3）
+    :param d0_layers: int, `d0 = d0_layers * HEX_SIZE * 2 * sqr(3)`
+    :param hex_size: float 可选, 覆盖 `HEX_SIZE`（默认 `a/sqr(3)/2`）
+    :param quadrant_only: bool, 是否只取第一象限（默认 True，与参考一致；
+        另一半靠 CST 侧 `mirror` 补齐）
+    :return: dict, ``{'hex_size':…, 'a2':…, 'n_layers':…, 'd0':…, 'radius_outer':…,
+        'r1_0':…, 'r2_0':…, 'holes': [{'center': (x, y), 'distance':…,
+        'radius_expr':…, 'r1_fixed': bool}, …]}``
+        ⚠️ 孔集合 = **N 层六边形网格的第一象限全部格点**（网格本身已有界，
+        所以不再按半径二次过滤 —— 与参考 notebook 一致）
+    :raises ValueError: `N*a2 <= d0`（渐变区间为空 ⇒ 全都是内圈半径，几何没意义）
+    """
+    from mesh_grid.hex_grid import HexLib
+
+    hex_size = float(hex_size if hex_size is not None else a / math.sqrt(3.0) / 2.0)
+    a2 = hex_size * math.sqrt(3.0)
+    d0 = float(d0_layers) * hex_size * 2.0 * math.sqrt(3.0)
+    radius_outer = float(n_layers) * a2
+    if radius_outer <= d0:
+        raise ValueError(
+            f'环透镜的渐变区间为空：N*a2={radius_outer:.4f} <= d0={d0:.4f}；'
+            f'请抬高 n_layers（参考 30）或降低 d0_layers（参考 8）')
+
+    lib = HexLib(hex_size=hex_size, orientation='pointy')
+    grid = lib.create_hex_grid_hexagonal(int(n_layers))
+    holes = []
+    for hex_coord in grid:
+        loc = lib.hex_to_pixel(hex_coord)
+        x, y = float(loc[0]), float(loc[1])
+        if quadrant_only and not (x >= 0 and y >= 0):
+            continue
+        distance = math.hypot(x, y)
+        if distance < d0:
+            expr = 'r1'
+            fixed = True
+        else:
+            expr = (f'r1+(r2-r1)*({distance:.10g}-d0)/(N*a2-d0)')
+            fixed = False
+        holes.append({'center': (x, y), 'distance': distance,
+                      'radius_expr': expr, 'r1_fixed': fixed})
+    holes.sort(key=lambda h: (h['distance'], h['center'][1], h['center'][0]))
+    return {'hex_size': hex_size, 'a2': a2, 'n_layers': int(n_layers),
+            'd0': d0, 'radius_outer': radius_outer, 'holes': holes,
+            'r1_0': float(r1_0), 'r2_0': float(r2_0),
+            'd0_layers': int(d0_layers), 'quadrant_only': bool(quadrant_only)}
+
+
+def build_grin_lens_insitu(app, holes, *, name='GRIB', height='h',
+                           material='Silicon (lossy)', component='component1',
+                           clip_name=None, theta=90, r_big=None,
+                           place=True, rotation_repetition=5,
+                           rotation_axis=None, self_rotation=0, log=None) -> dict:
+    """
+    把 `grin_ring_holes()` 的孔阵**就地**建在 CST 里（参考 `1分4` 的序列）。
+
+    步骤（与参考逐条对应）：
+
+    1. 逐个 `hexagon` 建孔 → `add` 并进 ``{name}-0``；
+    2. `mirror(..., [1,0,0], copy=True, unite=True)`（第一象限 ⇒ 补 x 方向另一半）；
+    3. `cylinder` + `square` → `subtract` 出**半圆**裁剪体；
+    4. `subtract(裁剪体, 孔阵)` ⇒ 得到"孔阵的负形"（介质柱阵列）；
+    5. `translate(['0', 'r1', '0'])` 把平边对到原点；
+    6. `place=True` 时：`translate(['Rbig','0','0'])` 移到 0° 顶点，再 `rotation` 复制
+       ×`rotation_repetition` ⇒ 6 个顶点各一枚（与 :func:`build_grin_lens` 同口径）。
+
+    ⚠️ **只建"一枚"透镜**；`place=False` 时它就留在局部坐标原点附近，
+    放到器件哪个位置、复制几份由调用方决定。
+
+    ⚠️ **组件（component）口径与 DXF 路线不同**：本函数**全程**用 `component`
+    （孔、裁剪体、布尔运算、平移/旋转都显式带 `component`），所以传
+    ``component='gridlens'`` 时整枚透镜就在 `gridlens` 里。
+    DXF 路线（:func:`build_grin_lens`）为了与旧脚本 `lens_build.py` 逐字节一致，
+    包络与最终透镜仍在 `component1` 里。这个差异由测试分别钉住（不是疏漏）。
+
+    :param app: cst_solver.setup 实例
+    :param holes: dict, `grin_ring_holes()` 的返回值
+    :param name: str, 孔阵与裁剪体的名字前缀
+    :param height: str, 厚度参数名
+    :param material: str, 材料
+    :param component: str, 归属组件
+    :param clip_name: str 可选, **最终透镜实体名**（默认 = `name`）。
+        ⚠️ 这里与参考的做法**故意不同**：参考把中间实体叫 `GRIB-sub-180`、最终透镜
+        也叫这个名字；本库让**最终透镜就用 `name`**（`lens_name` 参数怎么说就怎么叫），
+        免得"模板说透镜叫 X、实际实体却叫 X-sub"（2026-09-17 真机就因此把
+        相位旋转打到了不存在的名字上：`Shape does not exist: gridlens:lens_epc`）。
+    :param theta: float, 六边形朝向角（参考用 90°）
+    :param r_big: str 可选, 大六边形外接圆半径的参数名（默认 ``'Rbig'``；
+        `place=True` 时**必须**已登记该参数）
+    :param place: bool, 是否平移 + 旋转复制到 6 个顶点（默认 True）
+    :param rotation_repetition: int, 旋转复制份数（默认 5 ⇒ 连原片共 6 枚）
+    :param rotation_axis: list 可选, 旋转轴 ``[x, y, z]``，默认 ``[0, 0, 60]``
+    :param log: callable 可选, ``log(tag)``
+    :return: dict, ``{'name','holes_name','clip_name','n_holes','radius_outer',
+        'd0','hex_size','placed','n_lenses'}``
+    :raises ValueError: `app` 为 None 或 holes 为空
+    """
+    if app is None:
+        raise ValueError('build_grin_lens_insitu 需要 cst_solver.setup 实例')
+    items = list((holes or {}).get('holes') or ())
+    if not items:
+        raise ValueError('build_grin_lens_insitu 需要至少一个孔（holes 为空）')
+    if log is None:
+        def log(tag=''):
+            return None
+
+    # ⚠️ 最终透镜实体就用 `name`（不是 `{name}-sub`）：模板对外承诺"透镜叫
+    #    `lens_name`"，相位旋转/端口拾取都按这个名字找实体。中间的"孔阵"仍是
+    #    `{name}-0`、方框裁剪体是 `{name}-cut`（它们会被布尔运算消耗掉）。
+    clip_name = clip_name or name
+    holes_name = f'{name}-0'
+    hex_expr = 'HEX_SIZE'
+    n_expr = 'N'
+
+    # 先登记半径表达式引用到的参数。⚠️ `hexagon` 里写的是 `(r1+(r2-r1)*(...))*cosd(...)`
+    #    这类**表达式**：只要 CST 里缺其中一个变量，CST 会弹「请输入变量值」的
+    #    **模态对话框把脚本永久挂住**（P4/V6 真机教训），而不是抛异常。
+    app.para('HEX_SIZE', holes['hex_size'],
+             expression='环透镜六边形网格的半格距 HEX_SIZE = a/sqr(3)/2 [mm]')
+    app.para('a2', f'{hex_expr}*sqr(3)', expression='列间步距 a2 = HEX_SIZE*sqr(3)')
+    app.para('N', holes['n_layers'],
+             expression=f"环透镜网格层数（参考 (y[1]+2)*2）；d0 = {holes['d0_layers']}*HEX_SIZE*2*sqr(3)")
+    app.para('d0', holes['d0'], expression='内圈半径：距离 < d0 的孔都用 r1')
+    app.para('r1', holes['r1_0'], expression='内圈孔半径 [mm]')
+    app.para('r2', holes['r2_0'], expression='外圈孔半径 [mm]')
+
+    # 放置/自转要引用的**外部**参数（它们不属于本函数）：缺了会弹「请输入变量值」
+    # 模态对话框把脚本挂住，所以提前拦下（同 `build_grin_lens` 的 Rbig 拦截）。
+    if place and r_big is None:
+        r_big = 'Rbig'
+    from cst_solver._guards import get_guard_state
+    guard = get_guard_state(app)
+    if getattr(guard, '_param_probe', None) is not None:
+        needed = []
+        if place:
+            needed.append(str(r_big))
+        if isinstance(self_rotation, str) and self_rotation:
+            needed.append(self_rotation)
+        missing = [n for n in needed if guard.param_existed(n) is False]
+    else:
+        missing = []
+    if missing:
+        raise ValueError(
+            f"build_grin_lens_insitu 需要这些 CST 参数先存在：{missing}。"
+            f"放置用的大六边形外接圆半径（默认 `Rbig`）与自转角参数名都要先登记："
+            f"`app.para('Rbig', ...)`、`app.para('dphi', 10)`。\n"
+            f"  ⚠️ 缺参数时 CST 会弹「输入变量值」对话框把脚本挂住，而不是抛异常。")
+
+    for index, hole in enumerate(items):
+        x, y = hole['center']
+        app.hexagon(hole['radius_expr'], height,
+                    center=[f'{x:.10g}', f'{y:.10g}', f'-{height}/2'],
+                    theta=[0, 0, theta], name=f'{name}-{index}', curve='curve1',
+                    component=component, material=material)
+        if index > 0:
+            app.add(holes_name, f'{name}-{index}', component1=component,
+                    component2=component)
+    log(f'就地建孔 {len(items)} 个（第一象限）')
+
+    app.mirror(holes_name, [0, 0, 0], [1, 0, 0], component=component,
+               copy=True, unite=True)
+    log('孔阵沿 x 镜像（补齐另一半）')
+
+    # 半圆裁剪体 = 圆柱 − 方框（参考的 `GRIB-sub-180` / `GRIB-cut`）
+    radius_expr = f'{hex_expr}*{n_expr}*cosd(30)*sqr(3)'
+    app.create_cylinder(center=[0, 0], r=[radius_expr, '0'],
+                        h=[f'-{height}/2', f'{height}/2'], name=clip_name,
+                        axis='z', component=component, material=material)
+    cut_name = f'{name}-cut'
+    half = f'{hex_expr}*({n_expr}+1)*cosd(30)*sqr(3)'
+    app.square(f'-{half}', half, f'-{half}', '-r1', f'-{height}/2', f'{height}/2',
+               name=cut_name, component=component, material=material)
+    app.subtract(clip_name, cut_name, component1=component, component2=component)
+    log('圆柱切半（得到半圆裁剪体）')
+
+    # 孔径负形：裁剪体 − 孔阵
+    app.subtract(clip_name, holes_name, component1=component, component2=component)
+    # ⚠️ `component` 必须显式传下去！`translate` / `rotation` 的默认组件是
+    #    `'component1'`，而实体在 `component`（模板默认 `gridlens`）里 ——
+    #    漏传时 CST 报 `Shape does not exist: component1:<name>`
+    #    （2026-09-17 真机踩到，DXF 路线因为实体就在 component1 里而没暴露）。
+    app.translate(clip_name, ['0', 'r1', '0'], component=component,
+                  copy=False, unite=False, log_flag=1)
+    log('孔阵负形 + 平边对到原点')
+
+    # 可选：绕**自身近焦点**自转（= 椭圆路线 `dphi` 在环形路线上的对应量；
+    # 此刻平边在局部原点，转动发生在"移到顶点 + 旋转复制"之前）
+    if self_rotation:
+        app.rotation(clip_name, [0, 0, self_rotation], component=component,
+                     copy=False, unite=False)
+        log(f'透镜绕自身近焦点自转 {self_rotation}')
+
+    n_lenses = 1
+    if place:
+        if r_big is None:
+            r_big = 'Rbig'
+        app.translate(clip_name, [r_big, '0', '0'], component=component,
+                      copy=False, unite=False, log_flag=1)
+        if rotation_axis is None:
+            rotation_axis = [0, 0, 60]
+        app.rotation(clip_name, rotation_axis, component=component,
+                     repetition=rotation_repetition, copy=True, unite=False)
+        n_lenses = int(rotation_repetition) + 1
+        log(f'透镜移到 0° 顶点并旋转复制 ×{rotation_repetition}（共 {n_lenses} 枚）')
+
+    # 镜像后实际孔数：`x == 0` 上的孔在镜像时落在自己身上（CST 的 unite 会吞掉重复）
+    on_axis = sum(1 for hole in items if abs(hole['center'][0]) < 1e-12)
+    n_total = 2 * len(items) - on_axis
+
+    return {'name': clip_name, 'holes_name': holes_name,
+            'clip_name': clip_name, 'component': component,
+            # 本路线**没有**旧脚本要兼容 ⇒ 整枚透镜就在 `component` 里
+            'entity_component': component,
+            'n_holes': len(items), 'n_holes_quadrant': len(items),
+            'n_holes_total': n_total, 'n_holes_on_axis': on_axis,
+            'radius_outer': holes['radius_outer'], 'd0': holes['d0'],
+            'hex_size': holes['hex_size'], 'a2': holes['a2'],
+            'layers': holes['n_layers'], 'placed': bool(place),
+            'n_lenses': n_lenses, 'holes_generated': True,
+            'holes_imported': False, 'method': 'insitu',
+            'self_rotation': self_rotation}

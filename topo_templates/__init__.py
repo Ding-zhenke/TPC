@@ -13,15 +13,24 @@ topo_templates — 拓扑光子晶体端到端模板
 
 用法::
 
-    from topo_templates import StraightWaveguide, UnitAntenna
+    from topo_templates import (StraightWaveguide, UnitAntenna,
+                                GRINLensAntenna, MultiPortAntenna)
 
 @author: PC
 """
 
 from topo_templates.straight_waveguide import StraightWaveguide
 from topo_templates.unit_antenna import UnitAntenna
+from topo_templates.grin_lens_antenna import GRINLensAntenna
+from topo_templates.multiport_antenna import MultiPortAntenna
+from topo_templates.mzi_switch import MZISwitch
+from topo_templates.power_divider import PowerDivider
 
 __all__ = [
     "StraightWaveguide",
     "UnitAntenna",
+    "GRINLensAntenna",
+    "MultiPortAntenna",
+    "MZISwitch",
+    "PowerDivider",
 ]

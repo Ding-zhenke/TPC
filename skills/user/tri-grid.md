@@ -36,3 +36,7 @@ applyTo: "**/*.py"
 from mesh_grid.tri_grid import build_triangle_lattice
 triangles, centers_up, centers_dn, _, _ = build_triangle_lattice((0, 3), (0, 4), 1.0)
 ```
+
+## 中文绘图约定
+
+预览已接入自动字体检测。自定义 Matplotlib 图在创建 Figure 前使用 `mesh_grid.plotting.chinese_plot_style(text=实际中文标签, strict=True)`，在上下文内保存。无字体时设置 TPC_CJK_FONT 或用英文标签，不忽略缺字警告。见 [中文绘图指南](../../docs/guides/chinese_plotting.md)。

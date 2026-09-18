@@ -62,8 +62,14 @@ class ParametersMixin:
         :param value: float/str, 参数赋值
         :param log_flag: int, 刷新标识 0-不刷新历史 1-全量刷新工程历史使参数立即生效
         :param expression: str, 参数说明文本（常用于备注），默认空字符串
+
+        ⚠️ 参数名、表达式、说明文本会先过一遍 :mod:`cst_solver.expressions` 的
+        校验；发现问题时记进**结构化失败通道**（``cst_solver.failures``）并照旧
+        下发 —— 旧 notebook 的行为一字不变，需要硬拦截就开
+        ``cst_solver.failures.set_failure_strict(True)``。
         """
         state = self._guard()
+        self._check_parameter_inputs(name, value, expression)
         preexisting = state.param_existed(name)     # 必须在写入之前问
 
         self.cst_file.model3d.StoreParameter(f"{name}", value)
@@ -73,6 +79,47 @@ class ParametersMixin:
             self.cst_file.model3d.full_history_rebuild()
         state.mark_params_changed([name], rebuilt=(log_flag == 1),
                                   preexisting=[preexisting])
+
+    def _check_parameter_inputs(self, name, value, expression=''):
+        """
+        参数名 / 表达式 / 说明文本的自查（P1：表达式和名称校验）。
+
+        只**记录结构化失败**，不抛异常、不改变下发内容：既有 notebook 里哪怕
+        有非常规写法也照旧跑；要硬拦截就开
+        ``cst_solver.failures.set_failure_strict(True)``。
+        表达式检查**不做参数表引用检查**（此刻参数表可能还没建全，
+        例如 ``para('l1', '0.65*a')`` 里的 ``a`` 可能稍后才定义）。
+
+        :param name: 参数名
+        :param value: 参数值（字符串按 CST 表达式校验）
+        :param expression: str, 说明文本（按「VBA 字符串字面量内的文本」校验）
+        """
+        from cst_solver.expressions import check_expression, check_name, check_vba_text
+        from cst_solver.failures import record_failure
+
+        name_check = check_name(name, kind='parameter')
+        if not name_check.ok:
+            record_failure('para', name_check.errors[0]['code'],
+                           f'参数名不合法：{name_check.errors[0]["message"]}',
+                           log=False, field='name', value=name,
+                           issues=name_check.to_dict()['errors'])
+
+        if isinstance(value, str):
+            expr_check = check_expression(value)
+            if not expr_check.ok:
+                record_failure('para', expr_check.errors[0]['code'],
+                               f'参数表达式不合法：{expr_check.errors[0]["message"]}',
+                               log=False, field='value', value=value,
+                               issues=expr_check.to_dict()['errors'])
+
+        if expression:
+            text_check = check_vba_text(expression)
+            if not text_check.ok:
+                record_failure('para', text_check.errors[0]['code'],
+                               f'参数说明文本不合法（会破坏 VBA 字面量）：'
+                               f'{text_check.errors[0]["message"]}',
+                               log=False, field='expression',
+                               issues=text_check.to_dict()['errors'])
 
     def _set_parameter_description(self, name, description):
         """

@@ -8,6 +8,14 @@
 
 | 我的目的 | 读哪份 |
 |---|---|
+| 配置 CST、检查接口、排查会话关闭问题 | [环境与生命周期](./guides/cst_environment.md) |
+| Matplotlib 中文缺字、负号或导出字体问题 | [中文绘图](./guides/chinese_plotting.md) |
+| 同类 Python 库的功能采纳依据 | [开源库调研](./research/cst_python_libraries.md) |
+| 将 Python 包与面向 AI 的 CST MCP 分层交付 | [双入口架构](architecture/cst_mcp.md)（MCP 首版已实现，离线验证） |
+| **让 AI 客户端接上 CST**（MCP 服务、11 个工具、客户端配置、BA 直波导示例） | [`packages/cst_mcp.md`](./packages/cst_mcp.md) + [`../integrations/cst-mcp/README.md`](../integrations/cst-mcp/README.md) |
+| **建模前先离线预检**配置（不启 CST、不建 DE） | [`packages/topo_modeler.md`](./packages/topo_modeler.md) 的「配置/建模预检」小节 |
+| 求解「返回了」和「算完了、结果是本次的」怎么分 | [`packages/cst_solver.md`](./packages/cst_solver.md) 的「运行契约」小节 |
+| **让 AI/脚本按任务提交建模与求解、查状态与产物**（工程注册、串行、去重、恢复、取消） | [`packages/tpc_service.md`](./packages/tpc_service.md) |
 | **第一次接触这个项目**，想知道有哪些包、各干什么 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) ← **从这里开始** |
 | 深入看某个包的设计与 API | [`packages/`](./packages/) 下对应的一份 |
 | **用库建模型**（写 notebook、排错、验收） | [`../skills/user/tpc-usage.md`](../skills/user/tpc-usage.md) |
@@ -31,7 +39,9 @@ docs/
 │   ├── mesh_grid.md                  晶格/网格算法层
 │   ├── topo_modeler.md               建模引擎层
 │   ├── topo_templates.md                  端到端模板层
-│   └── tpc_toolkit.md                独立工具层
+│   ├── tpc_toolkit.md                独立工具层
+│   ├── tpc_service.md                共用运行服务层（工程注册 + 任务服务）
+│   └── cst_mcp.md                    CST MCP 集成层（发行名 tpc-cst-mcp，独立发行项目）
 │
 ├── guides/                           面向「怎么用」的指南
 │   ├── index.md                      指南索引
@@ -42,8 +52,10 @@ docs/
 │       ├── hex_grid_api.html
 │       └── tri_grid_api.html
 │
-└── next_plan/                        改善计划（阶段实施计划 + TODO 清单）
-    └── README.md                     计划索引与阶段状态
+├── architecture/cst_mcp.md           Python + MCP 双入口设计（MCP 首版已实现）
+├── research/                        开源调研与采纳依据
+├── validation/                      真实验收记录（不作为计划）
+└── next_plan/README.md               唯一未完成计划
 ```
 
 ---

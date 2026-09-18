@@ -153,3 +153,7 @@ cython_debug/
 
 # CST Solver 本地配置文件（每台机器不同）
 cst_solver/config.py
+
+# CST MCP / 服务层运行产物（任务记录、S 参数 CSV、HTML 报告；含本机路径）
+tpc_mcp_work/
+fake_sparams_job.csv

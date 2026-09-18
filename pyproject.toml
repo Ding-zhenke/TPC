@@ -78,12 +78,15 @@ include = [
     #    约定保留一个版本周期；到期删除时连同这一行一起删。
     "templates",
     "tpc_toolkit*",
+    # P2 共用运行服务层（工程注册 + 任务服务；不依赖 MCP）
+    "tpc_service*",
 ]
 exclude = [
     # 各包的 tests/ 目录都不是包（没有 __init__.py），这里显式排除以防将来被误加
     "mesh_grid.tri_grid.tests*",
     "topo_modeler.tests*",
     "cst_solver.tests*",
+    "tpc_service.tests*",
 ]
 
 [tool.setuptools]
@@ -97,6 +100,6 @@ cst_solver = ["py.typed", "*.pyi", "simulation/*.pyi"]
 # ============================================================
 [tool.pytest.ini_options]
 testpaths = ["tests", "mesh_grid/tri_grid/tests", "cst_solver/tests",
-             "topo_modeler/tests", "topo_templates/tests"]
+             "topo_modeler/tests", "topo_templates/tests", "tpc_service/tests"]
 python_files = ["test_*.py"]
 addopts = "-q"

@@ -4,14 +4,17 @@
 ==============================
 对应 `topo_modeler/result_reader.py`。
 
-**为什么不用真 .cst**：本机没有任何「已存结果可读」的工程（阶段 4 已查明参考工程的
-`Result/` 只有 0.3 MB / 8 个文件），而造一个需要跑一次完整时域求解（约 5300 s CPU）。
-所以这里用**假的 Result 对象**验证 `ResultReader` 的全部逻辑 ——
-`ResultReader(source)` 本来就把「读哪个工程」与「怎么读」解耦了。
+**为什么不用真 .cst**：本文件用**假的 Result 对象**验证 `ResultReader` 的逻辑 ——
+`ResultReader(source)` 本来就把「读哪个工程」与「怎么读」解耦了，逻辑测试不需要真结果。
 
-⚠️ 仍未验证的部分：`source` 是**真 .cst 路径**时，`cst_solver.Result(...)` 的实际
-读取路径（阶段 5 的 `read_all_s_parameters()` / `export_s_parameters_csv()`）。
-那需要在有结果的工程上跑一次，已登记为未验证风险。
+✅ **真 .cst 路径那条风险已关闭（2026-09-17）**：原先这里写着「本机没有任何『已存结果可读』
+的工程 …… `cst_solver.Result(...)` 的实际读取路径未验证」。复查发现该前提不成立 ——
+参考工程 `普通单元天线\Ant1_D_BA_120_Feed_antenna-DF.cst` **真的有求解结果**
+（31 个结果树条目、run ids `[0, 1]`、`S1,1` 曲线 1001 点 / 300–380 GHz），
+而 CST 的 `cst.results` **不需要运行中的 CST**。于是这条风险**离线**关掉了：
+真路径回归见 `tests/test_result_reading_real_project.py`（7 项，含只读性快照比对与
+「缺项必须报错」），人可读版本见 `python scripts/verify_result_reading.py`
+（实测 OK 12 / FAIL 0 / UNKNOWN 0）。
 
 运行方式::
 

@@ -27,7 +27,7 @@ wg.save()         # 保存 .cst
 
 | 层次 | 入口 | 什么时候用 | 代价 |
 |---|---|---|---|
-| **① 模板层** | `topo_templates.StraightWaveguide` / `UnitAntenna` | 建的就是这两种标准器件，只想填参数 | 器件形状被模板限定 |
+| **① 模板层** | `topo_templates.StraightWaveguide` / `UnitAntenna` | 建的就是这两种标准器件，只想填参数 | 器件形状被模板限定（`bend_angle` = 两侧臂张角，120 的整数倍，已按张角口径实现并与参考工程逐位对齐；见 §2） |
 | **② Modeler 层** | `topo_modeler.TopoModeler` + `TopoPath` | 器件形状自定义，但仍想用标准流水线 | 要自己写路径与参数 |
 | **③ Builder 层** | `topo_modeler.builders.*` | 只要一两个部件，或要插进自己的流程 | 全都要自己编排 |
 
@@ -67,7 +67,7 @@ wg.preview(); wg.build_all(); wg.save()
 from topo_templates import UnitAntenna
 
 ant = UnitAntenna(
-    bend_angle=120,          # 拐弯角度（60 的倍数；0 = 直波导型）
+    bend_angle=120,          # 张角（两侧臂夹角，120 的整数倍；0 = 直波导型）
     straight_length=18,      # 直段长度（晶格数）
     arm_length=14,           # 臂长（拐弯后长度，晶格数）
     topology='BA',           # 天线默认 BA
@@ -79,9 +79,31 @@ ant = UnitAntenna(
 ant.preview(); ant.build_all(); ant.save()
 ```
 
-> ⚠️ **模板类目前有已知限制**：端到端 `build_all()` 的验收（与参考工程对比几何）
-> 尚在进行中；`run()` 需要 CST 环境。详见
-> [`../../docs/next_plan/stages/04_阶段4_验收与缺陷清账.md`](../../docs/next_plan/stages/04_阶段4_验收与缺陷清账.md)。
+> ✅ **`UnitAntenna` 现在已可建模（2026-09-17，P4/V1 真机验证）。**
+> 阵列范围与路径映射已按参考工程统一（`xup = straight_length + int(arm_length/2)`，
+> BA 再 `+1`；`yup = ydn = arm_length`；默认参数 AB `(25,14,14)` / BA `(26,14,14)`，
+> 与参考工程逐值相同），此前**弯折路径**下 `build_all()` 会卡在 `build_substrate` 一步、
+> 报 `(&H8000ffff) The specified curve is not closed and planar.`；该缺陷已修 ——
+> 偏移改为按**段法向 + miter**，且弯折路径改为「**每段一个四边形 + 拐角补块**，再布尔并」
+> （单条带多边形在折回路径上会自覆盖，表达不了）。
+> 真机上 AB / BA 两种拓扑各 **8/8 通过**，`build_substrate` 与 `build_vpc_regions` 两步
+> 均**成功且 0 条 CST 消息**；直线路径（含 `bend_angle=0`）产物与旧实现逐字节相同。
+> ⚠️ **但那次真机验证跑的是改语义之前的臂方向**（`turn(120)`，路径 `[(0,-1),(0,18),(14,4)]`）；
+> 2026-09-17 改成张角口径后臂方向变了（`turn(±60)`），
+> **新的弯折路径尚未做过真机建模核验** —— 需要补跑一次（分钟级，不求解）。
+> ⚠️ **语义与实现（2026-09-17 离线逐位比对后修正）**：`bend_angle` 是**张角**（两侧臂夹角），
+> 单臂相对直段的偏角 = `bend_angle/2`，符号按拓扑取（AB 朝 +y、BA 朝 −y，互为镜像）。
+> 参考 notebook 文件名的数字就是它：`120D` ⇔ `bend_angle=120`（臂端 `(6.0625, ±2.9402)`，
+> 与参考工程 `px3/py3` **逐位相同**）、`240D` ⇔ `240`。
+> 因此合法值收紧为 **120 的整数倍**（`60/180/300` 会让单臂落在 30°/90°/150°，不是晶格方向，会报错）。
+> ⚠️ 拐角补块基于「带宽远小于段长」的常规用量；把 `y_margin` 取到远大于段长属于输入不当，
+> 自交仍可能出现（不在保证范围内）。
+> 详见 [`../../docs/packages/topo_templates.md`](../../docs/packages/topo_templates.md) §4.5–§4.7 / §6.5，
+> 实测证据 [`../../docs/validation/p4_real_machine_evidence.md`](../../docs/validation/p4_real_machine_evidence.md) §4.3/§4.4。
+>
+> ⚠️ 此外，模板的端到端 `build_all()` 验收（与参考工程对比几何）仍在进行中；
+> `run()` 需要 CST 环境。详见
+> [`../../docs/next_plan/README.md`](../../docs/next_plan/README.md)。
 
 ---
 
@@ -215,7 +237,8 @@ app.cst_file.model3d.Rebuild()         # 阻塞式重放历史，最能暴露问
 print(app.cst_file.get_messages())     # 必须为空
 ```
 
-**CST 不抛异常**，跑通 ≠ 建模正确。完整验收清单见
+**CST 失败有两条通道**（非法 VBA 可能直接抛异常，也可能只写消息），且**消息为空只在干净工程里可信**
+—— 历史里留过一条失败命令后，`get_messages()` 会反复报它。跑通 ≠ 建模正确。完整验收清单见
 [`tpc-usage.md`](./tpc-usage.md) 与 [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) §6。
 
 ---
@@ -225,12 +248,14 @@ print(app.cst_file.get_messages())     # 必须为空
 | 现象 | 原因 | 处理 |
 |---|---|---|
 | `FileNotFoundError: tmp.cst` | 模板不在当前工作目录 | 把 `tmp.cst` 放到 notebook 同目录，或传绝对路径 |
-| `ModuleNotFoundError: No module named 'cst'` | 未配 CST 路径 | 复制 `cst_solver/config_template.py` 为 `config.py`，改 `CST_INSTALL_PATH` |
+| `ModuleNotFoundError: No module named 'cst'` | 未配 CST 路径 | 设置环境变量 `CST_INSTALL_PATH`，运行 `python -m cst_solver doctor --probe` |
 | `RuntimeError: 符号路径无法…` | 符号路径没给 `param_values` | `.build(param_values={'x1': 18, ...})` |
 | `ValueError: topology 必须是…` | 传了 `'ab'` / `'BA '` 之类 | 严格用 `'AB'` 或 `'BA'` |
 | `ValueError: side 必须是…` | `build_vpc_area_polygon(side=...)` 传错 | 只能 `'upper'` / `'lower'` |
 | `ValueError: 不支持的 calculation_type` | 求解器类型写错 | 用 §4 列出的 5 个取值 |
 | 布尔运算「成功」但结果是空集 | z 平面/绕向不对，或阵列范围没覆盖 | 查 §5 三条硬约定 |
+| `The specified curve is not closed and planar.` | **弯折路径**的偏移多边形自交（旧的 `build_substrate_polygon()` / `build_vpc_area_polygon()` 只做 y 向偏移，拐弯处两条链互相穿插；本质是恒定宽度的整条带在折回路径上会自覆盖） | ✅ **已修（2026-09-17）**：升级到含修复的版本即可 —— 偏移改为段法向 + miter，弯折路径改走 `build_segment_band_polygons()`（逐段四边形 + 布尔并），`UnitAntenna` 真机 8/8 通过。**旧版本仍会命中此报错**；仍看到它请先确认版本，见 [`../../docs/packages/mesh_grid.md`](../../docs/packages/mesh_grid.md) §4.5 第 9 条 |
+| `Invalid number of repetitions` | 阵列范围 `yup` / `ydn` 太小（`crystal.py` 下发 `int(yup/2)` / `int(ydn/2)`，等于 1 时就是 0 次复制） | 显式传 `xup/yup/ydn`（模板已改为参考工程公式，见 §2） |
 | `AttributeError: 'TopoModeler' object has no attribute ...` | 调了阶段 4/5 才实现的方法 | `build_lens` / `read_results` / `plot_results` 目前会抛 `NotImplementedError` |
 
 ---
@@ -243,3 +268,7 @@ print(app.cst_file.get_messages())     # 必须为空
 - 包设计与完整 API → [`../../docs/packages/topo_modeler.md`](../../docs/packages/topo_modeler.md)
 - 阶段 0-3 详细指南 → [`../../docs/guides/topo_modeler_guide_stage0-3.md`](../../docs/guides/topo_modeler_guide_stage0-3.md)
 - 后续计划与阻塞项 → [`../../docs/next_plan/README.md`](../../docs/next_plan/README.md)
+
+## 中文绘图约定
+
+预览已接入自动字体检测。自定义 Matplotlib 图在创建 Figure 前使用 `mesh_grid.plotting.chinese_plot_style(text=实际中文标签, strict=True)`，在上下文内保存。无字体时设置 TPC_CJK_FONT 或用英文标签，不忽略缺字警告。见 [中文绘图指南](../../docs/guides/chinese_plotting.md)。

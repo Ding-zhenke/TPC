@@ -2,7 +2,7 @@
 """
 波导端口 VBA 生成回归测试
 =========================
-对应实施计划 `docs/next_plan/stages/05_阶段5_库加固与借鉴落地.md` 的 5.8（优先级 1）。
+对应实施计划 `docs/next_plan/README.md` 的 5.8（优先级 1）。
 
 守住什么
 --------
@@ -34,11 +34,7 @@ _TPC_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if _TPC_ROOT not in sys.path:
     sys.path.insert(0, _TPC_ROOT)
 
-try:
-    from cst_solver.simulation.ports import PortMixin
-except Exception as _exc:                      # pragma: no cover - 环境相关
-    pytest.skip(f"需要可导入的 cst_solver（含 CST python 库）：{_exc!r}",
-                allow_module_level=True)
+from cst_solver.simulation.ports import PortMixin
 
 
 _FIXTURE = os.path.join(os.path.dirname(__file__), 'data', 'expected_port_vba.json')

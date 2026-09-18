@@ -16,7 +16,7 @@
 | **职责** | S 参数解析与筛选、遗传算法算子与种群落盘、六边形/等效介质公式 |
 | **需要 CST** | ❌ 不需要（**并且禁止**引入 CST 依赖，见 §7） |
 | **入口** | `from tpc_toolkit import s2p, ga_optimizer, effective_medium`；或直接 `from tpc_toolkit.s2p import read_s2p_groups` |
-| **依赖** | numpy、matplotlib（必需）；scipy、shapely、ezdxf（声明为可选，但当前实际是硬依赖，见 §7）；另在模块级导入 `mesh_grid.hex_grid` |
+| **依赖** | numpy、matplotlib；GA 绘图复用 mesh_grid.plotting；纯等效介质公式只依赖 numpy |
 | **被谁依赖** | 库内无其它包依赖它；只有用户脚本 / notebook 使用 |
 | **源码位置** | `tpc_toolkit/__init__.py`、`tpc_toolkit/s2p.py`、`tpc_toolkit/ga_optimizer.py`、`tpc_toolkit/effective_medium.py` |
 | **公开 API** | AST 统计：0 个类、**18 个模块级函数**：`s2p` 4 个 + `ga_optimizer` 8 个 + `effective_medium` 6 个 |
@@ -60,20 +60,55 @@
 
 ---
 
-## 2. 三个模块总览
+## 2. 四个模块总览
 
 | 模块 | 原文件名 | 职责 | 依赖 | 公开函数数 |
 |---|---|---|---|---|
 | `tpc_toolkit.s2p` | `read.py` | 解析 CST 导出的 s2p「参数分组」文本；按频率范围 / 阈值条件筛选参数组；把筛选结果映射回原始列号 | `numpy`、`re`（标准库） | **4** |
 | `tpc_toolkit.ga_optimizer` | `optimizer.py` | 遗传算法算子（种群初始化 / 选择 / 交叉 / 变异）、种群分代落盘、0-1 拓扑结构可视化（矩形与六边形两种）、S 参数适应度计算 | `numpy`、`matplotlib`（`pyplot` + `patches` + `AutoMinorLocator`）、`mesh_grid.tri_grid`（未使用）、`mesh_grid.hex_grid`（用 `HexGridVisualizer`） | **8** |
-| `tpc_toolkit.effective_medium` | `metalen.py` | 六边形面积（由边长 / 由晶格常数）、两种等效介电常数公式、介电常数→折射率、透镜上某点的补偿相位 | `numpy`、`matplotlib`（设中文字体 rcParams）、`scipy.signal`（未使用）、`tqdm`（未使用）、`mesh_grid.hex_grid`（5 个符号全部未使用） | **6** |
-| **合计** | — | — | — | **18** |
+| `tpc_toolkit.effective_medium` | `metalen.py` | 六边形面积（由边长 / 由晶格常数）、两种等效介电常数公式、介电常数→折射率、透镜上某点的补偿相位 | `numpy` | **6** |
+| `tpc_toolkit.curves` | —（2026-09-17 新增） | S 参数曲线判据：连续合格区间、谐振提取（prominence 过滤）、谐振**配对**与「谐振峰偏差 < 1 GHz」判据（V3） | 仅 `typing`（标准库） | **4** |
+| **合计** | — | — | — | **22** |
 
-`tpc_toolkit/__init__.py` 会**一次性导入全部三个子模块**：
+`tpc_toolkit/__init__.py` 会**一次性导入全部子模块**：
 
 ```python
-from tpc_toolkit import effective_medium, ga_optimizer, s2p
+from tpc_toolkit import curves, effective_medium, ga_optimizer, s2p
 ```
+
+### 2.1 `tpc_toolkit.curves` —— 曲线判据的**唯一实现**
+
+为什么单独抽出来：这些规则原本**有两份**（`cst_mcp/analysis.py` 与
+`topo_modeler/result_reader.py` 各一套），属于 `skills/developer/conventions.md`
+明令禁止的「同一数值规则两处实现」。现在只有这一份，库层与 MCP 层都调它：
+
+| 函数 | 作用 |
+|---|---|
+| `contiguous_bands(freqs, values, threshold_db=…, criterion='below'/'above', max_gap_ghz=…)` | 连续合格区间：只按**相邻采样点**合并，绝不跨越不合格点；`max_gap_ghz` 用于「频差过大就断开」 |
+| `find_resonances(freqs, values, kind='min'/'max', min_prominence_db=…, band=…)` | 局部极值（相邻三点比较）+ prominence 过滤（`prominence_db` 取相对两侧较不利一方的幅度） |
+| `match_resonances(first, second, tolerance_ghz=…)` | 把两条曲线的极值**按频率就近、一对一**配对（V3 要求的「可比曲线」） |
+| `resonance_criterion(first, second, limit_ghz=1.0, …)` | **计划 P4/V3 判据的可执行版本**：配对 → 算频差 → 与限值比较。配不上任何峰时 `ok=False, reason='no_matched_resonance'` —— **不把「没配上」当通过** |
+
+用法（MCP 层与库层都在用）：
+
+```python
+from tpc_toolkit.curves import find_resonances, resonance_criterion
+
+peaks_ref = find_resonances(freqs, s11_db, min_prominence_db=0.5, band=(330, 360))
+verdict = resonance_criterion(peaks_ref, peaks_other, limit_ghz=1.0)
+verdict['ok'], verdict['max_delta_ghz'], verdict['reason']
+```
+
+* MCP 层：`cst_mcp.analysis.find_resonances` / `contiguous_bands` 是这里的**薄包装**
+  （只把 `ValueError` 翻成 `invalid_arguments` 错误码）；
+* 库层：`topo_modeler.ResultReader.resonances()` / `resonance_shift()` 走同一规则
+  （`peak_position` / `peak_shift` 保留旧的「全带单一极值」语义，并在 docstring 里说明区别）。
+
+真数据证据：[P4 记录](../validation/p4_real_machine_evidence.md) §8.2
+（5 个参考工程的真实曲线、24 项全绿、跨层规则逐条一致）；回归：
+`tests/test_curve_rules.py`。
+
+真数据验证脚本：`python scripts/verify_resonance_criterion.py`（离线，只读已求解工程）。
 
 所以 `import tpc_toolkit` 就等于把 numpy / matplotlib / scipy / tqdm 以及
 `mesh_grid.hex_grid`（连带 ezdxf、shapely）全部拉起来——想省掉这些开销时，
@@ -370,8 +405,8 @@ Python GA 模块是 `archive/matlab/` 下四个脚本的移植。
 ## 5. `tpc_toolkit.effective_medium` —— 等效介质
 
 源码：`tpc_toolkit/effective_medium.py`（139 行），6 个函数。
-本模块顶部把 matplotlib 的中文字体设成 `SimHei`、并关掉负号方块问题
-（`plt.rcParams` 两行），属于**导入即生效的全局副作用**，调用方需知悉。
+本模块导入时不全局修改 matplotlib 字体。绘制含中文的图前调用
+`mesh_grid.plotting.configure_chinese_font()`；该函数会选取系统可用的中文字体并处理负号显示。
 
 ### 5.1 公式与推导
 
@@ -644,3 +679,7 @@ import tpc_toolkit          # → ImportError: scipy
 - 总体架构与依赖方向（含「工具层不依赖 CST」的旁路定位）→ [`../ARCHITECTURE.md`](../ARCHITECTURE.md)
 - 晶格算法层（本包在模块级导入的 `mesh_grid.hex_grid`）→ [`../packages/mesh_grid.md`](../packages/mesh_grid.md)
 - 开发者工作流（归属判定、验收清单、文档同步、禁止事项）→ [`../../skills/developer/WORKFLOW.md`](../../skills/developer/WORKFLOW.md)
+
+## 中文图
+
+`plot_single_pop()` 使用共用中文字体配置；`effective_medium` 导入不再修改全局字体。自定义绘图见 [中文绘图指南](../guides/chinese_plotting.md)。

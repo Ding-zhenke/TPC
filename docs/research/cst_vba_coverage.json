@@ -1,0 +1,96 @@
+{
+  "source": "C:\\SOFTWARE\\CST Studio Suite 2026\\Online Help",
+  "offline_only": true,
+  "rows": [
+    {
+      "capability": "modeling",
+      "help_pages": 31,
+      "help_families": [
+        "common_vbabasicsolids",
+        "common_vbacurves",
+        "common_vbaextrude",
+        "common_vbaloft"
+      ],
+      "wrapper_files": [
+        "cst_solver\\modeling"
+      ],
+      "status": "partial"
+    },
+    {
+      "capability": "postprocessing",
+      "help_pages": 27,
+      "help_families": [
+        "common_vbapostproc",
+        "special_vbapostproc"
+      ],
+      "wrapper_files": [
+        "cst_solver\\postprocessing",
+        "cst_solver\\_result_core.py"
+      ],
+      "status": "partial"
+    },
+    {
+      "capability": "ports",
+      "help_pages": 8,
+      "help_families": [
+        "special_vbaports"
+      ],
+      "wrapper_files": [
+        "cst_solver\\simulation\\ports.py"
+      ],
+      "status": "partial"
+    },
+    {
+      "capability": "monitors",
+      "help_pages": 15,
+      "help_families": [
+        "special_vbamonitors"
+      ],
+      "wrapper_files": [
+        "cst_solver\\simulation\\monitors.py"
+      ],
+      "status": "partial"
+    },
+    {
+      "capability": "solvers",
+      "help_pages": 41,
+      "help_families": [
+        "special_vbasolver",
+        "special_vbaparametersweep",
+        "special_vbatransientsolvers",
+        "special_vbastaticsolver",
+        "special_vbathermalsolver"
+      ],
+      "wrapper_files": [
+        "cst_solver\\simulation\\solver.py"
+      ],
+      "status": "partial"
+    },
+    {
+      "capability": "import_export",
+      "help_pages": 24,
+      "help_families": [
+        "common_vbaimpexp"
+      ],
+      "wrapper_files": [
+        "cst_solver\\import_export"
+      ],
+      "status": "partial"
+    },
+    {
+      "capability": "coordinates",
+      "help_pages": 4,
+      "help_families": [
+        "common_vbaunitso",
+        "common_vbawcso",
+        "common_vbapicko"
+      ],
+      "wrapper_files": [
+        "cst_solver\\modeling\\wcs.py",
+        "cst_solver\\modeling\\picks.py",
+        "cst_solver\\units.py"
+      ],
+      "status": "partial"
+    }
+  ]
+}

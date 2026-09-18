@@ -67,7 +67,8 @@ class StraightWaveguide:
                  x0=4, wf1=0.2, lf1=0.2, lf2=3.0, lf3=0.2,
                  wg_a=0.7312, wg_b=0.3756, wg_t=0.2,
                  freq_range=(300, 380), monitors=('E',),
-                 template_cst='tmp.cst', output_path=None):
+                 template_cst='tmp.cst', output_path=None,
+                 feed_params=None):
         """
         :param x0: float, 探针起点（晶格数），参考模型 AB_feed.ipynb 为 4
         :param wf1: float, 探针宽度（mm），参考为 0.2
@@ -77,6 +78,9 @@ class StraightWaveguide:
         :param wg_a: float, 空心波导内腔 z 向高度（mm），参考为 0.7312
         :param wg_b: float, 空心波导内腔 y 向宽度（mm），参考为 0.3756
         :param wg_t: float, 波导壁厚（mm），参考为 0.2
+        :param feed_params: dict 可选, **BA 族馈源参数的覆盖入口**
+            （`feed_type='ba_tapered'` 时用）：`wf2 / lf4 / lf5 / lf6 / x01`。
+            AB 族那五个 `x0 / wf1 / lf1 / lf2 / lf3` 本身就是构造参数，不需要走这里。
 
         注：feed / waveguide 的默认值取自参考模型 ``AB_feed.ipynb`` 的 CST 参数，
         以保证默认参数下几何与参考工程一致（差异 < 0.1%）。
@@ -106,6 +110,8 @@ class StraightWaveguide:
         self.wg_a = wg_a
         self.wg_b = wg_b
         self.wg_t = wg_t
+        #: BA 族馈源参数覆盖（见 ctor docstring；AB 族直接走上面的构造参数）
+        self.feed_params = self._check_feed_params(feed_params)
 
         # 三角晶格几何参数
         self.e1 = self.a / 2
@@ -151,6 +157,26 @@ class StraightWaveguide:
 
     # ---- CST 参数定义 ----
 
+    #: `feed_params` 允许覆盖的参数名（只用于 BA 族；AB 族本身是构造参数）
+    _FEED_PARAM_NAMES = {
+        'ba_tapered': ('x01', 'wf2', 'lf4', 'lf5', 'lf6'),
+        'ab_elliptical': (),
+    }
+
+    def _check_feed_params(self, feed_params):
+        """校验 `feed_params` 的键名 —— **写错的键必须报错**（不静默忽略）。"""
+        params = dict(feed_params or {})
+        if not params:
+            return params
+        allowed = set(self._FEED_PARAM_NAMES.get(self.feed_type, ()))
+        unknown = sorted(set(params) - allowed)
+        if unknown:
+            raise ValueError(
+                f'feed_params 里有未知参数名 {unknown}；'
+                f'feed_type={self.feed_type!r} 时可覆盖：{sorted(allowed)}'
+                f'（AB 族的 x0/wf1/lf1/lf2/lf3 请直接用同名构造参数）')
+        return params
+
     def _define_all_params(self):
         """定义所有 CST 参数（基础 + 路径 + 阵列 + feed + waveguide）。"""
         app = self.app
@@ -171,12 +197,31 @@ class StraightWaveguide:
         app.para('yup', self.yup)
         app.para('ydn', self.ydn)
 
-        # feed 参数（AB 型椭圆探针，默认值与参考模型 AB_feed.ipynb 一致）
-        app.para('x0', self.x0)
-        app.para('wf1', self.wf1)
-        app.para('lf1', self.lf1)
-        app.para('lf2', self.lf2)
-        app.para('lf3', self.lf3)
+        # feed 参数：**按 `feed_type` 登记对应的馈源族**
+        #
+        #   AB 型椭圆探针（feed1）：x0 / wf1 / lf1 / lf2 / lf3
+        #   BA 型渐变探针（feed2）：x01 / wf2 / lf4 / lf5，**并且必须登记 lf6**
+        #     —— 因为 BA 族的铜波导范围是 `[-lf5-lf6-lf4, -lf4]`，引用 lf6。
+        #
+        # ⚠️ 2026-09-17（P5/P0 迁移取证时发现）：此前本模板**只登记 AB 族**，
+        #    于是 `StraightWaveguide(feed_type='ba_tapered')` 会让 BA 探针的多边形
+        #    引用未定义的 wf2/lf4/lf5 —— CST 遇到未定义参数会弹「请输入变量值」
+        #    **模态对话框把脚本挂住**（不是抛异常，见 P4/V6 的 Rbig/Ls 教训）。
+        #    参考工程佐证：`直波导\BA\优化后的\BA_feed_epc.ipynb` 建的正是 `feed2`
+        #    + `square('-lf5-lf6-lf4','-lf4',...)` 的 BA 族。
+        if self.feed_type == 'ba_tapered':
+            from topo_modeler.builders import register_multiport_params
+            fp = self.feed_params
+            register_multiport_params(
+                app, wf2=fp.get('wf2', 0.2), lf4=fp.get('lf4', 0.2),
+                lf5=fp.get('lf5', 3.0), lf6=fp.get('lf6', 0.2))
+            app.para('x01', fp.get('x01', 0))
+        else:
+            app.para('x0', self.x0)
+            app.para('wf1', self.wf1)
+            app.para('lf1', self.lf1)
+            app.para('lf2', self.lf2)
+            app.para('lf3', self.lf3)
 
         # waveguide 参数（铜波导尺寸，默认值与参考模型一致）
         app.para('wg_a', self.wg_a)
@@ -228,9 +273,11 @@ class StraightWaveguide:
         vpca_name, vpcb_name = build_vpc_regions(app, self.path, y_margin=y_margin)
 
         # 5. 光子晶体阵列
+        #    阵列次数传**参数名**（历史里写 `int(xup)`/`int(yup/2)`/`int(ydn/2)`，
+        #    与参考 AB_feed 工程一致；旧行为是烘成 `int(25)`，参数形同备注）
         crystal_a_name, crystal_b_name = build_topological_crystal(
             app, self.path, topology=self.topology,
-            xup=self.xup, yup=self.yup, ydn=self.ydn)
+            xup='xup', yup='yup', ydn='ydn')
 
         # 6. 晶体阵列与 VPC 区域求交
         #    参考工程：vpca intersect g1A / vpcb intersect g1B
@@ -238,11 +285,19 @@ class StraightWaveguide:
         intersect_crystal_with_vpc(app, crystal_a_name, crystal_b_name,
                                    vpca_name, vpcb_name)
 
-        # 7. 馈源（AB 型椭圆探针）
-        feed_name = build_feed(app, feed_type=self.feed_type, name='feed1')
+        # 7. 馈源（默认 AB 型椭圆探针 feed1；BA 族用 feed2 —— 与参考工程同名）
+        ba_feed = self.feed_type == 'ba_tapered'
+        feed_name = build_feed(app, feed_type=self.feed_type,
+                               name='feed2' if ba_feed else 'feed1')
 
         # 8. 空心矩形波导
-        wg_name = build_waveguide(app, name='wg1')
+        #    AB 族用 `[-lf1-lf2-lf3, -lf1]`；BA 族的波导长在椭圆过渡段之外
+        #    ⇒ `[-lf5-lf6-lf4, -lf4]`，且 y 在轴线上（参考 BA_feed_epc 一致）
+        if ba_feed:
+            wg_name = build_waveguide(app, name='wg1', x_min='-lf5-lf6-lf4',
+                                      x_max='-lf4', y_center='0')
+        else:
+            wg_name = build_waveguide(app, name='wg1')
 
         # 9. mirror feed + waveguide 到右端（中心点 p2x/2，法向量 x）
         #     注：参考写 x1*a/2，与本库 p2x/2 数值相同（均为 4.365/2 = 2.1825）

@@ -2,7 +2,7 @@
 """
 cst_solver 守卫层与结构化验收单元测试
 =====================================
-对应实施计划 `docs/next_plan/stages/05_阶段5_库加固与借鉴落地.md` 的 5.1 / 5.2。
+对应实施计划 `docs/next_plan/README.md` 的 5.1 / 5.2。
 
 运行方式::
 
@@ -31,30 +31,25 @@ _TPC_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 if _TPC_ROOT not in sys.path:
     sys.path.insert(0, _TPC_ROOT)
 
-# cst_solver 的 __init__ 会把 CST 的 python_cst_libraries 加进 sys.path 并 import cst。
-# 没有装 CST 的机器上这套用例无法运行 —— 明确跳过并说明原因，不伪装成通过。
-try:
-    from cst_solver._guards import (
-        CstGuardError,
-        GuardFinding,
-        GuardState,
-        DEFAULT_GUARD_MODE,
-        FARFIELD_GAIN_MODES,
-        assert_gain_mode,
-        get_guard_mode,
-        get_guard_state,
-        reset_guard_state,
-        set_guard_mode,
-    )
-    from cst_solver.parameters import ParametersMixin
-    from cst_solver.project import ProjectMixin
-    from cst_solver.simulation.solver import SolverMixin
-    from cst_solver.postprocessing.plot import PlotMixin
-    from cst_solver.postprocessing.result_export import ExportMixin
-    from cst_solver.validation import ValidationMixin
-except Exception as _exc:                      # pragma: no cover - 环境相关
-    pytest.skip(f"需要可导入的 cst_solver（含 CST python 库）：{_exc!r}",
-                allow_module_level=True)
+# CST 接口按需加载；这些假后端用例不要求 CST，导入失败应当直接报错。
+from cst_solver._guards import (
+    CstGuardError,
+    GuardFinding,
+    GuardState,
+    DEFAULT_GUARD_MODE,
+    FARFIELD_GAIN_MODES,
+    assert_gain_mode,
+    get_guard_mode,
+    get_guard_state,
+    reset_guard_state,
+    set_guard_mode,
+)
+from cst_solver.parameters import ParametersMixin
+from cst_solver.project import ProjectMixin
+from cst_solver.simulation.solver import SolverMixin
+from cst_solver.postprocessing.plot import PlotMixin
+from cst_solver.postprocessing.result_export import ExportMixin
+from cst_solver.validation import ValidationMixin
 
 
 # ============================================================

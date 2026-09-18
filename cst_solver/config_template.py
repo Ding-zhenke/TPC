@@ -3,9 +3,12 @@
 CST Studio Suite 配置模板文件
 ==============================
 使用方法：
+    推荐通过环境变量 CST_INSTALL_PATH 或 CST_CONFIG_FILE（JSON）配置，
+    无需修改已安装的 Python 包。以下复制方式保留兼容。
     1. 将本文件复制为 config.py
     2. 修改 CST_INSTALL_PATH 为本机 CST 安装路径
     3. config.py 已加入 .gitignore，不会同步到 GitHub
+    本模板不再自动作为本机配置加载；未配置时自动发现常见安装目录。
 
 所有从属路径（Python库、材料库）均自动从 CST_INSTALL_PATH 推导。
     例如 CST_INSTALL_PATH = r"C:\SOFTWARE\CST Studio Suite 2026"

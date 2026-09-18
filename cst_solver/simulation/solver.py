@@ -134,6 +134,43 @@ End With"""
         get_guard_state(self).check_before_run()
         self.cst_file.model3d.run_solver()
 
+    def run_checked(self, project_path=None, *, sink=None, note='', probe=None,
+                    read_messages=True) -> dict:
+        """
+        契约化求解入口：提交求解，并返回**结构化运行结论**。
+
+        与 :meth:`run` 的区别（``docs/next_plan/README.md`` P1「运行/结果契约」）：
+
+        - :meth:`run` 只把 VBA 交下去、返回 ``None`` —— 「返回了」不代表「算完了」；
+        - 本方法在提交**前后各取一次结果指纹**，并要求
+          「提交未抛异常 + CST 消息为空 + 结果存在 + 结果指纹发生变化」
+          **同时成立**才算 ``status='succeeded'``，否则如实给出
+          ``failed`` / ``unverified``。
+
+        ⚠️ ``run()`` 的行为**一字未改**（仍返回 ``None``），本方法是 opt-in 的
+        契约入口；``results_changed`` 是必要条件而非充分条件，真机判据见 P4/V7。
+
+        :param project_path: str 可选, ``.cst`` 工程路径；默认从 ``cst_file`` 推断
+            （取不到时结论落到 ``unverified``，不会假装成功）
+        :param sink: 对象 可选, 有 ``write(record) -> path`` 的落盘器；
+            默认写工程目录下的 ``run_contract.jsonl``
+            （CST 消息读取即清空，不落盘就事后无据可查）
+        :param note: str, 本次运行备注，写进记录
+        :param probe: 可调用 可选, 自定义结果指纹探测函数
+        :param read_messages: bool, 是否在提交后读 CST 消息（默认 True）
+        :return: dict, 见 :meth:`cst_solver.run_contract.RunContract.after_submit`
+        """
+        from cst_solver.run_contract import (
+            JsonlSink, RunContract, project_path_of, run_log_path,
+        )
+
+        path = project_path or project_path_of(self)
+        if sink is None and path:
+            sink = JsonlSink(run_log_path(path))
+        contract = RunContract(path, probe=probe, sink=sink, tag='setup.run_checked')
+        reader = self.get_messages if read_messages else None
+        return contract.run_and_record(self.run, read_messages=reader, note=note)
+
     def update(self):
         """
         刷新当前 CST 工程的模型历史，使参数修改生效
