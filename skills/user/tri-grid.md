@@ -22,6 +22,9 @@ applyTo: "**/*.py"
 ### 可视化
 - `plot_triangle_grid(row_range, col_range, a, ...)` — 绘制完整网格
 - `plot_tri_color(center, a, theta, color)` — 带颜色的 Polygon
+- ⭐ `plot_phase_structure(path, topology, margin, ...)` — 建模前的相区结构示意图：
+  如实渲染 A/B 两相颜色、真实孔大小、区域边界、域壁与端口（详见 topo-quickstart §8.0）
+- `generate_crystal_holes(path, topology, ...)` — 按 crystal builder 规则数值生成整板三角孔
 
 ### 空间分析
 - `find_corner_points(points)` — 找出四个角点

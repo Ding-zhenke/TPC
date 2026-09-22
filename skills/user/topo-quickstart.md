@@ -61,11 +61,12 @@ ant.build_all(); ant.save()
 区域大小与边界；**建完立刻做两件事**：§8 的**离线拓扑自检**（秒级、不用 CST），再按 §10 验收。
 
 ```python
-from mesh_grid.tri_grid import plot_phase_structure
-fig, ax = plot_phase_structure(
-    wg.path, topology=wg.topology, margin=wg.width * wg.e2, a=wg.a,
-    xup=wg.xup, yup=wg.yup, ydn=wg.ydn)
+fig, ax = wg.phase_diagram()        # 模板方法：自动接好路径/拓扑/相区半宽/阵列范围
 fig.show()      # 或 fig.savefig(r'D:\out\phase_check.png')
+
+# 自定义域壁路径（不走模板）时用底层函数：
+# from mesh_grid.tri_grid import plot_phase_structure
+# plot_phase_structure(path, topology='AB', margin=..., xup=..., yup=..., ydn=...)
 ```
 
 ---
@@ -460,7 +461,8 @@ StraightWaveguide(topology='AB', length=18, width=14,
 * 路径是 `start(0,0).move(length, 'c')`（**不是** `start(0,-1).move(length+1)`，那样会多一格）。
 * `feed_params` 只在 `feed_type='ba_tapered'` 时可用，允许键 = `x01 / wf2 / lf4 / lf5 / lf6`；
   AB 族的 `x0/wf1/lf1/lf2/lf3` 直接是构造参数。**写错键名会 `ValueError`（不静默忽略）。**
-* 方法：`preview()`、`build_all()`、`save(output_path=None)`、`run()`、`validate()`、`close()`，支持 `with`。
+* 方法：`preview()`（仅路径，不能确认拓扑）、⭐ **`phase_diagram()`（建模前必出）**、
+  `build_all()`、`save(output_path=None)`、`run()`、`validate()`、`close()`，支持 `with`。
 
 `build_all()` 的 12 步（对应 §3.7 的因果链）：
 
@@ -497,7 +499,8 @@ UnitAntenna(bend_angle=120, straight_length=18, arm_length=14,
   符号按拓扑取：AB 臂朝 +y，BA 臂朝 −y。
   > 2026-09-17 **之前**它是「单臂偏角」语义；按旧语义传 `60` 会得到「120° 折返天线」而不是 V 形。
 * `radiator='cylinder'` 才会在路径末端加圆柱辐射体（`radiator_radius`）。
-* 方法：`preview()`、`build_all()`、`save()`、`run()`、`validate()`、`close()`。
+* 方法：`preview()`（仅路径）、⭐ **`phase_diagram()`（建模前必出，弯折路径也能正确分相）**、
+  `build_all()`、`save()`、`run()`、`validate()`、`close()`。
 * 与 `StraightWaveguide` 的**结构差异（不要当成 bug 去"修"）**：
   `UnitAntenna.build_all` **会建 substrate**、**不做晶体∩相区裁剪**、馈源名恒为 `feed2`、只有 **1 个端口**。
 * 它构建的是「BA 探针 + 空心铜波导 + 1 端口」这一支（对应参考工程 `*_Feed_antenna-DF` 变体）；
@@ -780,7 +783,8 @@ print([s for s in app.cst_file.model3d.GetAllSolidNames()])   # 实体清单：�
 2. 🔴 **按文件名猜 `topology`**：参考工程的 AB/BA **不是**代码里的标志位，而是「目录名 + `l1/l2` 数值」。
    `MZI-BA.ipynb` 注册进 CST 的 `l1/l2` 其实是 **AB 形状**（`l1 = 0.35a`，而它自己的 Python 变量写的是 `0.65a`）。
    ⇒ 按文件名选拓扑会得到「能跑、看起来对、物理上拓扑错了」的器件。
-   **判定拓扑的权威来源是 CST 参数表 + 区域/路径侧**，不是文件名、更不是预览图。
+   **判定拓扑的权威来源是 CST 参数表 + 区域/路径侧**，不是文件名。
+   旧 `preview()` 不能用（不着色），但建模前的 ⭐ **`phase_diagram()` 正是用来如实核对拓扑**的（§8.0）。
 3. 🔴 **`VPC-A` = 路径下方半区**（不是上方）。TPC 到 2026-09-15 才与参考工程对齐；
    如果把 A/B 换边，整个器件在 y 方向镜像（哪种相在上半区反了）。
    且 **`Insert` 是差集不是并集** —— 当成并集会让 A/B 两区塌到同一半区、互相重叠。
