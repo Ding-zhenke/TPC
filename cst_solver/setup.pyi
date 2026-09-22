@@ -17,7 +17,7 @@ _PathLike = Union[str, os.PathLike]
 # CST 项目操作 (ProjectMixin)
 # ============================================================
 class _ProjectMixin:
-    # 2026-10：三处入口（setup / open / project_open）统一走
+    # 2026-09-23：三处入口（setup / open / project_open）统一走
     # cst_solver._guards.require_project_file —— 路径不存在 ⇒ FileNotFoundError，
     # 路径是目录 ⇒ IsADirectoryError，报错信息里带当前工作目录。
     def project_open(self, filename: _PathLike) -> None: ...
@@ -62,7 +62,7 @@ class _ParametersMixin:
     def set_expression(self, name: str, value: str) -> None: ...
     def freq_limit(self, fmin: Union[float, str], fmax: Union[float, str]) -> None: ...
     def set_frequency_range(self, fmin: Union[float, str], fmax: Union[float, str]) -> None: ...
-    # 2026-10 修复：原先调 model3d.GetParameter() —— CST 没有这个方法。
+    # 2026-09-23 修复：原先调 model3d.GetParameter() —— CST 没有这个方法。
     # 现在走官方 API：DoesParameterExist 先查存在（不存在 ⇒ KeyError），
     # 再 RestoreDoubleParameter（数值 ⇒ float）/ RestoreParameter（表达式 ⇒ str）。
     def get_parameter(self, name: str) -> Union[float, str]: ...
@@ -449,7 +449,7 @@ class _BoundaryMixin:
                  Zsymmetry: str = 'none', ApplyInAllDirections: bool = False,
                  OpenAddSpaceFactor: float = 0.5) -> None: ...
     def set_boundary(self, **kwargs) -> None: ...
-    # 2026-10 修复：不再下发 .Material（Background 没有这个方法）；
+    # 2026-09-23 修复：不再下发 .Material（Background 没有这个方法）；
     # 改为 .Type("normal"/"pec") + .Epsilon + .Mu。未知材料名必须给 epsilon/mu。
     def set_background(self, material: str = 'Vacuum',
                        xmin_space: float = 0, xmax_space: float = 0,

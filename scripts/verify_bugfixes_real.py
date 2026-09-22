@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-P4/V10 真机复验：2026-10 五处封装层缺陷（**不跑求解**）
+P4/V10 真机复验：2026-09-23 五处封装层缺陷（**不跑求解**）
 ========================================================
 
 在**装有 CST Studio Suite 2026 的机器上**跑一次，把
@@ -65,13 +65,14 @@ from cst_dialog_guard import (                      # noqa: E402
     describe_dialogs,
     describe_windows,
     guard,
+    list_windows,
     save_prompts,
 )
 
 BOX = dict(x1='0', x2='1', y1='0', y2='1', z1='0', z2='1')
 BOX_NAME = 'p4v10_box'
 
-#: 旧的 ``set_background()`` 写法（2026-10 修复前逐字复制，含 ``.Material`` 行）
+#: 旧的 ``set_background()`` 写法（2026-09-23 修复前逐字复制，含 ``.Material`` 行）
 OLD_BACKGROUND_VBA = '''With Background
      .Reset
      .Type "Normal"
@@ -130,7 +131,7 @@ def make_cst_importable():
     """
     先把 CST 的 ``python_cst_libraries`` 放进 ``sys.path``。
 
-    ⚠️ 血泪点（2026-10 实测）：``cst_solver`` 是**惰性**把 CST 库加进 ``sys.path`` 的，
+    ⚠️ 血泪点（2026-09-23 实测）：``cst_solver`` 是**惰性**把 CST 库加进 ``sys.path`` 的，
     所以在这个动作**之前**调 :func:`design_environment_baseline` 会拿到空集合
     （``cst.interface`` 还没导入得进来 ⇒ ``running_design_environments()`` 返回 ``[]``）。
     而 ``close_extra_design_environments(baseline=set())`` 会把**用户自己开着的
@@ -143,6 +144,35 @@ def make_cst_importable():
         return True
     except Exception:                                   # noqa: BLE001
         return False
+
+
+def busy_de_hint(pid=None):
+    """
+    目标 DE 是不是正忙（里面有求解在跑）？忙则返回原因字符串，空闲返回 ``''``。
+
+    ⚠️ 血泪点（2026-09-23 实测）：求解进行中时 CST 主窗口标题带进度前缀
+    ``[7% ] <工程名> - CST Studio Suite 2026``。这种状态下在**借来的** DE 里
+    `new_project()` 会先报
+    ``RuntimeError: An error occurred while trying to create a new project.``，
+    重试时甚至把 COM 调用**挂死**（客户端 120s 超时被杀，而 DE 侧其实已经建出了
+    一个空白工程）。所以必须在动手前就看出来，别把环境问题记成四条 FAIL。
+    """
+    try:
+        windows = list_windows()
+    except Exception:                                   # noqa: BLE001
+        return ''
+    hits = []
+    for window in windows:
+        title = window.get('title') or ''
+        if pid is not None and window.get('pid') not in (None, pid):
+            continue
+        if re.search(r'\[\s*\d+\s*%\s*\]', title):
+            hits.append(f'{window.get("pid")}: {title!r}')
+    if not hits:
+        return ''
+    return ('目标 DE 里有求解在跑（' + '；'.join(hits[:2]) +
+            '）⇒ 在忙碌的 DE 里 new_project() 会失败甚至挂死，本轮不取证。'
+            '等它跑完（标题里不再有 [nn% ]）再重跑本脚本。')
 
 
 def messages():
@@ -565,7 +595,7 @@ def run_port_probes():
                on_bound=True, expect='accepted')
     probe_port('P1 域内部 + PortOnBound=True（旧写法）', zplane='0.5',
                on_bound=True, expect='rejected')
-    probe_port('P2 域内部 + PortOnBound=False（2026-10 修复）', zplane='0.5',
+    probe_port('P2 域内部 + PortOnBound=False（2026-09-23 修复）', zplane='0.5',
                on_bound=False, expect='accepted')
     probe_port('P3 边界平面 + PortOnBound=False（对照）', zplane='0',
                on_bound=False, expect='accepted')
@@ -834,9 +864,9 @@ def run_parameter_probes():
 def run_path_guard_probes(project_path):
     """⑤ 不存在 / 是目录 ⇒ 立刻失败且不新建 DE（真机版）。"""
     check_dialogs('⑤ 路径守卫')
-    if not project_path:
-        record('⑤ 路径入口守卫', 'UNKNOWN', '缺少可用工程路径，跳过')
-        return
+    # 本项**不需要**任何 CST 会话（也不该需要）：两个入口都应在**新建 DE 之前**
+    # 就抛错。所以即使别的相位因「DE 正忙」没跑，这一项照样能取证。
+    del project_path                                  # 仅为保持签名；此处不用
     before = design_environment_query()
     missing = _work / 'no_such_project.cst'
     case = ('setup(不存在的工程)', str(missing), FileNotFoundError)
@@ -924,6 +954,15 @@ def main(argv):
                   f'不是这些缺陷本身的问题。\n'
                   f'   关掉那个会话后重跑，或用 --attach <pid> 借用它。', flush=True)
 
+    # 预检：借来的 DE 里若还有求解在跑，`new_project()` 会失败甚至挂死
+    # （2026-09-23 实测）⇒ 不取证，也别把环境问题记成四条 FAIL。
+    if _app is not None:
+        hint = busy_de_hint(attach_pid)
+        if hint:
+            print(f'!! {hint}', flush=True)
+            record('预检：目标 DE 是否空闲', 'UNKNOWN', hint)
+            _app = None
+
     phases = [('① 背景探针', run_background_probes, 900),
               ('② 端口探针', run_port_probes, 900),
               ('③ save 探针', None, 600),
@@ -931,8 +970,8 @@ def main(argv):
     for label, function, timeout in phases:
         if _app is None:
             record(label, 'UNKNOWN',
-                   '没有可用的 CST 会话（多半是许可证被占用）⇒ 这一项**未取证**，'
-                   '不代表缺陷仍在')
+                   '没有可用且空闲的 CST 会话（许可证被占用，或借来的 DE 正在跑求解）'
+                   '⇒ 这一项**未取证**，不代表缺陷仍在')
             continue
         try:
             with guard(label, timeout=timeout):

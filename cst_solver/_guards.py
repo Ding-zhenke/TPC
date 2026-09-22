@@ -393,7 +393,7 @@ class GuardState:
 
         对**打开已有工程**的情况，首次写入也可能是改一个早已存在的参数
         （比如改参考工程的 ``x1``），所以这里再问 CST 一句
-        ``DoesParameterExist(name)`` 兜底（2026-10 修复：原先问的是并不存在的
+        ``DoesParameterExist(name)`` 兜底（2026-09-23 修复：原先问的是并不存在的
         ``GetParameter(name)``，见 :mod:`cst_solver.parameters`）。
 
         :param probe: callable, 收一个参数名，返回 bool（该参数当前是否已存在）

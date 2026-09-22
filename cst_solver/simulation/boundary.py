@@ -92,7 +92,7 @@ class BoundaryMixin:
         """
         设置背景材料与扩展空间
 
-        ⚠️ 2026-10 修复：旧实现下发 ``.Material "<名字>"``，而 **Background 对象
+        ⚠️ 2026-09-23 修复：旧实现下发 ``.Material "<名字>"``，而 **Background 对象
         没有 ``.Material`` 方法** —— 官方 VBA 参考（Background Object）里
         Background 只有 ``Reset`` / ``Type(enum, 取值仅 normal|pec)`` /
         ``Epsilon`` / ``Mu`` / ``ElConductivity`` / ``ThermalType`` /

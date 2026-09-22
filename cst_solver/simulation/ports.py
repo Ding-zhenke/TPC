@@ -122,7 +122,7 @@ class PortMixin:
         **朝向必须给位置枚举**（`xmin/xmax/ymin/ymax/zmin/zmax`），取"激励波传入器件"的方向；
         `'positive'/'negative'` 会抛 ``ValueError``，``None`` 会打 ``UserWarning``。
 
-        端口与计算域边界（2026-10 修复）：原先 ``.PortOnBound`` 被写死成 ``"True"``，
+        端口与计算域边界（2026-09-23 修复）：原先 ``.PortOnBound`` 被写死成 ``"True"``，
         于是**域内部**的端口只能靠手改 VBA 才能建。现在开放为 ``port_on_bound``：
 
         - ``port_on_bound=True``（默认）⇒ ``.PortOnBound "True"``：
@@ -221,7 +221,7 @@ class PortMixin:
         端口面所处的平面由所给范围决定（例如只给 ``xrange`` + ``yrange``
         时端口法向沿 z）。
 
-        端口与计算域边界（2026-10 修复）：``.PortOnBound`` 原先写死 ``"True"``，
+        端口与计算域边界（2026-09-23 修复）：``.PortOnBound`` 原先写死 ``"True"``，
         对**域内部**的端口是错的。现在由 ``port_on_bound`` 控制：
 
         - ``port_on_bound=True``（默认）⇒ 端口面必须落在计算域**边界平面**上；
@@ -246,7 +246,7 @@ class PortMixin:
         :param adjust_polarization: str/bool, 是否自动调整极化，默认 'False'（阶段 5.8 新增）
         :param polarization_angle: float/str, 极化角（度），默认 '0.0'（阶段 5.8 新增）
         :param reference_plane_distance: float/str, 参考面距离，默认 '0'（阶段 5.8 新增）
-        :param port_on_bound: bool, 端口是否位于计算域**边界平面**上，默认 True（2026-10 新增）
+        :param port_on_bound: bool, 端口是否位于计算域**边界平面**上，默认 True（2026-09-23 新增）
         :raises ValueError: 三个方向的范围全部为 None，无法确定端口面；或 orientation 非法
         """
         if xrange is None and yrange is None and zrange is None:

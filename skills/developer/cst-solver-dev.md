@@ -221,6 +221,23 @@ import _cst_interface as ci
   用 `QueryFullProcessImageNameW` + 缓存 + **一次** `tasklist` 兜底（高完整性进程如 `cstd.exe`
   OpenProcess 会被拒）。`dismiss_dialogs()` 默认只点「否/取消」，**按钮不匹配时绝不盲点**。
   离线回归 `tests/test_cst_dialog_guard.py`；证据见 §P4 记录 §7。
+- **⚠️ `setup.attach()` 只解决「许可证」，不解决「DE 正忙」**（2026-09-23 真机实测）：
+  单份许可证被别的会话占用时，`setup()` 新建 DE 报
+  `DesignEnvironmentStartupError ... is gone`（日志停在 `License search path found in CST registry: 27075@localhost`）——
+  此时 `setup.attach(pid=...)` 确实能借到会话并**成功**。但只要那个 DE 里**还有求解在跑**
+  （主窗口标题带进度前缀 `[7% ] <工程名> - CST Studio Suite 2026`），在它里面
+  `new_project()` 就会先报 `RuntimeError: An error occurred while trying to create a new project.`
+  （`cst_solver/project.py:213`），重试时甚至把 COM 调用**挂死**（客户端 120 s 超时被杀，
+  而 DE 侧其实已经建出了工程）。⇒ ① 真机脚本先做 `busy_de_hint()` 预检
+  （只看窗口标题里的 `[nn% ]`，**不发 COM 调用**），命中就把相位记 **UNKNOWN** 而不是 FAIL ——
+  环境问题不得伪报成「缺陷仍在」；② **复验必须等目标 DE 空闲**。
+- **⚠️ 借用用户会话的脚本，收尾禁止用基线为空去做清理**（2026-09-23，差点造成数据丢失）：
+  `design_environment_baseline()` 必须在 `cst.interface` **已可导入之后**才调用
+  （`cst_solver` 是惰性把 CST 库加进 `sys.path` 的，早调会拿到空集合），否则
+  `close_extra_design_environments(baseline=set())` 会把**用户自己开着的会话**
+  （实测 pid 36472，里有未保存工程）当成「本次新建的 DE」去 `connect(pid).close()`。
+  纪律：先 `_load_cst_module('cst.interface')` 再取基线；**基线为空 ⇒ 拒绝执行任何关闭**；
+  attach 模式下**一个都不关**，只关「我们自己新建的临时工程」（关前先存盘以免弹「是否保存更改？」）。
 - **面/棱边编号不可移植**：`pick_face` / `pick_edge` 的编号（`'10'`、`'22'` …）是 CST 内部编号，与实体几何、生成顺序强相关，扭转/布尔/阵列之后会变
   - 绕开编号：按**坐标**拾取 → `pick_face_at()` / `pick_edge_at()` / `pick_point_at()`
   - 需要编号：由坐标**反查** → `get_face_id_from_point()` / `get_edge_id_from_point()`
@@ -244,11 +261,11 @@ import _cst_interface as ci
 | `builders/crystal.py` 阵列范围只能按路径推断 | ✅ 已修（加可选形参 `xup=None, yup=None, ydn=None`） |
 | `topo_templates/straight_waveguide.py` 传了不被接受的实参 → TypeError | ✅ 已修 |
 | `topo_templates/unit_antenna.py` 同 `topology=` 问题 | ✅ 已修 |
-| **`parameters.py`：`get_parameter()` 调了不存在的 `model3d.GetParameter(name)`** —— `Model3D` 是 `__getattr__` 动态派发，写错的方法名**既不报 `AttributeError` 也不被静态检查发现**，只在真机才炸 | ✅ 已修（2026-10）：改为官方 API —— `DoesParameterExist(name)` 先判存在（不存在 ⇒ `KeyError`，提示用 `app.para()` 定义），再 `RestoreDoubleParameter`（数值 ⇒ `float`）/ `RestoreParameter`（表达式 ⇒ `str`）。`Model3D` **没有** `GetParameter`（官方 Parameter 一节的读取成员只有 `RestoreParameter` / `RestoreDoubleParameter` / `RestoreParameterExpression`） |
-| **`simulation/boundary.py`：`set_background()` 下发 `.Material "<名字>"`** —— CST 的 Background 对象**没有 `.Material`**，该行被**静默忽略**（调用方以为设好了背景） | ✅ 已修（2026-10）：改用 `Type("normal"/"pec")` + `Epsilon` + `Mu`；`'Vacuum'/'Air'/'Free space'` ⇒ normal + 1.0/1.0，`'PEC'/'Metal'` ⇒ pec（不下发 εr/μr），**其它名字要么显式给 `epsilon=`/`mu=`（只当标签 + `UserWarning`）、要么报 `ValueError`**（不再静默退化成真空）；`'PMC'/'Open'` 这类非法 `Type` 也一并拒掉 |
-| **`simulation/ports.py`：`add_port()` 把 `.PortOnBound` 写死成 `"True"`** —— 该行声明「端口面落在计算域边界平面」，域**内部**的端口与它矛盾 | ✅ 已修（2026-10）：开放 `port_on_bound`（默认 `True`，**既有 VBA 逐字节不变**，基线用例已守住）与 `clip_picked_port_to_bound`（官方 `ClipPickedPortToBound`，只对 picked 端口有效）；`create_waveguide_port_free(..., port_on_bound=)` 同样开放 |
-| **`project.py`：`save()` 不传路径时调无参 `cst_file.save()`** —— 真机上这是**静默 no-op**（不落盘、无报错、无 warning），紧接着 `close()` 把整场建模丢掉 | ✅ 已修（2026-10）：不传路径时改用 `cst_file.filename()` 取当前工程路径并**显式**传给 CST（`allow_overwrite=True`），并**返回实际写出的绝对路径**；工程没有路径（如刚 `new_project()`）⇒ `RuntimeError` 要求显式给路径 |
-| **路径校验三处入口三种写法** —— `setup` 用 `os.path.isfile`、`open` 用 `os.path.exists`、`project_open` **完全不检查**，同一错误三种表现，报错还只说 "not found"（分不清「不存在」与「给的是目录」） | ✅ 已修（2026-10）：新增 `_guards.require_project_file()` 统一三条入口 —— **不存在 ⇒ `FileNotFoundError`**（报错印出解析用的当前工作目录，保持 P4 D1 既有语义）、**是目录 ⇒ `IsADirectoryError`**、空串 ⇒ `ValueError`、非路径 ⇒ `TypeError`；并接受 `pathlib.Path`（此前传 Path 被后缀守卫误判成「路径非法」） |
+| **`parameters.py`：`get_parameter()` 调了不存在的 `model3d.GetParameter(name)`** —— `Model3D` 是 `__getattr__` 动态派发，写错的方法名**既不报 `AttributeError` 也不被静态检查发现**，只在真机才炸 | ✅ 已修（2026-09-23）：改为官方 API —— `DoesParameterExist(name)` 先判存在（不存在 ⇒ `KeyError`，提示用 `app.para()` 定义），再 `RestoreDoubleParameter`（数值 ⇒ `float`）/ `RestoreParameter`（表达式 ⇒ `str`）。`Model3D` **没有** `GetParameter`（官方 Parameter 一节的读取成员只有 `RestoreParameter` / `RestoreDoubleParameter` / `RestoreParameterExpression`） |
+| **`simulation/boundary.py`：`set_background()` 下发 `.Material "<名字>"`** —— CST 的 Background 对象**没有 `.Material`**，该行被**静默忽略**（调用方以为设好了背景） | ✅ 已修（2026-09-23）：改用 `Type("normal"/"pec")` + `Epsilon` + `Mu`；`'Vacuum'/'Air'/'Free space'` ⇒ normal + 1.0/1.0，`'PEC'/'Metal'` ⇒ pec（不下发 εr/μr），**其它名字要么显式给 `epsilon=`/`mu=`（只当标签 + `UserWarning`）、要么报 `ValueError`**（不再静默退化成真空）；`'PMC'/'Open'` 这类非法 `Type` 也一并拒掉 |
+| **`simulation/ports.py`：`add_port()` 把 `.PortOnBound` 写死成 `"True"`** —— 该行声明「端口面落在计算域边界平面」，域**内部**的端口与它矛盾 | ✅ 已修（2026-09-23）：开放 `port_on_bound`（默认 `True`，**既有 VBA 逐字节不变**，基线用例已守住）与 `clip_picked_port_to_bound`（官方 `ClipPickedPortToBound`，只对 picked 端口有效）；`create_waveguide_port_free(..., port_on_bound=)` 同样开放 |
+| **`project.py`：`save()` 不传路径时调无参 `cst_file.save()`** —— 真机上这是**静默 no-op**（不落盘、无报错、无 warning），紧接着 `close()` 把整场建模丢掉 | ✅ 已修（2026-09-23）：不传路径时改用 `cst_file.filename()` 取当前工程路径并**显式**传给 CST（`allow_overwrite=True`），并**返回实际写出的绝对路径**；工程没有路径（如刚 `new_project()`）⇒ `RuntimeError` 要求显式给路径 |
+| **路径校验三处入口三种写法** —— `setup` 用 `os.path.isfile`、`open` 用 `os.path.exists`、`project_open` **完全不检查**，同一错误三种表现，报错还只说 "not found"（分不清「不存在」与「给的是目录」） | ✅ 已修（2026-09-23）：新增 `_guards.require_project_file()` 统一三条入口 —— **不存在 ⇒ `FileNotFoundError`**（报错印出解析用的当前工作目录，保持 P4 D1 既有语义）、**是目录 ⇒ `IsADirectoryError`**、空串 ⇒ `ValueError`、非路径 ⇒ `TypeError`；并接受 `pathlib.Path`（此前传 Path 被后缀守卫误判成「路径非法」） |
 
 > **注意**：`unit_antenna.py` 的**阵列范围与臂长映射已按参考工程修正并真机核对**
 > （AB `xup=25`/BA `26`、`yup=ydn=14`，两种拓扑 0 条 CST 消息），

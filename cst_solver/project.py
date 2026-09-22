@@ -24,7 +24,7 @@ class ProjectMixin:
         打开指定的 CST 工程文件并激活
         保留原函数名以兼容旧代码
 
-        2026-10 修复：本方法原先**完全不检查路径是否存在**，路径写错时一路走到
+        2026-09-23 修复：本方法原先**完全不检查路径是否存在**，路径写错时一路走到
         ``self.project.open_project()`` 才由 CST 报一个语焉不详的错；现在与
         ``setup(filename)`` / ``open()`` 走**同一个**校验入口
         :func:`cst_solver._guards.require_project_file`，并且接受
@@ -116,7 +116,7 @@ class ProjectMixin:
         **没有** ``save_as`` —— 早期实现误用 ``save_as``，带路径保存时必抛
         ``AttributeError: '_cst_interface.Project' object has no attribute 'save_as'``。
 
-        ⚠️ 2026-10 修复：原先不传 ``filename`` 时直接调 ``self.cst_file.save()``
+        ⚠️ 2026-09-23 修复：原先不传 ``filename`` 时直接调 ``self.cst_file.save()``
         （**无参**）—— 真机上这是**静默 no-op**：工程文件根本不会被写出，
         调用方却以为已保存，接着 ``close()`` 就把整场建模丢掉了
         （没有任何报错、没有任何 warning，是最难查的一类缺陷）。

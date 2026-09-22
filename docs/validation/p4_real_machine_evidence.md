@@ -724,3 +724,91 @@ ASCIIExport 导出 181×360 = 65 160 点：
   `pattern_314_ascii.txt`（9.9 MB，FarfieldPlot 原始 8 列口径）。
 - 约束已遵守：未启动新求解、未做用户会话以外动作、attach 后未关闭 DE。
 
+## 12. P4/V10 五处封装层缺陷的真机复验 —— ⏸ 尚未取证（目标 DE 正忙，2026-09-23）
+
+### 12.1 要证的四点
+
+见[后续计划](../next_plan/README.md) P4/V10：① `set_background()` 的 `Type/Epsilon/Mu` 写法
+无消息且 `Model.mif` 里背景确为设定值（旧 `.Material` 行是静默忽略，要新旧对比）；
+② `add_port(..., port_on_bound=False)` 能在域内部建端口；③ 无参 `app.save()` 确实落盘且
+随后 `close()` 工程完好；④ `get_parameter()` 能读回 `para()`/`expression()` 写下的值。
+**只建模/保存/读参数/关工程，不跑任何求解。**
+
+### 12.2 取证脚本
+
+`scripts/verify_bugfixes_real.py`（约 1 010 行）。每个探针**新建空白工程**
+（`get_messages()` 会反复报出历史失败，不换工程会污染后续「按消息判定」的结论）；
+相位各自 `try/except` + 弹窗看门狗（`scripts/cst_dialog_guard.py`）；
+背景那项把保存后的 `Model.mif` 原文另存，便于离线复核解析。
+
+### 12.3 本轮实测：卡在「DE 正忙」，不是卡在缺陷
+
+| 步骤 | 结果 |
+| --- | --- |
+| 新建 DE（`setup()`） | ❌ `DesignEnvironmentStartupError ... is gone`，日志停在 `License search path found in CST registry: 27075@localhost`（单份许可证已被 pid 36472 占用） |
+| `setup.attach(pid=36472)` 借许可证 | ✅ OK（借用成功，未新建会话） |
+| 基线 DE 清点 | `[36472]`（`cst.interface` 可用：True） |
+| ① 背景探针 | ❌ `RuntimeError: An error occurred while trying to create a new project.`（`cst_solver/project.py:213`） |
+| ② 端口探针 | ❌ 同上 |
+| ③ save 探针 | ❌ 同上 |
+| ④ 参数探针 | ❌ 同上 |
+| ⑤ 路径入口守卫 | —（该轮因缺工程路径而跳过，见 12.6，已修正为无条件执行） |
+| 跑后状态 | pid 36472 `Responding=True`、无可见对话框、用户工程与其求解**未受影响** |
+
+**根因**：目标 DE 里有一个正在跑求解的工程（窗口标题 `[7% ] m2_array12_0922_213327 - CST Studio Suite 2026`）。
+在忙碌的 DE 里 `new_project()` 会失败；隔离诊断（直接 `DesignEnvironment.connect(36472)`
++ `de.new_project(ProjectType.MWS)`，重试 3 次、间隔 5 s）在客户端侧**挂死 120 s** 被杀，
+而 DE 侧其实已经建出了 `Untitled_0`（主窗口标题随之变为 `[7% ] Untitled_0 ...`；用户随后自行关掉了它）。
+
+⇒ **结论：`--attach` 只解决许可证，不解决 DE 忙碌。复验必须在目标 DE 空闲时进行。**
+判据：`Get-Process <pid>` 的 `MainWindowTitle` 里没有 `[nn% ]`。
+
+### 12.4 脚本已按此加固并**二次实测通过**（2026-09-23 同日）
+
+第二轮（`--attach 36472`，脚本已内置预检）实测输出：
+
+```
+[  OK   ] 准备：建立 CST 会话: attach pid=36472
+!! 目标 DE 里有求解在跑（36472: '[9% ] m2_array12_0922_213327 - CST Studio Suite 2026'）⇒ …本轮不取证
+[UNKNOWN] 预检：目标 DE 是否空闲
+[UNKNOWN] ① 背景探针 / ② 端口探针 / ③ save 探针 / ④ 参数探针   ← 不再是 4 条 FAIL
+[  OK   ] ⑤ setup(不存在的工程)     [  OK   ] ⑤ setup(目录)
+OK 3 / FAIL 0 / UNKNOWN 5
+```
+
+- 新增 `busy_de_hint(pid)`：只看 Win32 窗口标题里的 `[nn% ]` 进度前缀（**不发任何 COM 调用**），
+  一旦命中就把会话置为不可用，四个相位一律记 **UNKNOWN**，避免把「DE 正忙」伪报成「缺陷仍在」。
+- 此时用户的求解从 7% 正常走到 9%，`Responding=True`，跑后无弹窗 —— 脚本对**借来的会话零伤害**。
+
+### 12.5 ✅ 真机取证到的第一项：⑤ 两个路径入口（本轮唯一确证）
+
+`scripts/verify_bugfixes_real.py` 第 ⑤ 项（**不需要 CST 会话**，也不该需要 ——
+两个入口都必须在**新建 DE 之前**就抛错）在真机上通过，且 DE 集合前后均为 `[36472]`：
+
+| 调用 | 真机返回 | DE 集合 |
+| --- | --- | --- |
+| `setup(<不存在的 .cst>)` | `FileNotFoundError: CST project file 不存在：…\no_such_project.cst`（附「相对路径按当前工作目录解析」+「要新建工程请用 `setup()` 不传 filename 或 `app.new_project()`」） | `[36472] → [36472]`（未新建） |
+| `setup(<目录>)` | `IsADirectoryError: CST project file 是一个目录，不是文件：…\p4v10_40j4gseh`（附「CST 工程是**单个** `.cst`/`.prj` 文件」提示） | `[36472] → [36472]`（未新建） |
+
+⇒ 第 5 处缺陷（「报错信息无法区分『不存在』与『给的是目录』」）**已获真机验收**；
+同时确认了既有 D1 约定（「不存在的工程 ⇒ `FileNotFoundError`」）在改写后**仍然成立**。
+
+### 12.6 安全边界（本轮最重要的副产品）
+
+- **绝不关闭用户的工程/会话**：脚本 attach 模式下只关「我们自己新建的临时空白工程」
+  （`_close_own_project()`，关之前先存盘以免弹「是否保存更改？」），
+  收尾打印「用户工程与 DE 一个都没关」。
+- 🔴 上一轮更危险的坑：`design_environment_baseline()` 若在 `cst.interface` 可导入**之前**
+  调用会返回空集合，于是 `close_extra_design_environments(baseline=set())` 会把**用户自己
+  开着的会话**当成「本次新建的 DE」关掉。现已在脚本里堵死并实测验证
+  （`running_design_environments()` 在库就绪后确实返回 `[36472]`）。
+
+### 12.7 复现命令（等 DE 空闲后执行）
+
+```
+python -u scripts/verify_bugfixes_real.py --attach <pid> --keep
+```
+
+临时目录与 `evidence.json` 会在脚本开头打印。跑之前先看目标窗口标题里有没有 `[nn% ]`；
+判不了就照跑 —— 预检会把四项记成 UNKNOWN 而**不是** FAIL（环境问题不得伪报成「缺陷仍在」）。
+

@@ -217,7 +217,7 @@ assert signed_area(my_poly) > 0        # 手写多边形拉伸前先自检
 | 端口选到错误的面 | `pick_face` 面编号依赖具体几何 | 试 `'10'` / `'22'`，或先在 CST 里看面号 |
 | **端口激励方向反了**（端口箭头朝外、S21 不对） | `Port.Orientation` 写成了 `"positive"/"negative"` —— **CST 只认位置枚举**，非法值会**静默回退到默认 `zmin`** 👉 2026-09-20 起库会**当场抛 `ValueError`**（不再静默；`None` 只告警） | 按端口所在侧给枚举（x 向直波导：左端 `"xmin"`、右端 `"xmax"`）；见 §11 ⑥ |
 | 求解器 VBA 报错 | `builders/solver.py` 的 `configure_solver` 含存疑 VBA（`.ParallelizationThreads`、`.GPUAcceleration`） | 优先用旧 notebook 实测过的 `With Solver … End With` 整块 |
-| `FileNotFoundError: CST project file 不存在：<绝对路径>` | 路径不存在（相对路径按**当前工作目录**解析，报错里直接印出这个目录） | 模板 `tmp.cst` 放 notebook 同目录；要**新建**工程请用 `setup()` 不传 `filename` 或 `app.new_project()`。👉 2026-10 起三条入口（`setup` / `open` / `project_open`）**统一**校验，报错能区分「不存在」与「是目录」 |
+| `FileNotFoundError: CST project file 不存在：<绝对路径>` | 路径不存在（相对路径按**当前工作目录**解析，报错里直接印出这个目录） | 模板 `tmp.cst` 放 notebook 同目录；要**新建**工程请用 `setup()` 不传 `filename` 或 `app.new_project()`。👉 2026-09-23 起三条入口（`setup` / `open` / `project_open`）**统一**校验，报错能区分「不存在」与「是目录」 |
 | `IsADirectoryError: CST project file 是一个目录，不是文件：<绝对路径>` | 把**目录**当成工程文件传进来了 —— CST 工程是**单个** `.cst`/`.prj` 文件 | 路径补到文件名（`…\myproj.cst`）；要新建工程请用 `setup()` 不传 `filename` |
 | `ImportError: cst` | CST python 库路径没配 | 改 `cst_solver/config.py` 的 `CST_INSTALL_PATH` |
 | `AttributeError: … no attribute 'GetBoundingBox'` | `cst_file.modeler` 已废弃 | 改用 `cst_file.model3d` |
@@ -343,7 +343,7 @@ app.cst_file.save(r'<绝对路径>\out.cst', include_results=False, allow_overwr
 > （plan_id=T3，severity=warning）；改成 `include_results=False` **就不再告警**，与守卫建议一致。
 > 证据见 [`docs/validation/p4_real_machine_evidence.md`](../../docs/validation/p4_real_machine_evidence.md) §5。
 
-> ⚠️ **不要用无参 `app.save()` 当「保存到当前工程」的捷径（2026-10 修复）**：
+> ⚠️ **不要用无参 `app.save()` 当「保存到当前工程」的捷径（2026-09-23 修复）**：
 > 真机上 `Project.save()` **不给路径就是静默 no-op** —— 不落盘、不报错、没有 warning，
 > 随后 `close()` 会把整场建模丢掉。现在不传路径会**显式**取当前工程路径再存
 > （`cst_file.filename()`，`allow_overwrite=True`），并**返回实际写出的绝对路径**；
@@ -1061,7 +1061,7 @@ CST 官方帮助 `special_vbaports_port_object.htm`：
 若你换用别的面号，**必须同步换朝向**（或用 5 元组条目
 `('wg1', 2, '22', 'electric', 'xmax')` 逐条显式给 `add_multiport_port_set`）。
 
-⚠️ **端口面必须落在计算域边界平面上（2026-10 修复）**：`Port.PortOnBound` 声明
+⚠️ **端口面必须落在计算域边界平面上（2026-09-23 修复）**：`Port.PortOnBound` 声明
 「端口面位于计算域边界平面」，库原先把它**写死成 `"True"`** —— 端口在域**内部**时
 这个声明是错的。现在 `add_port()` / `create_waveguide_port_free()` 都接受
 `port_on_bound`（默认 `True`，**既有模型下发的 VBA 逐字节不变**）：

@@ -379,7 +379,7 @@ class setup(
         """
         打开并激活 CST 工程文件的内部方法
 
-        2026-10：路径校验统一到 :func:`cst_solver._guards.require_project_file`
+        2026-09-23：路径校验统一到 :func:`cst_solver._guards.require_project_file`
         —— 原先这里用的是 ``os.path.exists``（目录也能过），而 ``setup.__init__``
         用的是 ``os.path.isfile``、``project_open`` 干脆不检查，同一个错误写法
         在三条入口上表现不同。现在三处一致：不存在 ⇒ ``FileNotFoundError``，

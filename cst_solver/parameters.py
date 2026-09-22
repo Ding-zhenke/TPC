@@ -30,7 +30,7 @@ class ParametersMixin:
         """
         某个参数在工程里是否已经存在（官方查询 API，带回退）。
 
-        ⚠️ 2026-10 修复：旧实现读的是 ``model3d.GetParameter(name)`` ——
+        ⚠️ 2026-09-23 修复：旧实现读的是 ``model3d.GetParameter(name)`` ——
         **CST 根本没有这个方法**。官方 Parameter API 里查询用
         ``DoesParameterExist(name)``，读取用 ``RestoreParameter`` /
         ``RestoreDoubleParameter`` / ``RestoreParameterExpression``
@@ -267,7 +267,7 @@ class ParametersMixin:
         """
         获取指定参数的**当前值**
 
-        ⚠️ 2026-10 修复：旧实现调的是 ``model3d.GetParameter(name)``，而
+        ⚠️ 2026-09-23 修复：旧实现调的是 ``model3d.GetParameter(name)``，而
         **CST 没有 ``GetParameter`` 这个方法** —— 官方 Parameter API 的读取成员只有
         ``RestoreParameter`` / ``RestoreDoubleParameter`` /
         ``RestoreParameterExpression``，查询成员是 ``DoesParameterExist`` /
