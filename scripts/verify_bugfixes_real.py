@@ -58,7 +58,6 @@ sys.path.insert(0, str(PROJECT_ROOT / 'scripts'))
 
 from topo_modeler.batch import (                    # noqa: E402
     close_extra_design_environments,
-    design_environment_baseline,
     design_environment_query,
 )
 from cst_dialog_guard import (                      # noqa: E402
@@ -96,6 +95,18 @@ _app = None
 _work = None
 _baseline = set()
 _profile = {}
+#: 是否借用了用户已有的 CST 会话（``--attach``）：借用时**绝不**关用户的工程/会话
+_attached_mode = False
+#: ``--attach`` 给的用户 DE 进程号（attach 模式下复用同一个会话）
+_attach_pid = None
+#: 当前 ``_app.cst_file`` 指向的是不是「我们自己新建的临时工程」
+_own_project_started = False
+
+
+def _mark_own_closed():
+    """记下：当前工程已经关掉，``_app.cst_file`` 不再指向我们的临时工程。"""
+    global _own_project_started
+    _own_project_started = False
 
 
 def record(item, status, detail, **extra):
@@ -105,6 +116,33 @@ def record(item, status, detail, **extra):
     _results.append(entry)
     print(f'[{status:^7}] {item}: {detail}', flush=True)
     return entry
+
+
+def cst_pids():
+    """当前活着的 DE 进程号；问不到时返回 ``(None, 原因)``，**绝不**把问不到当「没有」。"""
+    query = design_environment_query()
+    if not query['ok']:
+        return None, query['reason']
+    return [int(pid) for pid in query['pids']], ''
+
+
+def make_cst_importable():
+    """
+    先把 CST 的 ``python_cst_libraries`` 放进 ``sys.path``。
+
+    ⚠️ 血泪点（2026-10 实测）：``cst_solver`` 是**惰性**把 CST 库加进 ``sys.path`` 的，
+    所以在这个动作**之前**调 :func:`design_environment_baseline` 会拿到空集合
+    （``cst.interface`` 还没导入得进来 ⇒ ``running_design_environments()`` 返回 ``[]``）。
+    而 ``close_extra_design_environments(baseline=set())`` 会把**用户自己开着的
+    CST 会话**（实测 pid 36472，里面有未保存工程）当成「本次新建的 DE」去
+    ``connect(pid).close()`` —— 差点造成数据丢失。
+    """
+    try:
+        from cst_solver import _load_cst_module
+        _load_cst_module('cst.interface')
+        return True
+    except Exception:                                   # noqa: BLE001
+        return False
 
 
 def messages():
@@ -140,13 +178,27 @@ def verdict(msgs, exc):
 
 
 def fresh_project(with_box=True, electric_walls=False):
-    """关掉当前工程、新建空白工程（**每个探针都要调**），返回准备阶段的消息。"""
-    try:
-        if getattr(_app, 'cst_file', None) is not None:
-            _app.cst_file.close()
-    except Exception:                               # noqa: BLE001
-        pass
+    """
+    准备一个干净的空白工程（**每个探针都要调**），返回准备阶段的消息。
+
+    ⚠️ attach 模式（借用用户的 CST 会话）下**绝不能**关掉用户原本打开的工程：
+    只关「上一轮我们自己新建的那个空白工程」，而且关之前先存盘，
+    免得弹「是否保存更改？」。
+
+    :param with_box: bool, 是否建一个 1×1×1 的实体盒
+    :param electric_walls: bool, 是否把六面设成电壁（把计算域钉在盒子表面上）
+    """
+    global _own_project_started
+    if _attached_mode:
+        _close_own_project()
+    else:
+        try:
+            if getattr(_app, 'cst_file', None) is not None:
+                _app.cst_file.close()
+        except Exception:                               # noqa: BLE001
+            pass
     _app.new_project()
+    _own_project_started = True
     prep = messages()
     if electric_walls:
         # 把计算域钉在实体盒子上：电壁 + 0 扩展空间 ⇒ 域边界 = 盒子表面。
@@ -158,6 +210,35 @@ def fresh_project(with_box=True, electric_walls=False):
         _app.square(BOX['x1'], BOX['x2'], BOX['y1'], BOX['y2'],
                     BOX['z1'], BOX['z2'], BOX_NAME, 'component1', 'Vacuum')
     return prep + messages() if prep else messages()
+
+
+def _close_own_project(save_first=True):
+    """
+    关掉**我们自己新建的**那个临时空白工程（attach 模式下保护用户工程的关键）。
+
+    - 先存盘到临时目录：工程「干净」了再关，就不会弹「是否保存更改？」；
+    - ``handle`` 直接取 CST 的 ``Project`` 原始对象（``_app.cst_file``）——
+      走 :meth:`cst_solver.setup.close` 在 attach 模式下只是解除引用、并不真关，
+      那样临时工程会在用户窗口里越堆越多直到撑爆内存。
+    """
+    if not _own_project_started:
+        return
+    handle = getattr(_app, 'cst_file', None)
+    if handle is None:
+        return
+    if save_first:
+        try:
+            _app.save(str(_work / '_probe_last.cst'), include_results=False,
+                      allow_overwrite=True)
+        except Exception:                           # noqa: BLE001
+            pass
+    try:
+        handle.close()
+        _mark_own_closed()
+    except Exception as exc:                        # noqa: BLE001
+        record('收尾：关掉临时空白工程', 'UNKNOWN',
+               f'关不掉（请手动关掉那个空白工程窗口）：{type(exc).__name__}: {exc}',
+               exception=f'{type(exc).__name__}: {exc}')
 
 
 def rebuild():
@@ -570,6 +651,33 @@ def run_save_probes():
            size_before=size_before, size_after=size_after)
 
     # 3c 关掉工程与 DE，再开一次：工程完好（参数读得回来）
+    if _attached_mode:
+        # attach 模式：**不能**关用户的 DE，也不能关用户的工程。
+        # 改为「关掉我们自己的临时工程 → 重新 attach → 打开刚保存的工程 → 读参数」，
+        # 取证强度不降（验证的是「保存出来的文件能不能被重新读回」）。
+        _close_own_project(save_first=False)
+        time.sleep(1.5)
+        prompts = save_prompts()
+        if prompts:
+            record('③c 保存后重开工程完好', 'UNKNOWN',
+                   f'关临时工程时出现「保存更改」类弹窗（不点会阻塞）：'
+                   f'{[p["title"] for p in prompts]}')
+            return project
+        try:
+            reopened = setup_attach(_attach_pid, str(project))
+            value = reopened.get_parameter('p4v10_marker')
+            ok = float(value) == 42.0
+            record('③c 保存后重开工程完好', 'OK' if ok else 'FAIL',
+                   f'attach 重开后打开 {project}，读到 p4v10_marker={value!r}'
+                   f'（期望 42）；用户的工程未被关闭', reopened_value=value)
+        except Exception as err:                    # noqa: BLE001
+            record('③c 保存后重开工程完好', 'FAIL',
+                   f'重新 attach/打开失败：{type(err).__name__}: {err}')
+            return None
+        # ④ 继续借用同一个会话
+        _reattach_for_phase4()
+        return project
+
     try:
         _app.close()
     except Exception as err:                        # noqa: BLE001
@@ -607,6 +715,19 @@ def setup_plain(path):
     return setup(path)
 
 
+def setup_attach(pid, path=None):
+    """attach 到用户已在运行的 DE（借用许可证，**不**新建会话）。"""
+    from cst_solver import setup
+    return setup.attach(pid=pid, filename=path)
+
+
+def _reattach_for_phase4():
+    """③c 之后重新 attach 到同一个 DE，供第 ④ 项继续用（attach 模式专用）。"""
+    global _app, _own_project_started
+    _app = setup_attach(_attach_pid)
+    _own_project_started = False                    # 刚 attach 绑定的是用户的工程
+
+
 # ------------------------------------------------------------------
 # ④ get_parameter
 # ------------------------------------------------------------------
@@ -629,11 +750,12 @@ def raw_read(model3d, reader, name):
 def run_parameter_probes():
     """④ ``get_parameter()`` 读回数值/表达式参数 + 旧写法的真机表现。"""
     global _app
-    from cst_solver import setup
-    check_dialogs('④ get_parameter')
-    # ③c 把上一个 DE 关掉了（那是「关掉后重开检查工程完好」的一部分），
-    # 这里重新开一个干净的 DE 继续第 ④ 项。
-    _app = setup()
+    if not _attached_mode:
+        from cst_solver import setup
+        check_dialogs('④ get_parameter')
+        # ③c 把上一个 DE 关掉了（那是「关掉后重开检查工程完好」的一部分），
+        # 这里重新开一个干净的 DE 继续第 ④ 项。
+        _app = setup()
     fresh_project(with_box=False)
     model3d = _app.cst_file.model3d
 
@@ -695,11 +817,14 @@ def run_parameter_probes():
            f'GetParameter("p4v10_num") ⇒ {old}',
            note='若为 <异常> ⇒ 旧写法在真机上必然失败（与离线推断一致）')
 
-    # 读回来之后 close
-    try:
-        _app.close()
-    except Exception:                               # noqa: BLE001
-        pass
+    # 读回来之后收摊（attach 模式只关我们自己的临时工程，绝不碰用户的）
+    if _attached_mode:
+        _close_own_project(save_first=True)
+    else:
+        try:
+            _app.close()
+        except Exception:                               # noqa: BLE001
+            pass
 
 
 # ------------------------------------------------------------------
@@ -743,27 +868,61 @@ def run_path_guard_probes(project_path):
 # ------------------------------------------------------------------
 
 def main(argv):
-    global _app, _work, _baseline
+    global _app, _work, _baseline, _attached_mode, _attach_pid
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     keep = '--keep' in argv
+    attach_pid = None
+    if '--attach' in argv:
+        attach_pid = int(argv[argv.index('--attach') + 1])
+    _attached_mode = attach_pid is not None
+    _attach_pid = attach_pid
 
     from cst_solver import setup
 
     _work = Path(tempfile.mkdtemp(prefix='p4v10_'))
     print(f'临时工作目录：{_work}', flush=True)
     print(f'=== 跑之前的 CST 窗口 ===\n{describe_windows()}', flush=True)
-    _baseline = design_environment_baseline()
-    print(f'基线 DE：{sorted(_baseline)}', flush=True)
+
+    # ⚠️ 必须在拿基线**之前**把 CST 库塞进 sys.path，否则基线是空集合，
+    # 收尾时会拿「用户自己开着的会话」当本次新建的 DE 去关（实测差点关掉 pid 36472）
+    importable = make_cst_importable()
+    baseline_pids, baseline_reason = cst_pids()
+    if baseline_pids is None:
+        _baseline = set()
+        print(f'⚠️ DE 清点不可用（{baseline_reason}）：收尾时**不做任何关闭动作**',
+              flush=True)
+    else:
+        _baseline = set(baseline_pids)
+    print(f'基线 DE：{sorted(_baseline)}（cst.interface 是否可用：{importable}）',
+          flush=True)
 
     project_path = None
+    if attach_pid is None and _baseline:
+        print(f'⚠️ 检测到已有 CST 会话 {sorted(_baseline)} 正开着。\n'
+              f'   本机许可证（CST registry: 27075@localhost）是**单份**的，'
+              f'新建 DE 极可能报 EXITCODE_NOLICENSE / DesignEnvironmentStartupError。\n'
+              f'   • 若那个会话是你自己在用/在跑求解 ⇒ 请等它结束、或关掉它再跑本脚本；\n'
+              f'   • 若你确实要借用它 ⇒ 加 --attach <pid>（探针会在该会话里新建空白工程，'
+              f'脚本绝不关闭它）。', flush=True)
     try:
         with guard('新建 DesignEnvironment', timeout=240):
-            _app = setup()
-        record('准备：新建 DesignEnvironment', 'OK', f'基线 DE：{sorted(_baseline)}')
+            if attach_pid is not None:
+                _app = setup.attach(pid=attach_pid)
+            else:
+                _app = setup()
+        record('准备：建立 CST 会话', 'OK',
+               f'attach pid={attach_pid}' if attach_pid is not None
+               else f'新建 DE；基线 {sorted(_baseline)}')
     except Exception:                                   # noqa: BLE001
-        record('准备：新建 DesignEnvironment', 'FAIL', traceback.format_exc(limit=4))
+        record('准备：建立 CST 会话', 'FAIL', traceback.format_exc(limit=4))
         _app = None
+        if attach_pid is None:
+            print(f'\n💡 若报的是 `EXITCODE_NOLICENSE` / '
+                  f'`DesignEnvironmentStartupError ... is gone`：\n'
+                  f'   那是许可证被 {sorted(_baseline) or "其它会话"} 占用了，'
+                  f'不是这些缺陷本身的问题。\n'
+                  f'   关掉那个会话后重跑，或用 --attach <pid> 借用它。', flush=True)
 
     phases = [('① 背景探针', run_background_probes, 900),
               ('② 端口探针', run_port_probes, 900),
@@ -771,7 +930,9 @@ def main(argv):
               ('④ 参数探针', run_parameter_probes, 600)]
     for label, function, timeout in phases:
         if _app is None:
-            record(label, 'FAIL', '没有可用的 DesignEnvironment，跳过')
+            record(label, 'UNKNOWN',
+                   '没有可用的 CST 会话（多半是许可证被占用）⇒ 这一项**未取证**，'
+                   '不代表缺陷仍在')
             continue
         try:
             with guard(label, timeout=timeout):
@@ -783,9 +944,14 @@ def main(argv):
             record(label, 'FAIL', traceback.format_exc(limit=4))
 
     try:
-        # 收尾：先把当前工程落盘（避免关闭时弹「是否保存更改」），再关 DE
-        try:
-            if _app is not None and getattr(_app, 'cst_file', None) is not None:
+        # 收尾：先把当前工程落盘（避免关闭时弹「是否保存更改」），再收摊
+        if _app is not None:
+            if _attached_mode:
+                # attach 模式：只关**我们自己新建的**那个临时空白工程。
+                # 绝不调用 _app.close()（那只是解除引用，会让临时工程留在用户窗口里），
+                # 更不会去碰用户原本打开的工程。
+                _close_own_project(save_first=True)
+            elif getattr(_app, 'cst_file', None) is not None:
                 try:
                     _app.save(str(_work / 'cleanup.cst'),
                               include_results=False, allow_overwrite=True)
@@ -793,14 +959,21 @@ def main(argv):
                     pass
                 if not getattr(_app, '_environment_closed', False):
                     _app.close()
-        except Exception:                               # noqa: BLE001
-            pass
         prompts = save_prompts()
         if prompts:
             print(f'!! 检测到「保存更改」类弹窗（不点会阻塞下一次 CST 调用）：'
                   f'{[p["title"] for p in prompts]}', flush=True)
-        closed = close_extra_design_environments(_baseline, verbose=True)
-        record('收尾', 'OK', f'关闭本次新建的 DE：{closed or "无"}')
+        if attach_pid is not None:
+            print('本次是 attach 到用户的 DE：用户工程与 DE **一个都没关**'
+                  '（只关掉了我们自己新建的临时空白工程）', flush=True)
+        elif baseline_pids is None:
+            print('DE 清点不可用 ⇒ 不做任何关闭动作（保护用户会话）', flush=True)
+        elif not _baseline:
+            print('!! 基线上一个 DE 都没有 —— 拒绝执行「关掉非基线 DE」'
+                  '（否则会把用户自己开着的 CST 关掉）', flush=True)
+        else:
+            closed = close_extra_design_environments(_baseline, verbose=True)
+            record('收尾', 'OK', f'关闭本次新建的 DE：{closed or "无"}')
     except Exception:                                   # noqa: BLE001
         record('收尾', 'FAIL', traceback.format_exc(limit=3))
 

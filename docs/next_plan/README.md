@@ -10,6 +10,9 @@
 - [ ] **P4/V3：参考谐振对比**。本库工程与参考工程分别求解，使用现有 `resonance_criterion` 匹配峰/谷并计算频率差（目标 <1 GHz），解释 350 GHz 处 S11 既有 1.83 dB 差异。真实历史曲线上的规则验证已完成；缺的是本库新求解与同条件参考对照。[判据证据](../validation/p4_real_machine_evidence.md)。
 - [ ] **运行中控制语义**。先核实 CST 停止/暂停能力，再决定是否支持运行中取消与进度；当前 `cancel_not_supported` 是准确行为。补充超时、中断、重启及无孤儿会话的真实求解验收。
 - [ ] **P4/V10：2026-10 五处封装层缺陷的真机复验**。离线回归已通过（`cst_solver/tests/test_reported_bugfixes.py`，27 条 + `test_session_lifecycle.py` 2 条），但下列四点必须在真 CST 2026 上确认后才算验收：① `set_background()` 新的 `Type/Epsilon/Mu` 写法 `get_messages()` 为空，且 `Model.mif` 里背景确为设定值（旧的 `.Material` 行是**静默忽略**，需要新旧对比证据）；② `add_port(..., port_on_bound=False)` 能在**域内部**端口上建成（`Coordinates "Free"` + 域内范围）；③ 无参 `app.save()` 确实落盘（比对文件时间戳/大小）且随后 `close()` 工程完好；④ `get_parameter()` 能读回 `para()` 写下的值（数值 ⇒ `float`，表达式 ⇒ `str`）。证据写入[真机记录](../validation/p4_real_machine_evidence.md)。
+  - **取证脚本已就绪**：`scripts/verify_bugfixes_real.py` —— 只建模/保存/读参数/关工程，**不跑任何求解**；每个探针用全新空白工程（`get_messages()` 会反复报出历史失败）；内建弹窗看门狗（`scripts/cst_dialog_guard.py`）；背景那项还会把保存后的 `Model.mif` 原文另存一份，便于离线复核解析。首轮 2026-09-23 因**许可证被占用**未取证（见下条），四项一律记 UNKNOWN 而**不是** FAIL。
+  - ⚠️ **跑之前先确认许可证空闲**：本机许可是单份的（CST registry: `27075@localhost`）。已有 CST 会话在跑时 `setup()` 会报 `EXITCODE_NOLICENSE` / `DesignEnvironmentStartupError ... is gone` —— 这是环境问题，不是缺陷本身。确需借用现有会话时加 `--attach <pid>`（脚本**绝不**关闭借来的会话）。
+  - 🔴 **同一坑的第二次教训（2026-09-23）**：`design_environment_baseline()` 必须在 `cst.interface` **已可导入之后**才调用。`cst_solver` 是惰性把 CST 库加进 `sys.path` 的，在它之前取基线会拿到**空集合**，于是收尾的 `close_extra_design_environments(baseline=set())` 会把**用户自己开着的会话**（当时 pid 36472，里面有工程）当成「本次新建的 DE」去 `connect(pid).close()`。现在脚本里已堵死：先 `_load_cst_module('cst.interface')` 再取基线，且**基线为空就拒绝执行任何关闭**、attach 模式下一个都不关。
 
 ## 优先级 2：未覆盖的器件变体
 
