@@ -95,6 +95,24 @@ def test_classify(module, kind):
     assert auditor.classify(module) == kind
 
 
+def test_classify_marks_user_local_modules(tmp_path):
+    """源目录里有同名 `.py` ⇒ 那是**用户自己的模块**，不是仓库缺口。
+
+    背景：审计扫的是用户的科研目录（`SRC_DEFAULT`），用户的 notebook 会 import
+    自己 `_common/` 下的模块（`topo_build`、`device_preview` …）。把它们当 `unknown`
+    会让这个门禁长期变红，红久了就没人看了。
+    """
+    (tmp_path / 'topo_build.py').write_text('x = 1', encoding='utf-8')
+    (tmp_path / '_common').mkdir()
+    (tmp_path / '_common' / 'device_preview.py').write_text('y = 1', encoding='utf-8')
+
+    assert auditor.classify('topo_build', str(tmp_path)) == 'user-local'
+    assert auditor.classify('device_preview', str(tmp_path)) == 'user-local'
+    assert auditor.classify('numpy', str(tmp_path)) == 'third-party'   # 先判已知类别
+    assert auditor.classify('topo_build') == 'unknown'                 # 不给目录 ⇒ 判不了
+    assert auditor.classify('not_a_user_module', str(tmp_path)) == 'unknown'
+
+
 # ============================================================
 # 2b. 审计必须**按模块**统计（第一版按顶层包合并，漏过一个真缺口）
 # ============================================================

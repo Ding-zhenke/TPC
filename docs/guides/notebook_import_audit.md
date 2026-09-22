@@ -1,7 +1,7 @@
 # 旧 notebook 导入兼容审计
 
 - 源目录：`D:\成电博士生涯\拓扑光子晶体模型\硅基`
-- `.ipynb` 总数：**90**
+- `.ipynb` 总数：**100**
 - 方式：只解析 `.ipynb` 的 code cell 源码（去 IPython 魔法后 `ast` 解析），**不执行**任何单元格；对 `current`/`legacy` 的导入逐个符号核对。
 - 生成：`python scripts/check_notebook_imports.py`
 
@@ -15,15 +15,19 @@
 | `cst` | 0 |
 | `stdlib` | 8 |
 | `third-party` | 6 |
+| `user-local` | 3 |
 | `unknown` | 0 |
+
+> `user-local` = 源目录里能找到同名 `.py` 的模块 —— 那是**用户自己的脚本**（例如 `_common/topo_build.py`），不属于本仓库职责；`unknown` 才是真缺口。
+
 
 ## 2. 逐个模块
 
 | 模块 | 类别 | 用到的 notebook 数 | 取用的名字 |
 |---|---|---|---|
-| `cst_solver` | `current` | 65 | `result`, `setup` |
+| `cst_solver` | `current` | 70 | `result`, `setup` |
 | `mesh_grid.plotting` | `current` | 1 | `chinese_plot_style` |
-| `mesh_grid.tri_grid` | `current` | 6 | `TopoPath`, `build_triangle_lattice`, `color_triangles`, `find_different_points`, `plot_tri_color`, `plot_triangle_grid` … |
+| `mesh_grid.tri_grid` | `current` | 11 | `TopoPath`, `build_triangle_lattice`, `color_triangles`, `find_different_points`, `plot_tri_color`, `plot_triangle_grid` … |
 | `topo_modeler.builders` | `current` | 4 | `add_port_for_antenna`, `add_waveguide_port`, `build_feed`, `build_materials`, `build_topological_crystal`, `build_waveguide` |
 | `hexlib` | `legacy` | 41 | `*`, `HexGridVisualizer`, `HexLib`, `create_hex_polygon`, `read_and_display_dxf_matplotlib`, `save_to_dxf` |
 | `tri_lib` | `legacy` | 58 | `*` |
@@ -31,19 +35,19 @@
 | `metalen` | `migrated` | 1 | （`import X`） |
 | `importlib` | `stdlib` | 1 | （`import X`） |
 | `json` | `stdlib` | 2 | （`import X`） |
-| `os` | `stdlib` | 6 | （`import X`） |
+| `os` | `stdlib` | 16 | （`import X`） |
 | `re` | `stdlib` | 3 | （`import X`） |
 | `shutil` | `stdlib` | 3 | （`import X`） |
 | `subprocess` | `stdlib` | 1 | （`import X`） |
-| `sys` | `stdlib` | 66 | （`import X`） |
+| `sys` | `stdlib` | 76 | （`import X`） |
 | `time` | `stdlib` | 7 | （`import X`） |
-| `matplotlib` | `third-party` | 1 | `font_manager` |
+| `matplotlib` | `third-party` | 2 | `font_manager` |
 | `matplotlib.collections` | `third-party` | 16 | `PolyCollection` |
 | `matplotlib.lines` | `third-party` | 1 | `Line2D` |
-| `matplotlib.patches` | `third-party` | 2 | `PathPatch`, `Polygon`, `Rectangle` |
+| `matplotlib.patches` | `third-party` | 3 | `PathPatch`, `Polygon`, `Rectangle` |
 | `matplotlib.path` | `third-party` | 3 | `Path` |
-| `matplotlib.pyplot` | `third-party` | 18 | （`import X`） |
-| `numpy` | `third-party` | 70 | （`import X`） |
+| `matplotlib.pyplot` | `third-party` | 19 | （`import X`） |
+| `numpy` | `third-party` | 80 | （`import X`） |
 | `scipy` | `third-party` | 1 | `signal` |
 | `scipy.optimize` | `third-party` | 3 | `curve_fit`, `minimize` |
 | `shapely.geometry` | `third-party` | 1 | `Polygon` |
@@ -51,6 +55,9 @@
 | `shapely.ops` | `third-party` | 1 | `unary_union` |
 | `sympy` | `third-party` | 1 | `I`, `Matrix`, `simplify`, `sqrt`, `symbols` |
 | `tqdm` | `third-party` | 24 | `tqdm` |
+| `device_preview` | `user-local` | 5 | `render` |
+| `model_params` | `user-local` | 5 | （`import X`） |
+| `topo_build` | `user-local` | 5 | （`import X`） |
 
 ## 3. 缺口与等价实现
 

@@ -13,11 +13,13 @@ r"""
 ``stdlib``                    标准库（`sys.stdlib_module_names`）
 ``cst``                       CST 自带（`cst.interface` / `cst.results`）——
                               由 CST 安装提供，不在仓库里，也不算缺口
-``current``                   当前顶层包（`cst_solver` / `mesh_grid` / `topo_modeler`
+```import``                   当前顶层包（`cst_solver` / `mesh_grid` / `topo_modeler`
                               / `topo_templates` / `tpc_toolkit` / `tpc_service`
                               / `templates`）
 ``legacy``                    旧名，由 `archive/compat/` 下的兼容入口转发
 ``third-party``               需要另外 pip 安装的第三方包
+``user-local``                **用户自己的模块**：在源目录里能找到同名 `<name>.py`
+                              （例如用户的 `_common/topo_build.py`），不是仓库职责
 ``unknown``                   **两边都不是** —— 真正的缺口，要逐个交代
 ============================  ====================================================
 
@@ -201,13 +203,15 @@ def notebook_text(path: str, limit_bytes: int = 3_000_000) -> str:
 # 分类
 # ============================================================
 
-def classify(module: str) -> str:
+def classify(module: str, src_root=None) -> str:
     """
     判定一个顶层模块属于哪一类。
 
     :param module: str, 形如 ``cst_solver`` 或 ``mesh_grid.tri_grid``
+    :param src_root: str 可选, notebook 根目录 —— 给了就额外判「用户本地模块」
+        （目录下能找到同名 `<name>.py` ⇒ 那是用户自己的脚本，不是仓库缺口）
     :return: str, ``stdlib`` / ``cst`` / ``current`` / ``legacy`` / ``migrated`` /
-        ``third-party`` / ``unknown``
+        ``third-party`` / ``user-local`` / ``unknown``
     """
     top = module.split('.')[0]
     if module in MIGRATED_MODULES:               # 先按**完整路径**判（子模块级迁移）
@@ -224,7 +228,38 @@ def classify(module: str) -> str:
         return 'third-party'
     if top in MIGRATED_MODULES:
         return 'migrated'
+    if src_root and top in _user_local_stems(src_root):
+        return 'user-local'
     return 'unknown'
+
+
+#: 扫源目录时的剪枝（CST 工程数据/缓存里不会有用户模块，但文件多得吓人）
+_PRUNE_DIRS = {'__pycache__', '.git', '.ipynb_checkpoints', 'Model',
+               'ModelCache', 'Result', 'SP', 'Temp', 'Export', 'node_modules'}
+_USER_LOCAL_CACHE = {}
+
+
+def _user_local_stems(src_root: str):
+    """扫一遍源目录，返回「用户本地模块名」集合（所有 `*.py` 的文件名去后缀）。
+
+    为什么要这一条：审计扫的是**用户的科研目录**（`SRC_DEFAULT`），里面除了旧
+    notebook 还有**用户自己的脚本模块**（如 `_common/topo_build.py`、
+    `_common/device_preview.py`）—— 它们是用户代码，不该被当成仓库缺口。
+
+    :param src_root: str, notebook 根目录
+    :return: frozenset[str]
+    """
+    key = os.path.abspath(src_root)
+    if key in _USER_LOCAL_CACHE:
+        return _USER_LOCAL_CACHE[key]
+    stems = set()
+    for dirpath, dirnames, filenames in os.walk(src_root):
+        dirnames[:] = [d for d in dirnames if d not in _PRUNE_DIRS]
+        for filename in filenames:
+            if filename.endswith('.py'):
+                stems.add(filename[:-3])
+    _USER_LOCAL_CACHE[key] = frozenset(stems)
+    return _USER_LOCAL_CACHE[key]
 
 
 def _legacy_shim_path(top: str):
@@ -323,7 +358,7 @@ def audit(src_root: str):
         for ref in parse_imports(text):
             module = ref['module']
             entry = per_module.setdefault(module, {
-                'kind': classify(module), 'top': module.split('.')[0],
+                'kind': classify(module, src_root), 'top': module.split('.')[0],
                 'names': set(), 'notebooks': []})
             if ref['names']:
                 entry['names'].update(ref['names'])
@@ -365,7 +400,7 @@ def summarize(report):
         kind_by_top.setdefault(entry['top'], entry['kind'])
     counts = OrderedDict((kind, 0) for kind in
                          ('current', 'legacy', 'migrated', 'cst', 'stdlib',
-                          'third-party', 'unknown'))
+                          'third-party', 'user-local', 'unknown'))
     for kind in kind_by_top.values():
         counts[kind] += 1
     tops = {kind: sorted(top for top, k in kind_by_top.items() if k == kind)
@@ -394,6 +429,10 @@ def render_markdown(report, summary) -> str:
              '| 类别 | 顶层模块数 |', '|---|---|']
     for kind, count in summary['counts'].items():
         lines.append(f'| `{kind}` | {count} |')
+    lines += ['',
+              '> `user-local` = 源目录里能找到同名 `.py` 的模块 —— 那是**用户自己的脚本**'
+              '（例如 `_common/topo_build.py`），不属于本仓库职责；'
+              '`unknown` 才是真缺口。', '']
     lines += ['', '## 2. 逐个模块', '',
               '| 模块 | 类别 | 用到的 notebook 数 | 取用的名字 |', '|---|---|---|---|']
     ordered = sorted(report['per_module'].items(),
@@ -482,6 +521,12 @@ def main(argv=None):
               f'上方 migrated 计数按顶层包计）')
     for module in summary['unknown']:
         print(f'  [unknown] {module}：{KNOWN_MISSING.get(module, "未交代！")}')
+    user_local = sorted(top for top, k in
+                        {m.split(".")[0]: e.get("kind")
+                         for m, e in report["per_module"].items()}.items()
+                        if k == 'user-local')
+    if user_local:
+        print(f'  [user-local] {user_local}（源目录里的用户自己的模块，不算缺口）')
     for gap in summary['symbol_gaps']:
         print(f'  [gap] {gap["module"]} 缺 {gap["missing"]}')
 
