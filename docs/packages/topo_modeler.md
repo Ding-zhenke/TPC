@@ -728,12 +728,15 @@ build_waveguide(app, name='wg2', x_min='0', x_max='lf3')  # 自定义 x 范围
 
 ```python
 def add_waveguide_port(app, solid_name, port_number, face_id,
-                       full_deembedding=False, consider_material_inside=False)
+                       orientation=None, shield='')
 
 def add_ports_for_straight_waveguide(app, waveguide_name='wg1',
-                                     port1_face='10', port2_face='22')
+                                     port1_face='10', port2_face='22',
+                                     port1_orientation='xmin',
+                                     port2_orientation='xmax')
 
-def add_port_for_antenna(app, waveguide_name='wg1', port_face='10')
+def add_port_for_antenna(app, waveguide_name='wg1', port_face='10',
+                         orientation='xmin')
 ```
 
 | 参数 | 类型 | 默认 | 说明 |
@@ -742,13 +745,22 @@ def add_port_for_antenna(app, waveguide_name='wg1', port_face='10')
 | `solid_name` / `waveguide_name` | `str` | — / `'wg1'` | 目标 solid 名 |
 | `port_number` | `int` | — | 端口号（1, 2, …） |
 | `face_id` / `port1_face` / `port2_face` / `port_face` | `str` | `'10'` / `'22'` / `'10'` | CST 面编号 |
-| `full_deembedding` | `bool` | `False` | 是否完全去嵌入 |
-| `consider_material_inside` | `bool` | `False` | 是否考虑内部材料 |
+| `orientation` / `port1_orientation` / `port2_orientation` | `str` | `None`（直波导/天线便捷入口给 `'xmin'` / `'xmax'`） | **端口激励方向**，必须是 CST 位置枚举 `xmin/xmax/ymin/ymax/zmin/zmax`（= 激励波传入器件的方向） |
+| `shield` | `str` | `''` | 端口屏蔽：`'electric'` → `Shield "PEC"`、`'magnetic'` → `"PMC"` |
 
-> ⚠ 注意：`full_deembedding` 与 `consider_material_inside` 当前**只出现在签名与 docstring 中**，
-> 函数体内并未使用它们（函数体只有 `app.pick_face(...)` + `app.add_port(...)`）。
+> ⚠ **`orientation` 是 2026-09-20 加固的重点**：
+> ① `'positive'/'negative'` 等写法 ⇒ `app.add_port()` 当场抛 `ValueError`
+> （CST 对非法值**不报错、静默回退默认 `zmin`**，会让端口激励朝外、S21 反转）；
+> ② 不传（`None`）⇒ 不下发 `.Orientation` 行（= 改动前 CST 的实际行为，**既有模型结果不变**）
+> 但打一条 `UserWarning`；
+> ③ `'10'` 面在 `build_waveguide` 造出的实体上位于 **x_min 端**（可查 `anchorpoints.json` 的 pin）
+> ⇒ 直波导与天线入口默认给 `'xmin'`，换面号就必须同步换朝向。
+>
+> 历史遗留：本文旧版记的是 `full_deembedding` / `consider_material_inside` 两个形参 ——
+> 它们**从未在代码里存在过**（文档臆造）；实际签名只有 `orientation` / `shield`，已按代码改正。
 
-**内部调用链**：`app.pick_face(solid_name, face_id)` → `app.add_port(port_number)`。
+**内部调用链**：`app.pick_face(solid_name, face_id)` →
+`app.get_picked_count('face')` 校验（选不中就抛 `RuntimeError`）→ `app.add_port(port_number, orientation=…, shield=…)`。
 
 **返回值**：`add_waveguide_port` → `int`（端口号）；`add_ports_for_straight_waveguide` → `(port1_number, port2_number)`；
 `add_port_for_antenna` → `int`（1）。
@@ -756,8 +768,9 @@ def add_port_for_antenna(app, waveguide_name='wg1', port_face='10')
 ```python
 from topo_modeler.builders import add_waveguide_port, add_ports_for_straight_waveguide, add_port_for_antenna
 
-add_waveguide_port(app, solid_name='wg1', port_number=1, face_id='10')   # 单端口 → 1
-add_ports_for_straight_waveguide(app, waveguide_name='wg1')              # → (1, 2)
+add_waveguide_port(app, solid_name='wg1', port_number=1, face_id='10',
+                   orientation='xmin')                                    # 单端口 → 1
+add_ports_for_straight_waveguide(app, waveguide_name='wg1')              # → (1, 2)，朝向 xmin/xmax 已默认
 add_port_for_antenna(app, waveguide_name='wg1')                          # → 1
 ```
 

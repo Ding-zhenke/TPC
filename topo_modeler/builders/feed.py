@@ -106,7 +106,7 @@ def register_multiport_params(app, *, wf2=0.2, lf4=0.2, lf5=3.0, lf6=0.2,
 def build_multiport_waveguide(app, name='wg2', material='Copper (annealed)',
                               x_min=None, x_max=None, y_center='0',
                               port_number=None, port_face='10',
-                              orientation='positive', shield='electric',
+                              orientation=None, shield='electric',
                               wg_b='wg_b', wg_a='wg_a', wg_t='wg_t'):
     """
     多端口族的**铜波导**（+ 可选波端口），x 范围默认 ``[-lf5-lf6-lf4, -lf4]``。
@@ -124,7 +124,10 @@ def build_multiport_waveguide(app, name='wg2', material='Copper (annealed)',
     :param y_center: str, 波导 y 中心（多端口族在轴线上 ⇒ `'0'`）
     :param port_number: int 可选, 给了就在 `port_face` 上加波导端口
     :param port_face: str, 端面编号（默认 `'10'`：轴向口径端面，12/12 notebook 一致）
-    :param orientation: str, 端口法向
+    :param orientation: str 可选, 端口激励方向，必须是 CST 位置枚举
+        `'xmin'/'xmax'/'ymin'/'ymax'/'zmin'/'zmax'`（多端口族的铜波导外端在 x_min 侧 ⇒ 一般给 `'xmin'`）；
+        不传 = 不下发 `.Orientation` 行（CST 默认值）+ 一条 `UserWarning`；
+        `'positive'/'negative'` 会抛 `ValueError`（见 `cst_solver.simulation.ports.check_port_orientation`）
     :param shield: str, 端口屏蔽（多端口族用 `'electric'`）
     :param wg_b/wg_a/wg_t: str, 波导内宽/内高/壁厚参数名
     :return: dict, ``{'name': ..., 'x_min': ..., 'x_max': ..., 'port': ...}``

@@ -19,9 +19,16 @@ brick 两边几何一致，面编号自然一致。所以保留编号做法是**
 `get_picked_count('face')` 校验「确实选中了 1 个面」，选不中时抛
 `RuntimeError`，而不是让端口悄悄建错位置。
 
+端口**朝向**（2026-09-20 加固）：`orientation` 只接受 CST 的**位置枚举**
+`'xmin'/'xmax'/'ymin'/'ymax'/'zmin'/'zmax'`，含义是「激励波传入器件的方向」。
+库底层 `add_port()` 会拦截非法值；本封装把默认值从旧版的 `'positive'`
+改成 `None`（= 不下发 `.Orientation` 行、由 CST 取默认值，**行为与旧版一致**
+但会打一条 `UserWarning` 提醒你没说朝向）。
+
 用法:
     >>> from topo_modeler.builders import add_waveguide_port
-    >>> add_waveguide_port(app, solid_name='wg1', port_number=1, face_id='10')
+    >>> add_waveguide_port(app, solid_name='wg1', port_number=1, face_id='10',
+    ...                    orientation='xmin')   # 端口在 x_min 端 ⇒ 激励朝 +x
 
 @author: PC
 """
@@ -30,7 +37,7 @@ from typing import Optional
 
 
 def add_waveguide_port(app, solid_name, port_number, face_id,
-                       orientation='positive', shield=''):
+                       orientation=None, shield=''):
     """
     在指定 solid 的指定面添加波导端口。
 
@@ -40,10 +47,15 @@ def add_waveguide_port(app, solid_name, port_number, face_id,
     :param solid_name: str, 目标 solid 名称（如 'wg1'）
     :param port_number: int, 端口编号（1, 2, ...）
     :param face_id: str, CST 面编号（如 '10', '22'）
-    :param orientation: str, 'positive' 或 'negative'，端口法向朝向
+    :param orientation: str 可选, **端口激励方向**，必须给位置枚举
+        `'xmin'/'xmax'/'ymin'/'ymax'/'zmin'/'zmax'`（= 激励波传入器件的方向）：
+        端口面在 x_min 端给 `'xmin'`、在 x_max 端给 `'xmax'`，否则 S21 会反。
+        不传 = 不下发 `.Orientation` 行（CST 默认值）+ 一条 `UserWarning`；
+        `'positive'/'negative'` 会抛 `ValueError`（旧默认值就是它，会被 CST 静默忽略）
     :param shield: str, 端口屏蔽类型 'electric'/'magnetic'/''，默认 ''
     :return: int, 端口编号
     :raises RuntimeError: 该面编号没选中任何面（几何或构建顺序已变，编号失效）
+    :raises ValueError: orientation 不是合法位置枚举
     """
     app.pick_face(solid_name, face_id)
 
@@ -63,7 +75,9 @@ def add_waveguide_port(app, solid_name, port_number, face_id,
 
 
 def add_ports_for_straight_waveguide(app, waveguide_name='wg1',
-                                      port1_face='10', port2_face='22'):
+                                      port1_face='10', port2_face='22',
+                                      port1_orientation='xmin',
+                                      port2_orientation='xmax'):
     """
     为直波导添加 2 个端口（入口 + 出口）。
 
@@ -71,14 +85,23 @@ def add_ports_for_straight_waveguide(app, waveguide_name='wg1',
       pick_face('wg1', '10') + add_port(1)
       pick_face('wg1', '22') + add_port(2)
 
+    朝向默认值按 `build_waveguide` 造出的实体给（`'10'` 在 x_min 端、`'22'` 在 x_max 端，
+    见 `anchorpoints.json` 里的 pin）——両端口都朝**器件内部**，这样 S21 不会被反向定义。
+    若你换用别的面号，必须把对应朝向一起换掉（或显式传 `port1_orientation` /
+    `port2_orientation`），否则 CST 会静默接受一个方向不对的端口。
+
     :param app: cst_solver.setup 实例
     :param waveguide_name: str, 波导 solid 名称
     :param port1_face: str, 端口 1 的面编号
     :param port2_face: str, 端口 2 的面编号
+    :param port1_orientation: str, 端口 1 朝向（默认 `'xmin'`：面在 x_min 端）
+    :param port2_orientation: str, 端口 2 朝向（默认 `'xmax'`：面在 x_max 端）
     :return: tuple, (port1_number, port2_number)
     """
-    p1 = add_waveguide_port(app, waveguide_name, 1, port1_face)
-    p2 = add_waveguide_port(app, waveguide_name, 2, port2_face)
+    p1 = add_waveguide_port(app, waveguide_name, 1, port1_face,
+                            orientation=port1_orientation)
+    p2 = add_waveguide_port(app, waveguide_name, 2, port2_face,
+                            orientation=port2_orientation)
     return (p1, p2)
 
 
@@ -101,11 +124,19 @@ def add_multiport_port_set(app, entries, component='component1'):
     ⚠️ 面号 `'10'`（轴向口径端面）在多端口族里最稳；`'22'` 等跨模型不可复用，
     所以每个端口都用 :func:`add_waveguide_port` 的「选不中就抛」校验。
 
+    ⚠️ **上面那段参考写法里的 `app1.add_port(1)` 不要再照抄**（缺朝向参数，
+    2026-09-20 起会打 `UserWarning`；且当年那个默认值 `'positive'` 是**非法值**，
+    CST 会静默忽略 ⇒ 端口朝向错）。落库时给 5 元组显式带上朝向，例如
+    `('wg1', 2, '22', 'electric', 'xmax')`。
+
     :param app: cst_solver.setup 实例
     :param entries: 序列, 每项 ``(solid_name, port_number, face_id)``；
-        也可给 4 元组 ``(solid_name, port_number, face_id, shield)``
+        也可给 4 元组 ``(solid_name, port_number, face_id, shield)``，
+        或 5 元组 ``(solid_name, port_number, face_id, shield, orientation)``
+        （多端口族各端口朝向往往不同 ⇒ **推荐逐条给 orientation**，
+        不给会走 `add_waveguide_port` 的默认（None + 告警））
     :param component: str, 归属组件（仅记录用，端口挂在 solid 上）
-    :return: list[dict], 每项 ``{'solid':…, 'port':…, 'face':…, 'shield':…}``
+    :return: list[dict], 每项 ``{'solid':…, 'port':…, 'face':…, 'shield':…, 'orientation':…}``
     :raises ValueError: entries 为空或形状不对
     """
     items = list(entries or ())
@@ -114,28 +145,36 @@ def add_multiport_port_set(app, entries, component='component1'):
 
     created = []
     for entry in items:
-        if len(entry) == 4:
+        orientation = None
+        if len(entry) == 5:
+            solid, port, face, shield, orientation = entry
+        elif len(entry) == 4:
             solid, port, face, shield = entry
         elif len(entry) == 3:
             (solid, port, face), shield = entry, 'electric'
         else:
             raise ValueError(
-                f'端口条目必须是 (solid, port, face) 或 (solid, port, face, shield)，'
-                f'收到 {entry!r}')
+                f'端口条目必须是 (solid, port, face) 或 (solid, port, face, shield) 或 '
+                f'(solid, port, face, shield, orientation)，收到 {entry!r}')
         add_waveguide_port(app, solid_name=solid, port_number=int(port),
-                           face_id=str(face), shield=shield)
+                           face_id=str(face), shield=shield,
+                           orientation=orientation)
         created.append({'solid': solid, 'port': int(port), 'face': str(face),
-                        'shield': shield})
+                        'shield': shield, 'orientation': orientation})
     return created
 
 
-def add_port_for_antenna(app, waveguide_name='wg1', port_face='10'):
+def add_port_for_antenna(app, waveguide_name='wg1', port_face='10',
+                         orientation='xmin'):
     """
     为天线添加 1 个端口（仅入口）。
 
     :param app: cst_solver.setup 实例
     :param waveguide_name: str, 波导 solid 名称
     :param port_face: str, 端口面编号
+    :param orientation: str, 端口激励方向（默认 `'xmin'`：`build_waveguide` 造出的
+        `'10'` 面在 x_min 端）；若换用别的面号，必须同步换朝向
     :return: int, 端口编号
     """
-    return add_waveguide_port(app, waveguide_name, 1, port_face)
+    return add_waveguide_port(app, waveguide_name, 1, port_face,
+                              orientation=orientation)
