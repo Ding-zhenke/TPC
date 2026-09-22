@@ -105,7 +105,8 @@ class PortMixin:
 
     def add_port(self, id_val, orientation=None, shield='',
                  *, number_of_modes=1, adjust_polarization='False',
-                 polarization_angle='0.0', reference_plane_distance='0'):
+                 polarization_angle='0.0', reference_plane_distance='0',
+                 port_on_bound=True, clip_picked_port_to_bound=False):
         """
         创建标准波导端口（波端口），用于激励和采集 S 参数
         保留原函数名以兼容旧代码
@@ -121,6 +122,21 @@ class PortMixin:
         **朝向必须给位置枚举**（`xmin/xmax/ymin/ymax/zmin/zmax`），取"激励波传入器件"的方向；
         `'positive'/'negative'` 会抛 ``ValueError``，``None`` 会打 ``UserWarning``。
 
+        端口与计算域边界（2026-10 修复）：原先 ``.PortOnBound`` 被写死成 ``"True"``，
+        于是**域内部**的端口只能靠手改 VBA 才能建。现在开放为 ``port_on_bound``：
+
+        - ``port_on_bound=True``（默认）⇒ ``.PortOnBound "True"``：
+          **端口面必须落在计算域边界平面上**（直波导两端、天线入口的常规做法）；
+        - ``port_on_bound=False`` ⇒ ``.PortOnBound "False"``：
+          允许端口位于计算域**内部**，此时端口位置由 ``.Xrange/.Yrange/.Zrange``
+          决定（本方法的 picked 端口由拾取面决定 —— 官方原文：
+          ``PortOnBound`` *is not relevant for picked ports*）。
+
+        拾取端口还有一个专用开关 ``clip_picked_port_to_bound``
+        （官方 ``ClipPickedPortToBound``：**只对 picked 端口有效**）：
+        置 True 会把拾取到的端口面**吸附到计算域边界平面**，
+        正好用来修「拾取面比边界略靠里 ⇒ 端口不在边界平面上」的情形。
+
         :param id_val: int/str, 端口编号
         :param orientation: str 可选, 端口激励方向，取 ``PORT_ORIENTATIONS``
             里的位置枚举；不传 = 不下发 ``.Orientation`` 行（CST 默认值）+ 告警
@@ -129,10 +145,16 @@ class PortMixin:
         :param adjust_polarization: str/bool, 是否自动调整极化，默认 'False'
         :param polarization_angle: float/str, 极化角（度），默认 '0.0'
         :param reference_plane_distance: float/str, 参考面距离，默认 '0'
+        :param port_on_bound: bool, 端口是否位于计算域**边界平面**上，默认 True
+            （改 False ⇒ 端口可在域内部，位置由范围/拾取决定）
+        :param clip_picked_port_to_bound: bool, 是否把**拾取**到的端口面吸附到
+            计算域边界，默认 False（CST 默认值，保持既有 VBA 一字不变）
         :raises ValueError: ``orientation`` 不是合法位置枚举
         """
         ori = check_port_orientation(orientation, where='add_port')
         ori_line = f'            .Orientation "{ori}"\n' if ori else ''
+        on_bound_str = 'True' if port_on_bound else 'False'
+        clip_str = 'True' if clip_picked_port_to_bound else 'False'
         if shield == 'electric':
             f2 = '.Shield "PEC"'
         elif shield == 'magnetic':
@@ -151,8 +173,8 @@ class PortMixin:
             .TextSize "50"
             .TextMaxLimit "0"
             .Coordinates "Picks"
-{ori_line}            .PortOnBound "True"
-            .ClipPickedPortToBound "False"
+{ori_line}            .PortOnBound "{on_bound_str}"
+            .ClipPickedPortToBound "{clip_str}"
             .SingleEnded "False"
             .WaveguideMonitor "False"
             {f2}
@@ -171,7 +193,8 @@ class PortMixin:
             不传 = 不下发 ``.Orientation`` 行 + 告警；非法值抛 ``ValueError``
         :param kwargs: 透传给 ``add_port()`` 的关键字参数
             （``number_of_modes`` / ``adjust_polarization`` /
-            ``polarization_angle`` / ``reference_plane_distance``）
+            ``polarization_angle`` / ``reference_plane_distance`` /
+            ``port_on_bound`` / ``clip_picked_port_to_bound``）
         """
         self.add_port(id_val, orientation, shield, **kwargs)
 
@@ -180,7 +203,8 @@ class PortMixin:
                                    shield='', *, number_of_modes=1,
                                    adjust_polarization='False',
                                    polarization_angle='0.0',
-                                   reference_plane_distance='0'):
+                                   reference_plane_distance='0',
+                                   port_on_bound=True):
         """
         用**坐标范围**创建波导端口（``Coordinates "Free"``），无需任何面拾取。
 
@@ -197,6 +221,19 @@ class PortMixin:
         端口面所处的平面由所给范围决定（例如只给 ``xrange`` + ``yrange``
         时端口法向沿 z）。
 
+        端口与计算域边界（2026-10 修复）：``.PortOnBound`` 原先写死 ``"True"``，
+        对**域内部**的端口是错的。现在由 ``port_on_bound`` 控制：
+
+        - ``port_on_bound=True``（默认）⇒ 端口面必须落在计算域**边界平面**上；
+        - ``port_on_bound=False`` ⇒ 端口可在计算域**内部**，位置完全由
+          ``xrange`` / ``yrange`` / ``zrange`` 决定
+          （官方 Free 端口示例正是 ``.PortOnBound (False)``）。
+
+        不确定时怎么选：端口矩形贴着计算域的一个端面 ⇒ True；
+        端口被 ``Boundary`` 的 ``XminSpace`` 等扩展空间推到了域**内部**、
+        或者你希望端口面浮在器件入口处 ⇒ False。CST 对「端口面不在边界平面上
+        却声明 True」通常不会给出清晰报错，所以这里不做静默猜测 —— 由调用方明示。
+
         :param id_val: int/str, 端口编号
         :param xrange: tuple, (min, max)，x 方向范围，元素可为 CST 表达式
         :param yrange: tuple, (min, max)，y 方向范围，元素可为 CST 表达式
@@ -209,6 +246,7 @@ class PortMixin:
         :param adjust_polarization: str/bool, 是否自动调整极化，默认 'False'（阶段 5.8 新增）
         :param polarization_angle: float/str, 极化角（度），默认 '0.0'（阶段 5.8 新增）
         :param reference_plane_distance: float/str, 参考面距离，默认 '0'（阶段 5.8 新增）
+        :param port_on_bound: bool, 端口是否位于计算域**边界平面**上，默认 True（2026-10 新增）
         :raises ValueError: 三个方向的范围全部为 None，无法确定端口面；或 orientation 非法
         """
         if xrange is None and yrange is None and zrange is None:
@@ -220,6 +258,7 @@ class PortMixin:
         ori = check_port_orientation(orientation,
                                      where='create_waveguide_port_free')
         ori_line = f'            .Orientation "{ori}" \n' if ori else ''
+        on_bound_str = 'True' if port_on_bound else 'False'
 
         ranges = ''
         for _line, _val in (('.Xrange', xrange), ('.Yrange', yrange),
@@ -245,7 +284,7 @@ class PortMixin:
             .TextSize "50" 
             .TextMaxLimit "0" 
             .Coordinates "Free" 
-{ori_line}            .PortOnBound "True" 
+{ori_line}            .PortOnBound "{on_bound_str}" 
             .ClipPickedPortToBound "False" 
             {ranges}.SingleEnded "False" 
             .WaveguideMonitor "False" 

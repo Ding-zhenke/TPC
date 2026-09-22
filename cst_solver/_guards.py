@@ -77,7 +77,66 @@ __all__ = [
     'get_guard_mode',
     'set_guard_mode',
     'assert_gain_mode',
+    'require_project_file',
 ]
+
+
+def require_project_file(path, kind='CST project file'):
+    """
+    确认 ``path`` 指向一个**存在的文件**，并返回它的绝对路径。
+
+    为什么需要它：``setup(filename)`` / ``open()`` / ``project_open()`` 原先
+    各用各的判据 —— ``os.path.isfile``（setup）、``os.path.exists``（open）、
+    **完全不检查**（project_open）—— 同一个错误写法在三条入口上给出三种表现，
+    而且报错只说 "not found"，看不出来到底是「没有这个路径」还是
+    「给的是目录」。本函数把三条入口统一到一处，并把两种错分开：
+
+    - 路径不存在 → ``FileNotFoundError``，并提示当前工作目录（相对路径按它解析）
+    - 路径是目录 → ``IsADirectoryError``，并提示 CST 工程是单个 ``.cst``/``.prj`` 文件
+
+    :param path: str 或 ``os.PathLike``, 待检查的工程路径
+    :param kind: str, 出现在报错信息里的名字（如 ``'CST project file'``）
+    :return: str, 规范化后的绝对路径
+    :raises TypeError: ``path`` 既不是 str 也不是 ``os.PathLike``
+    :raises ValueError: ``path`` 是空字符串
+    :raises FileNotFoundError: 路径不存在
+    :raises IsADirectoryError: 路径存在，但是目录
+    """
+    import os
+
+    if isinstance(path, str):
+        if not path.strip():
+            raise ValueError(
+                f"{kind} 路径为空：收到 {path!r}。请给一个非空路径（如 "
+                f"r'D:\\work\\wg_AB.cst'）；要**新建**工程请不要给 filename，"
+                f"改用 setup() 不传参或 app.new_project()。")
+        text = path
+    else:
+        try:
+            text = os.fspath(path)
+        except TypeError:
+            raise TypeError(
+                f"{kind} 路径类型不对：收到 {type(path).__name__}（{path!r}），"
+                f"需要 str 或 os.PathLike（如 pathlib.Path）。") from None
+        if not text:
+            raise ValueError(f"{kind} 路径为空：收到 {path!r}。")
+
+    full = os.path.abspath(text)
+
+    if os.path.isdir(full):
+        raise IsADirectoryError(
+            f"{kind} 是一个目录，不是文件：{full}\n"
+            f"    CST 工程是**单个** .cst/.prj 文件；如果这确实是工程文件夹，"
+            f"请把路径指到里面的 .cst 文件；要新建工程请用 setup() 不传 filename"
+            f"或 app.new_project()。")
+
+    if not os.path.isfile(full):
+        raise FileNotFoundError(
+            f"{kind} 不存在：{full}\n"
+            f"    相对路径按当前工作目录解析（现在是 {os.getcwd()}）；"
+            f"要新建工程请用 setup() 不传 filename 或 app.new_project()。")
+
+    return full
 
 
 # ============================================================
@@ -334,7 +393,8 @@ class GuardState:
 
         对**打开已有工程**的情况，首次写入也可能是改一个早已存在的参数
         （比如改参考工程的 ``x1``），所以这里再问 CST 一句
-        ``GetParameter(name)`` 兜底。
+        ``DoesParameterExist(name)`` 兜底（2026-10 修复：原先问的是并不存在的
+        ``GetParameter(name)``，见 :mod:`cst_solver.parameters`）。
 
         :param probe: callable, 收一个参数名，返回 bool（该参数当前是否已存在）
         :return: self

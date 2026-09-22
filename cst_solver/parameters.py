@@ -26,20 +26,45 @@ class ParametersMixin:
         """
         return self.cst_file.model3d.Solid.GetNumberOfShapes() > 0
 
+    def _parameter_exists(self, name):
+        """
+        某个参数在工程里是否已经存在（官方查询 API，带回退）。
+
+        ⚠️ 2026-10 修复：旧实现读的是 ``model3d.GetParameter(name)`` ——
+        **CST 根本没有这个方法**。官方 Parameter API 里查询用
+        ``DoesParameterExist(name)``，读取用 ``RestoreParameter`` /
+        ``RestoreDoubleParameter`` / ``RestoreParameterExpression``
+        （见 ``docs/references/vba-official-reference.md`` 的 Parameter 一节）。
+        因此旧写法在任何真机上都必然失败；在守卫里它被 ``except`` 吞掉，
+        表现为「打开已有工程后改参数不再被提醒」。
+
+        本方法**永不抛异常**：查不出来一律按「不存在」处理 ——
+        「当成新参数」的错误后果（漏一次提醒，run() 前的检查与
+        ``validate_model()`` 还能兜住）远小于「当成已存在」的后果
+        （在正常建模流水线里到处误报，把守卫变成会被忽略的噪音源）。
+
+        :param name: str, 参数名称
+        :return: bool, True 表示工程里已经有这个参数
+        """
+        model3d = self.cst_file.model3d
+        try:
+            return bool(model3d.DoesParameterExist(f"{name}"))
+        except Exception:
+            pass
+        try:
+            value = model3d.RestoreParameter(f"{name}")
+        except Exception:
+            return False
+        return value not in (None, '')
+
     def _guard_param_probe(self, name):
         """
         守卫用的探针：某个参数在工程里是否已经存在。
 
-        用现成的 ``GetParameter()`` 读一次：读得到且非空 ⇒ 已存在。
-        **读不到一律当作「新参数」** —— CST 对不存在的参数通常直接报错，
-        而「当成新参数」的错误后果（漏一次提醒）远小于「当成已存在」的后果
-        （在正常建模流水线里到处误报，把守卫变成一个会被忽略的噪音源）。
+        直接复用 :meth:`_parameter_exists`（官方 ``DoesParameterExist`` 查询，
+        读不到才退回 ``RestoreParameter``），语义与守卫需要的完全一致。
         """
-        try:
-            value = self.cst_file.model3d.GetParameter(name)
-        except Exception:
-            return False
-        return value not in (None, '')
+        return self._parameter_exists(name)
 
     def _guard(self):
         """取得（必要时创建）本实例的守卫状态，并接上两个探针。"""
@@ -240,11 +265,52 @@ class ParametersMixin:
 
     def get_parameter(self, name):
         """
-        获取指定参数的值
+        获取指定参数的**当前值**
+
+        ⚠️ 2026-10 修复：旧实现调的是 ``model3d.GetParameter(name)``，而
+        **CST 没有 ``GetParameter`` 这个方法** —— 官方 Parameter API 的读取成员只有
+        ``RestoreParameter`` / ``RestoreDoubleParameter`` /
+        ``RestoreParameterExpression``，查询成员是 ``DoesParameterExist`` /
+        ``GetParameterName`` / ``GetParameterNValue`` / ``GetParameterSValue``
+        （见 ``docs/references/vba-official-reference.md`` 的 Parameter 一节）。
+        因此旧写法在任何真机上都必然失败：轻则抛错，重则被守卫/调用方的
+        ``except`` 吞掉，表现为「参数明明写进去了却读不出来」。
+
+        现在的读法（官方 API 逐级回退）：
+
+        1. ``DoesParameterExist(name)`` 先确认参数存在 —— 不存在直接抛
+           ``KeyError``，**不**静默返回空串或 ``None``（「读不到」与「值就是空」
+           是两码事，静默返回正是这类缺陷能活下来的原因）；
+        2. ``RestoreDoubleParameter(name)`` —— 数值参数返回 ``float``
+           （表达式参数返回其**求值结果**）；
+        3. ``RestoreParameter(name)`` —— 表达式/字符串参数返回 ``str``。
+
         :param name: str, 参数名称
-        :return: 参数值
+        :return: float 或 str, 参数当前值（数值参数返回 float）
+        :raises KeyError: 工程里没有这个参数（先用 ``para()`` / ``paras()`` 定义）
+        :raises RuntimeError: CST 既没有 ``RestoreDoubleParameter`` 也没有
+            ``RestoreParameter``，或两者都读取失败
         """
-        return self.cst_file.model3d.GetParameter(f"{name}")
+        model3d = self.cst_file.model3d
+        if not self._parameter_exists(name):
+            raise KeyError(
+                f"工程里没有参数 {name!r}：请先用 app.para({name!r}, ...) 或 "
+                f"app.paras({{...}}) 定义它，再读取。")
+
+        errors = []
+        for reader_name in ('RestoreDoubleParameter', 'RestoreParameter'):
+            reader = getattr(model3d, reader_name, None)
+            if reader is None:
+                continue
+            try:
+                return reader(f"{name}")
+            except Exception as exc:              # 换下一个读取接口
+                errors.append(f"{reader_name}: {exc}")
+
+        detail = ('；CST 报错：' + ' / '.join(errors)) if errors else ''
+        raise RuntimeError(
+            f"读取参数 {name!r} 失败：该 CST 会话没有暴露可用的参数读取接口"
+            f"（试过 RestoreDoubleParameter 与 RestoreParameter）{detail}")
 
     def delete_parameter(self, name):
         """

@@ -85,9 +85,22 @@ class _FakeModel3D:
         self.calls.append(('StoreParameter', name))
         self.params[name] = value
 
-    def GetParameter(self, name):
-        # 与真 CST 保持一致的语义：不存在的参数读不到（这里返回空串）
-        return self.params.get(name, '')
+    def DoesParameterExist(self, name):
+        # 真 CST 的官方**查询** API（``model3d.GetParameter`` 并不存在，
+        # 见 docs/references/vba-official-reference.md 的 Parameter 一节）
+        return name in self.params
+
+    def RestoreParameter(self, name):
+        # 官方**读取** API 之一：不存在的参数会报错（真 CST 同样如此）
+        if name not in self.params:
+            raise RuntimeError(f"Parameter '{name}' does not exist")
+        return str(self.params[name])
+
+    def RestoreDoubleParameter(self, name):
+        # 官方**读取** API 之二：数值参数走这条
+        if name not in self.params:
+            raise RuntimeError(f"Parameter '{name}' does not exist")
+        return float(self.params[name])
 
     def StoreParameters(self, names, values):
         self.calls.append(('StoreParameters', tuple(names)))
@@ -190,6 +203,11 @@ class _FakeCstFile:
         self.model3d = _FakeModel3D()
         self.saved = []
         self.closed = False
+        # 真 ``cst.interface.Project`` 的官方 API：``filename() -> str``
+        self.path = 'D:/fake/project.cst'
+
+    def filename(self):
+        return self.path
 
     def get_messages(self):
         out = list(self.model3d.messages)
@@ -353,7 +371,8 @@ def test_existing_param_in_opened_project_is_dirty(app):
     **打开已有工程**的场景：本次会话里第一次写某个参数，但它早就存在。
 
     这是 T2 最真实的用法（复制一份参考工程 → 改 ``x1`` → 直接跑）。
-    只靠「本会话见过没有」会漏报，所以还要问 CST 一句 ``GetParameter()``。
+    只靠「本会话见过没有」会漏报，所以还要问 CST 一句
+    ``DoesParameterExist()``。
     """
     app.cst_file.model3d.solids.append('some_solid')   # 工程本来就有几何
     app.cst_file.model3d.params['x1'] = 18             # 而且本来就有 x1

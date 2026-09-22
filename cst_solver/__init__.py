@@ -64,6 +64,7 @@ from cst_solver._guards import (  # noqa: E402
     get_guard_mode,
     get_guard_state,
     reset_guard_state,
+    require_project_file,
     set_guard_mode,
 )
 
@@ -297,19 +298,21 @@ class setup(
         """
         初始化 CST 交互环境并打开指定 CST 工程文件
 
-        :param filename: str 可选, CST 工程文件路径
+        :param filename: str 或 os.PathLike 可选, CST 工程文件路径
             如果为 None，则仅初始化设计环境但不打开具体工程
         :raises FileNotFoundError: 指定的工程文件不存在
+        :raises IsADirectoryError: 给的是目录（CST 工程是单个 .cst/.prj 文件）
+        :raises TypeError: 路径既不是 str 也不是 os.PathLike
         :raises RuntimeError: 打开工程失败
         """
         self.t = 0
         self.cst_file = None
         self._environment_closed = False
         # 路径错误在创建 DE 之前暴露，避免打开工程失败留下空窗口。
+        # 校验统一走 _guards.require_project_file（与 open()/project_open() 同一入口），
+        # 报错会分清「不存在」与「是目录不是文件」。
         if filename is not None:
-            filename = os.path.abspath(filename)
-            if not os.path.isfile(filename):
-                raise FileNotFoundError(f'CST project file not found: {filename}')
+            filename = require_project_file(filename)
             get_guard_state(self).check_project_path(filename)
         self.project = _load_cst_module('cst.interface').DesignEnvironment()
         try:
@@ -323,20 +326,20 @@ class setup(
                 logging.getLogger(__name__).exception('打开工程失败后的 CST 会话清理失败')
             raise
 
+
     def _open_and_activate(self, filename):
         """
         打开并激活 CST 工程文件的内部方法
 
-        :param filename: str, 工程文件路径
-        """
-        try:
-            filename_abs = os.path.abspath(filename)
-        except Exception:
-            filename_abs = filename
+        2026-10：路径校验统一到 :func:`cst_solver._guards.require_project_file`
+        —— 原先这里用的是 ``os.path.exists``（目录也能过），而 ``setup.__init__``
+        用的是 ``os.path.isfile``、``project_open`` 干脆不检查，同一个错误写法
+        在三条入口上表现不同。现在三处一致：不存在 ⇒ ``FileNotFoundError``，
+        是目录 ⇒ ``IsADirectoryError``。
 
-        if not os.path.exists(filename_abs):
-            raise FileNotFoundError(
-                f"CST project file not found: {filename_abs}")
+        :param filename: str 或 os.PathLike, 工程文件路径
+        """
+        filename_abs = require_project_file(filename)
 
         # 陷阱 T10：后缀校验（strict 模式下后缀非法直接抛 CstGuardError）
         get_guard_state(self).check_project_path(filename_abs)
@@ -357,7 +360,10 @@ class setup(
         """
         打开 CST 工程文件（便捷方法）
 
-        :param filename: str, 工程文件路径
+        :param filename: str 或 os.PathLike, 工程文件路径（必须已存在且是文件）
+        :raises FileNotFoundError: 路径不存在
+        :raises IsADirectoryError: 路径是目录，不是 .cst/.prj 文件
+        :raises TypeError: 路径既不是 str 也不是 os.PathLike
         """
         self._open_and_activate(filename)
 
@@ -416,6 +422,7 @@ __all__ = [
     'get_guard_mode',
     'get_guard_state',
     'reset_guard_state',
+    'require_project_file',
     'set_guard_mode',
     # 面操作（依赖 pick，与 setup 一起公开）
     'FaceOpsMixin',

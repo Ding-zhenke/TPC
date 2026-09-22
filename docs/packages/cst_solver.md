@@ -453,13 +453,13 @@ except CstGuardError as e:
 
 1. **`mode='off'` 与引入守卫层之前逐字节一致** —— 不报警、不拦截、**不额外调用任何 CST 接口**。
    只有 `mode!='off'` 时守卫才会问 CST 两句：`Solid.GetNumberOfShapes()`
-   （判断工程里有没有几何）与 `GetParameter(name)`（判断参数是否是新定义的）。
+   （判断工程里有没有几何）与 `DoesParameterExist(name)`（判断参数是否是新定义的）。
    `config.py` 里写 `CST_GUARD_MODE = 'strict'` 可改默认模式。
 2. **只把「改一个已存在的参数」判成脏**，首次写入的参数名不算 —— 因为库的约定是
    「先定义参数、再用它建几何」，所以一个全新参数不可能被**已有**几何引用。
    这条判据是阶段 5 实测模板时补的：`topo_modeler/builders/feed.py` 的优化块会在
    几何已存在之后才 `para('tx1', 0.2)`，按最初的「几何已存在就判脏」会**误报**。
-   （代价：打开已有工程后，本次会话第一次改一个**已存在**的参数，靠 `GetParameter()`
+   （代价：打开已有工程后，本次会话第一次改一个**已存在**的参数，靠 `DoesParameterExist()`
    兜住；若该接口读不出来，会退化为「按新参数处理」而**漏报**一次。）
 3. 守卫**不替代验收**：它只在 `run()` 前防呆，`validate_model()`（见 §7.2）才是拿到结论的地方。
 
@@ -479,7 +479,7 @@ T7'/T13 只在「**参数已存在**（`preexisting=True`）**且几何已建**�
 
 ### 7.1 `add_to_history` 是唯一执行通道
 
-所有 Mixin 的 VBA 都经 `self.cst_file.model3d.add_to_history("<历史标签>", vba_string)` 下发，没有第二条路径（少数查询类操作会直接调 CST 接口，如 `Units.GetLengthUnit()`、`model3d.GetParameter()`、`model3d.run_solver()`、`model3d.full_history_rebuild()`）。
+所有 Mixin 的 VBA 都经 `self.cst_file.model3d.add_to_history("<历史标签>", vba_string)` 下发，没有第二条路径（少数查询类操作会直接调 CST 接口，如 `Units.GetLengthUnit()`、`model3d.DoesParameterExist()`、`model3d.run_solver()`、`model3d.full_history_rebuild()`）。
 
 ⚠️ 它同时是**异常出口**：CST 拒绝这条 VBA 时会把原文抛回 Python（`RuntimeError: An error occurred while trying to execute add_to_history: (&H8000ffff) …`），所以「不看消息就没事」不成立，两条通道都要看（§7.2）。
 
