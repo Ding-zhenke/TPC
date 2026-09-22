@@ -22,6 +22,7 @@ r"""
 函数入口：:func:`plot_phase_structure`。
 """
 
+import math
 from typing import Optional, Sequence, Tuple
 
 import numpy as np
@@ -225,7 +226,14 @@ def plot_phase_structure(path, topology='AB', margin=None, a=None,
     # 1) 相区多边形（A=下半，B=上半）
     polys_a, polys_b = path.band_polygons_numeric(margin)
 
-    # 2) 整块阵列的孔 → 按位置绑定相与真实尺寸
+    # 2) 整块阵列的孔 → 按位置绑定相与真实尺寸。
+    #    未显式给 yup/ydn 时，按 margin 反推足够的阵列次数（默认路径推断只够窄带），
+    #    保证较宽相区也被孔盖满；实际次数仍走 int(yup/2) 规则，故取偶数并 +2。
+    row_h = np.sqrt(3) / 2.0 * a
+    if yup is None:
+        yup = max(2, int(math.ceil(margin / row_h)) // 2 * 2 + 2)
+    if ydn is None:
+        ydn = max(2, int(math.ceil(margin / row_h)) // 2 * 2 + 2)
     holes = generate_crystal_holes(path, topology=topology, a=a,
                                    large_size=large_size, small_size=small_size,
                                    xup=xup, yup=yup, ydn=ydn)
@@ -278,12 +286,16 @@ def plot_phase_structure(path, topology='AB', margin=None, a=None,
     if ports:
         xy = path.xy
         p_start, p_end = xy[0], xy[-1]
+        tag = dict(facecolor='white', edgecolor='none', alpha=0.75,
+                   pad=1.5, boxstyle='round,pad=0.2')
         ax.annotate('端口 1（输入）', (p_start[0], p_start[1]),
                     xytext=(-14, 0), textcoords='offset points',
-                    ha='right', va='center', color='#1f77b4', fontsize=11)
+                    ha='right', va='center', color='#1f77b4', fontsize=11,
+                    bbox=tag, zorder=8)
         ax.annotate('端口 2（输出）', (p_end[0], p_end[1]),
                     xytext=(14, 0), textcoords='offset points',
-                    ha='left', va='center', color='#1f77b4', fontsize=11)
+                    ha='left', va='center', color='#1f77b4', fontsize=11,
+                    bbox=tag, zorder=8)
 
     # 8) 图例与坐标
     legend_items = [
