@@ -7,8 +7,9 @@ CST 材料与组件 Mixin 模块
 @author: PC
 """
 
-import os
 import logging
+import math
+import os
 
 from cst_solver.failures import record_failure
 
@@ -24,6 +25,60 @@ MATERIAL_ERROR_CODES = (
 )
 
 _logger = logging.getLogger(__name__)
+
+
+def _parse_colour(color):
+    """把颜色输入归一成 CST ``Material.Colour`` 需要的三个 0~1 字符串。
+
+    接受的写法（其它一律抛 ``ValueError``，不做静默兑底）：
+
+    * ``'#RRGGBB'`` / ``'RRGGBB'`` / ``'#RGB'`` —— 十六进制字符串
+    * ``(r, g, b)`` / ``[r, g, b]``，三个分量都在 ``0~1`` —— 直接使用
+    * ``(r, g, b)`` / ``[r, g, b]``，有分量 > 1（即 0~255 整数色）—— 自动除以 255
+
+    :param color: 颜色输入
+    :return: ``(r, g, b)`` 三个字符串（CST 的 VBA 取字符串形式的数值）
+    :raises ValueError: 格式不认识，或分量超出可解释范围（如 >255、负数、NaN）
+    """
+    if isinstance(color, str):
+        hexstr = color.strip().lstrip('#')
+        if len(hexstr) == 3:
+            hexstr = ''.join(ch * 2 for ch in hexstr)
+        if len(hexstr) != 6:
+            raise ValueError(
+                f'颜色字符串 {color!r} 无法解析：支持 \'#RRGGBB\' / \'#RGB\'')
+        try:
+            rgb = [int(hexstr[i:i + 2], 16) / 255.0 for i in (0, 2, 4)]
+        except ValueError as exc:
+            raise ValueError(
+                f'颜色字符串 {color!r} 含非法十六进制字符'
+                f'（支持 \'#RRGGBB\' / \'#RGB\'）：{exc}') from exc
+        return tuple(_fmt_colour(v) for v in rgb)
+
+    if isinstance(color, (tuple, list)):
+        if len(color) != 3:
+            raise ValueError(
+                f'颜色序列必须正好 3 个分量（r, g, b），收到 {len(color)} 个：{color!r}')
+        try:
+            vals = [float(v) for v in color]
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f'颜色分量必须是数值：{color!r}') from exc
+        if any(math.isnan(v) or math.isinf(v) for v in vals):
+            raise ValueError(f'颜色分量不能是 NaN/Inf：{color!r}')
+        if all(0.0 <= v <= 1.0 for v in vals):
+            return tuple(_fmt_colour(v) for v in vals)
+        if all(0.0 <= v <= 255.0 for v in vals):
+            return tuple(_fmt_colour(v / 255.0) for v in vals)
+        raise ValueError(
+            f'颜色分量超范围：{color!r}；要么全部 0~1，要么全部 0~255')
+
+    raise ValueError(
+        f'颜色 {color!r} 格式不支持：用 \'(r, g, b)\'(0~1 或 0~255) 或 \'#RRGGBB\'')
+
+
+def _fmt_colour(value):
+    """0~1 的分量 → 紧凑字符串（去掉浮点尾巴，如 0.3058823529411765 → 0.305882）。"""
+    return '%.6g' % value
 
 
 class MaterialMixin:
@@ -213,7 +268,8 @@ End With
 """
 
     def create_material_custom(self, name, epsilon, mu, kappa, tand=None,
-                               material_type='Normal'):
+                               material_type='Normal', color=None,
+                               colour=None):
         """
         创建自定义材料（简化版）
 
@@ -223,7 +279,20 @@ End With
         :param kappa: float/str, 电导率
         :param tand: float 可选, 损耗角正切
         :param material_type: str, 材料类型 'Normal' 或 'Lossy metal'
+        :param color: 可选, 材料**显示颜色**（CST 的 ``Material.Colour``）。
+            支持三种写法：``'#RRGGBB'`` / ``'#RGB'`` 十六进制字符串、
+            ``(r, g, b)`` 且三分量在 0~1、``(r, g, b)`` 且三分量在 0~255
+            （自动归一化）。**不传时与旧版行为完全一致**（用 CST 默认色）。
+            例：``color='#4ec9b0'``、``color=(78, 201, 176)``、``color=(0.31, 0.79, 0.69)``
+        :param colour: ``color`` 的英式拼写别名（两者同时给会报 ``ValueError``）
+        :raises ValueError: 颜色格式非法，或 ``color`` / ``colour`` 同时给出
         """
+        if colour is not None:
+            if color is not None:
+                raise ValueError(
+                    'color 与 colour 只能给一个（colour 是 color 的拼写别名）')
+            color = colour
+
         tand_block = ""
         if tand is not None:
             tand_block = f'''
@@ -231,6 +300,10 @@ End With
             .TanDGiven "True"
             .TanDModel "ConstTanD"
             '''
+        colour_block = ""
+        if color is not None:
+            r, g, b = _parse_colour(color)
+            colour_block = f'            .Colour "{r}", "{g}", "{b}"\n'
         f1 = f"""
         With Material
             .Reset
@@ -242,10 +315,12 @@ End With
             .Epsilon "{epsilon}"
             .Mu "{mu}"
             .Kappa "{kappa}"
-            {tand_block}
+            {tand_block}{colour_block}
             .Create
         End With
         """
+        # 注意：历史标签保持 "Material: <name>" 不变 —— 旧工程历史里有同名条目,
+        # 改了会让“对比历史”失配（开发宪法 §5.3）。
         self.cst_file.model3d.add_to_history(f"Material: {name}", f1)
 
     def new_component(self, name):
