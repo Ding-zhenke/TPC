@@ -487,55 +487,28 @@ class Result:
                             run_id: int = 0, delimiter=',',
                             encoding='utf-8-sig'):
         """
-        导出远场结果到 CSV（**离线**）。
+        导出远场结果到 CSV（**已废弃的离线路径**）。
 
-        远场在结果树里是 2D 云图（``2D/3D Results\\Farfields\\...``），
-        本方法把它拉平成 ``x, y, value`` 三列的长表，便于外部工具处理。
+        2026-09 真机验证结论：离线没有可靠的远场增益导出路径——
 
-        ⚠️ 未验证：本机没有含远场结果的工程，这条路径**没有在真实工程上跑过**
-        （见 ``stages/05`` 的未验证风险登记）。失败时本方法会抛出
-        ``ValueError`` 并附上结果树里的候选路径，方便定位。
+        * 远场监视器挂在顶层 ``Farfields\\`` 节点，``2D/3D Results`` 下
+          **没有**远场云图，``read_3d()`` 读不到；
+        * 工程 ``Result`` 目录下的 ``.dat`` 是稀疏扫描口径
+          （5° 网格在 φ 方向锯齿伪影），朴素按球面积分/反推增益不可靠。
 
-        :param save_path: str, 输出 CSV 路径
-        :param tree_path: str, 远场结果在 ``2D/3D Results\\`` 下的路径；
-            默认 ``'Farfields'``，具体分支名（如 ``'farfield (f=310)'``）需按工程实际填
-        :param run_id: int, 运行 ID
-        :param delimiter: str, 分隔符
-        :param encoding: str, 文件编码
-        :return: str, 写出的文件绝对路径
-        :raises ValueError: 该路径下读不到结果
+        正确做法：attach 到已运行的 DE，用 setup 的同名方法导出 θ/φ 长表::
+
+            from cst_solver import setup
+            app = setup.attach()                       # 复用现有许可证
+            app.export_farfield_csv('farfield (f=314) [1]', 'farfield.csv')
+
+        :param save_path: 未使用（保留签名兼容）
+        :raises NotImplementedError: 始终抛出，附带上述指引
         """
-        import os
-        try:
-            data = self.read_3d(tree_path, run_id)
-        except Exception as exc:
-            raise ValueError(
-                f"读不到远场结果 '{tree_path}'（底层错误：{exc!r}）。"
-                f"结果树里的候选路径：{self._tree_paths()[:20]}") from exc
-
-        xs = _as_real(data['x'])
-        ys = _as_real(data['y'])
-        vals = np.asarray(data['values'])
-        if np.iscomplexobj(vals):
-            vals = np.abs(vals)
-
-        xs = np.atleast_1d(xs).ravel()
-        ys = np.atleast_1d(ys).ravel()
-        vals = np.atleast_2d(vals)
-
-        rows = []
-        for i, x in enumerate(xs):
-            for j, y in enumerate(ys):
-                if i < vals.shape[0] and j < vals.shape[1]:
-                    rows.append((x, y, vals[i, j]))
-
-        save_path = os.path.abspath(save_path)
-        with open(save_path, 'w', newline='', encoding=encoding) as fh:
-            writer = csv.writer(fh, delimiter=delimiter)
-            writer.writerow(['x', 'y', 'value'])
-            for x, y, v in rows:
-                writer.writerow(['%.10g' % x, '%.10g' % y, '%.10g' % v])
-        return save_path
+        raise NotImplementedError(
+            "离线 Result 不支持远场增益 CSV 导出（真机验证：2D/3D Results 下无远场、"
+            ".dat 稀疏口径反推不可靠）。请改用 setup.attach().export_farfield_csv("
+            "tree_item, save_path)，经 DE 的 FarfieldPlot/ASCIIExport 导出 θ/φ 长表。")
 
 
 class result(Result):

@@ -6,9 +6,10 @@
 
 - [ ] **P4/V7：Python 服务真实 runner**。用独立临时工程、有限频段、串行验证 `build → run_checked → save → read → report`；分别核对 `solve`、小范围 `scan`、`batch`、`optimize` 的任务状态、原始数据归属、审计记录和会话清理。现有离线替身及真机建模测试不能代替求解。运行前确定算例与资源上限。[P2 证据](../validation/p2_service_evidence.md)、[P4 证据](../validation/p4_real_machine_evidence.md)。
 - [ ] **P4/V9：MCP 真实端到端交付**。两个发行包独立安装，以真实 CST 完成预检、建模、求解、S 参数读取、分析和 HTML/CSV 报告；保存工程、日志、原始曲线与报告。真实 stdio 建模及真实历史曲线分析已验证，求解段尚未验证。另用第三方图形客户端人工核对工具发现、长任务轮询与产物获取。[P3 证据](../validation/p3_mcp_evidence.md)。
-- [ ] **P4/V2：远场物理验收**。用真实求解结果核对 Farfield 监视器、`export_farfield_csv()` 路径/模式/单位，并与参考主瓣方向比较（目标偏差 <5°）。已有样本的部分 `1D Results\farfield` 条目读取报 `UnicodeDecodeError`，须复核实际结果树及替代导出路径。[调查记录](../validation/p4_real_machine_evidence.md)。
+- [x] **P4/V2：远场物理验收**（2026-09 完成）。真机 attach DE（复用许可证）核对 Farfield 监视器，`export_farfield_csv()` 重写为经 FarfieldPlot/ASCIIExport 的 θ/φ 长表，新增 `read_farfield()`/`get_farfield_metrics()`，`pattern_export()` 补上缺失的角度步长（默认 1°）。314 GHz 实测 max 10.509 dBi（Tables 参考 10.509，0.000 dB 误差），主瓣方向偏差 0.24°（目标 <5°）。`1D Results\farfield` 的 UnicodeDecodeError 是把不存在的非 ASCII 路径当文件打开所致；`2D/3D Results` 下无远场云图、`.dat` 稀疏扫描口径朴素反推不可靠（5° 网格 φ 向锯齿伪影），离线不支持远场增益导出，须走 DE。[调查记录](../validation/p4_real_machine_evidence.md)。
 - [ ] **P4/V3：参考谐振对比**。本库工程与参考工程分别求解，使用现有 `resonance_criterion` 匹配峰/谷并计算频率差（目标 <1 GHz），解释 350 GHz 处 S11 既有 1.83 dB 差异。真实历史曲线上的规则验证已完成；缺的是本库新求解与同条件参考对照。[判据证据](../validation/p4_real_machine_evidence.md)。
 - [ ] **运行中控制语义**。先核实 CST 停止/暂停能力，再决定是否支持运行中取消与进度；当前 `cancel_not_supported` 是准确行为。补充超时、中断、重启及无孤儿会话的真实求解验收。
+- [ ] **P4/V10：2026-10 五处封装层缺陷的真机复验**。离线回归已通过（`cst_solver/tests/test_reported_bugfixes.py`，27 条 + `test_session_lifecycle.py` 2 条），但下列四点必须在真 CST 2026 上确认后才算验收：① `set_background()` 新的 `Type/Epsilon/Mu` 写法 `get_messages()` 为空，且 `Model.mif` 里背景确为设定值（旧的 `.Material` 行是**静默忽略**，需要新旧对比证据）；② `add_port(..., port_on_bound=False)` 能在**域内部**端口上建成（`Coordinates "Free"` + 域内范围）；③ 无参 `app.save()` 确实落盘（比对文件时间戳/大小）且随后 `close()` 工程完好；④ `get_parameter()` 能读回 `para()` 写下的值（数值 ⇒ `float`，表达式 ⇒ `str`）。证据写入[真机记录](../validation/p4_real_machine_evidence.md)。
 
 ## 优先级 2：未覆盖的器件变体
 

@@ -52,7 +52,17 @@ class ProjectMixin:
         self.project_open(filename)
 
     def project_close(self):
-        """关闭当前 CST 工程（保留设计环境）"""
+        """关闭当前 CST 工程（保留设计环境）。
+
+        ⚠️ attach 借用的会话不做真实关闭，只解除 Python 侧引用，
+        避免关掉用户自己打开的工程。
+        """
+        if getattr(self, '_attached', False):
+            get_guard_state(self).mark_closed()
+            self.cst_file = None
+            logging.getLogger(__name__).info(
+                'attach 会话已解除引用（未关闭用户的工程）')
+            return
         get_guard_state(self).check_before_close()
         if not get_guard_state(self).closed and getattr(self, 'cst_file', None) is not None:
             self.cst_file.close()
@@ -71,7 +81,18 @@ class ProjectMixin:
         工程关闭后再调 ``save()`` 什么都不会写出，守卫层会直接报错。
         关闭前若检测到未保存的改动（建了几何但没 save），会给一条 warning。
 
+        ⚠️ **attach 实例例外**：实例若是经 ``setup.attach()`` 借用的用户会话，
+        ``close()`` 只解除 Python 侧引用，**不会**关闭借用的工程或 DE
+        （否则会把用户自己开着的 CST 关掉）。
         """
+        # attach 借用的会话不归本实例所有：只标记逻辑关闭、解除引用。
+        if getattr(self, '_attached', False):
+            get_guard_state(self).mark_closed()
+            self.cst_file = None
+            self._environment_closed = True
+            logging.getLogger(__name__).info(
+                'attach 会话已解除引用（未关闭用户的 CST DE）')
+            return
         state = get_guard_state(self)
         if not state.closed or getattr(self, '_environment_closed', False):
             state.check_before_close()

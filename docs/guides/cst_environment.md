@@ -63,6 +63,22 @@ diagnose_environment()['interface_abi']   # doctor / 诊断里也带这一段
 
 `get_cst_paths(install_path=...)` 只是查询/推导，不持久改变全局配置。供其他代码兼容的 `CST_INSTALL_PATH/CST_PYTHON_LIB/CST_MATERIAL_LIB` 常量是导入时快照，未发现时为 None；运行入口使用当前配置。
 
+### 复用已有会话：`setup.attach()`（P4/V2，2026-09）
+
+许可证紧张时 `DesignEnvironment()` 新建实例会报 `EXITCODE_NOLICENSE`。
+若已有打开的 CST 会话，用 attach 复用，**不新建进程、不额外占用许可**：
+
+```python
+from cst_solver import setup
+app = setup.attach()                       # 自动连接任意现有 DE（connect_to_any）
+app = setup.attach(pid=36472)              # 连接指定进程
+app = setup.attach(filename=r'D:\x.cst')   # attach 后再打开指定工程
+```
+
+attach 后默认绑定当前活动工程（`active_project()`）；远场读取/导出等
+DE 侧操作都走该实例。attach 只借用、不拥有该会话，**不要调用 `close()`**
+替用户关闭。详见 `skills/user/tpc-usage.md` 远场一节。
+
 ## 会话清理
 
 ```python

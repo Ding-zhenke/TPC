@@ -656,3 +656,71 @@ python scripts/cst_dialog_guard.py               # 弹窗快照（--dialogs 只�
 python -m pytest cst_solver/tests/test_picks.py -q       # 5 项：拾取判定的回归
 python -m pytest tests/test_cst_dialog_guard.py -q        # 8 项：弹窗识别/不盲点（离线）
 ```
+
+## 11. P4/V2 远场数据读取与导出（2026-09 真机验收）
+
+### 11.1 工程普查
+
+对 57 个 >5 MB 的参考工程枚举结果树：仅
+`D:\成电博士生涯\拓扑光子晶体模型\硅基\Leaky\ANT_LEAKY_EPC_GRID.cst`（19 MB）
+含远场（18 个监视器，290–324 GHz 步长 2 GHz）；**没有任何工程**存在
+`2D/3D Results\...farfield` 云图。原始文件在同名工程文件夹
+`...\ANT_LEAKY_EPC_GRID\Result\`：
+`farfield (f=…) (tot. scan pattern) [1].dat` + `_1.ffm`/`_1.fme`/`2D_1.ffp`。
+
+### 11.2 真机根因：角度欠采样
+
+attach 到已运行的 DE（pid 36472；新建 DE 报 `EXITCODE_NOLICENSE`，
+许可证 27075@localhost），路径链：
+`DesignEnvironment.connect(pid)` → `active_project()/open_project(cst)` →
+`project.model3d`（`Project` 无 `SelectTreeItem`，必须用 `.model3d`）→
+`SelectTreeItem("Farfields\\farfield (f=N) [1]")` → FarfieldPlot 配置 →
+ASCIIExport。
+
+- FarfieldPlot 默认 5° 步长，`GetMax` 系统性比 Tables 参考低 0.3–0.74 dB；
+  调 `fp.Step(1.0)` 后 `GetMax` 与 Tables **逐点一致**：
+  290:5.026、306:8.471、314:10.509、316:10.388、318:9.999。
+- `GetMainLobeDirection` 仅 `Plottype="polar"` 可用（返回切面单角）；
+  3D 主瓣方向用 `GetMainLobeVector()`（归一化向量，球角换算
+  θ=arccos(vz)，φ=atan2(vy,vx) mod 360）。
+- `.dat`「tot. scan pattern」稀疏口径在 φ 上逐 5° 剧烈锯齿
+  （如 θ90：φ140=12.4 而 φ135=−10.4 dBi），不能朴素当球网格反推增益
+  （早前 raw 反推 12.449 及 P_int/P_rad 0.58–0.86 不稳均为此伪影）。
+  `.dat` 行序 θ外φ内；ASCIIExport 行序 φ外θ内。
+
+### 11.3 验收结果（Step=1, f=314）
+
+ASCIIExport 导出 181×360 = 65 160 点：
+
+- max **10.510 dBi**（`GetMax` 10.5092；Tables 参考 10.509，**0.000 dB 误差**）；
+- 峰值方向 θ90/φ127；`GetMainLobeVector` 反算 φ=126.76/θ90；
+- **主瓣方向偏差 0.24° ≪ 5°，验收通过**。
+
+### 11.4 库修复
+
+- `cst_solver/__init__.py`：新增 `setup.attach(cls, pid=None, filename=None)`
+  类方法，attach 现有 DE 复用许可证（`DesignEnvironment.connect/connect_to_any`）。
+- `cst_solver/import_export/io.py:233` `pattern_export()`：
+  **接收 `step` 但从未应用**（缺 `fp.Step` 与 `ascii_export.Reset`），
+  默认步长改为 1.0 并真正下发；别名 `export_pattern`/`patten_export` 同步。
+- `cst_solver/postprocessing/farfield.py`：新增 `read_farfield()`
+  （完整 θ/φ 网格：gain/分量/轴比）、`get_farfield_metrics()`
+  （增益最大值 + 主瓣向量/球角）、`export_farfield_csv()`
+  （θ/φ 长表 6 列），并内建 ASCIIExport 文件解析。
+- `cst_solver/_result_core.py`：离线 `Result.export_farfield_csv()` 语义全错
+  （read_3d 只拼 `2D/3D Results\`、把远场当 x/y 笛卡尔网格），
+  改为抛 `NotImplementedError` 并指引走 `setup.attach()`。
+
+### 11.5 测试与产物
+
+- 单测：`cst_solver/tests/test_farfield_export.py`（9 项 mock，
+  覆盖网格形状/峰值方向/指标归一化/CSV 长表/step 下发/离线报错）；
+  全套件 338 项全绿。
+- 真机回归：`python scripts/verify_farfield_api.py`
+  → 增益误差 0.000 dB、主瓣偏差 0.00°、PASS（不新建 DE、不求解、不关闭）。
+- 产物：
+  `docs/next_plan/farfield_regression/farfield_314_step1.csv`
+  （2.24 MB，表头 + 65 160 行）、
+  `pattern_314_ascii.txt`（9.9 MB，FarfieldPlot 原始 8 列口径）。
+- 约束已遵守：未启动新求解、未做用户会话以外动作、attach 后未关闭 DE。
+

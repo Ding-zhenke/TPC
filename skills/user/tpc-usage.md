@@ -217,7 +217,8 @@ assert signed_area(my_poly) > 0        # 手写多边形拉伸前先自检
 | 端口选到错误的面 | `pick_face` 面编号依赖具体几何 | 试 `'10'` / `'22'`，或先在 CST 里看面号 |
 | **端口激励方向反了**（端口箭头朝外、S21 不对） | `Port.Orientation` 写成了 `"positive"/"negative"` —— **CST 只认位置枚举**，非法值会**静默回退到默认 `zmin`** 👉 2026-09-20 起库会**当场抛 `ValueError`**（不再静默；`None` 只告警） | 按端口所在侧给枚举（x 向直波导：左端 `"xmin"`、右端 `"xmax"`）；见 §11 ⑥ |
 | 求解器 VBA 报错 | `builders/solver.py` 的 `configure_solver` 含存疑 VBA（`.ParallelizationThreads`、`.GPUAcceleration`） | 优先用旧 notebook 实测过的 `With Solver … End With` 整块 |
-| `FileNotFoundError: CST project file not found` | 相对路径按**工作目录**解析 | 模板 `tmp.cst` 放 notebook 同目录 |
+| `FileNotFoundError: CST project file 不存在：<绝对路径>` | 路径不存在（相对路径按**当前工作目录**解析，报错里直接印出这个目录） | 模板 `tmp.cst` 放 notebook 同目录；要**新建**工程请用 `setup()` 不传 `filename` 或 `app.new_project()`。👉 2026-10 起三条入口（`setup` / `open` / `project_open`）**统一**校验，报错能区分「不存在」与「是目录」 |
+| `IsADirectoryError: CST project file 是一个目录，不是文件：<绝对路径>` | 把**目录**当成工程文件传进来了 —— CST 工程是**单个** `.cst`/`.prj` 文件 | 路径补到文件名（`…\myproj.cst`）；要新建工程请用 `setup()` 不传 `filename` |
 | `ImportError: cst` | CST python 库路径没配 | 改 `cst_solver/config.py` 的 `CST_INSTALL_PATH` |
 | `AttributeError: … no attribute 'GetBoundingBox'` | `cst_file.modeler` 已废弃 | 改用 `cst_file.model3d` |
 | `CstOperationError: cst_unavailable`（`code='cst_unavailable'`） | 没有 CST 环境（CST 初始化失败 ⇒ `app is None`）；**P1 起 `TopoModeler.run()/save()` 不再静默 no-op 返回成功**（见文末「离线预检 / 运行契约 / 结构化失败」§4） | 无 CST 时不要当成「跑完了」，如实上报；只做流程编排用 `m.validate()`（返回 error 结果、不抛） |
@@ -342,6 +343,17 @@ app.cst_file.save(r'<绝对路径>\out.cst', include_results=False, allow_overwr
 > （plan_id=T3，severity=warning）；改成 `include_results=False` **就不再告警**，与守卫建议一致。
 > 证据见 [`docs/validation/p4_real_machine_evidence.md`](../../docs/validation/p4_real_machine_evidence.md) §5。
 
+> ⚠️ **不要用无参 `app.save()` 当「保存到当前工程」的捷径（2026-10 修复）**：
+> 真机上 `Project.save()` **不给路径就是静默 no-op** —— 不落盘、不报错、没有 warning，
+> 随后 `close()` 会把整场建模丢掉。现在不传路径会**显式**取当前工程路径再存
+> （`cst_file.filename()`，`allow_overwrite=True`），并**返回实际写出的绝对路径**；
+> 工程还没有路径（例如刚 `app.new_project()`）⇒ 抛 `RuntimeError`，要求你给显式路径或改用 `app.save_as()`。
+> 建议照上面那行**始终显式**写路径，便于日志与验收核对：
+>
+> ```python
+> out = app.save(r'<绝对路径>\out.cst', include_results=False)   # 返回写出的绝对路径
+> ```
+
 ## 8. 坐标与方向速查
 
 - 三角晶格：`x = c*a + r*(a/2)`，`y = r*(a/2)*√3`；`e1 = a/2`，`e2 = a*√3/2`
@@ -375,7 +387,30 @@ s11 = res.read_s_parameter('S1,1')
 
 配套模块：`tpc_toolkit/s2p.py`（`read_s2p_groups` 批量读 s2p；原根目录 `read.py` 已迁入该包）、`postprocessing/proc.py`、`farfield.py`、`plot.py`、`result_export.py`。
 
-> 以上为**签名索引**（取自 `cst_solver/_result_core.py`），返回结构待首次实测后补成完整配方。
+### 远场（3D 方向图）：attach 现有 DE 后读取（P4/V2，2026-09 真机验收）
+
+> ⚠️ 远场增益**没有可靠的离线口径**：现存工程的 `2D/3D Results` 下没有远场云图，
+> `.dat`「tot. scan pattern」是稀疏扫描、φ 向逐 5° 锯齿，朴素反推会得到虚高的峰值
+> （实测伪峰 12.4 vs Tables 真值 10.5 dBi）。`Result.export_farfield_csv()` 已改为
+> 抛 `NotImplementedError` 并指引走 DE。许可证不足（新建 DE 报 `EXITCODE_NOLICENSE`）时，
+> 用 `setup.attach()` 复用已打开的 CST 会话。
+
+```python
+from cst_solver import setup
+app = setup.attach()                 # pid=None 自动找现有 DE；可传 pid= 或 filename=
+tree = "Farfields\\farfield (f=314) [1]"
+
+m = app.get_farfield_metrics(tree)   # gain_max / main_lobe_vector / main_lobe_theta / main_lobe_phi
+data = app.read_farfield(tree)       # theta/phi 网格 + gain(θ,φ) + θ/φ分量 + 轴比
+app.export_farfield_csv(tree, r"D:\ff314.csv")   # θ/φ 长表，65160 行（1°步长）
+app.pattern_export(tree, r"D:\ff314_ascii.txt")  # FarfieldPlot 原始 8 列口径
+```
+
+- 角度步长 `step` 默认 **1.0°**（旧默认/缺失下发=5° 会错过峰尖，系统性低估 0.3–0.74 dB）。
+- 真机验收（f=314）：max 10.509 dBi 与 Tables 完全一致（0.000 dB），主瓣偏差 0.24°（要求 <5°）。
+- attach 不会新建进程、不求解；用完不要替用户关闭该 DE。回归脚本：`scripts/verify_farfield_api.py`。
+
+> 以上结果读取的签名索引取自 `cst_solver/_result_core.py`。
 
 ---
 
@@ -1025,6 +1060,20 @@ CST 官方帮助 `special_vbaports_port_object.htm`：
 （`'10'` 在 x_min 端、`'22'` 在 x_max 端）默认给 `xmin/xmax`** ⇒ 直波导两端开箱即用；
 若你换用别的面号，**必须同步换朝向**（或用 5 元组条目
 `('wg1', 2, '22', 'electric', 'xmax')` 逐条显式给 `add_multiport_port_set`）。
+
+⚠️ **端口面必须落在计算域边界平面上（2026-10 修复）**：`Port.PortOnBound` 声明
+「端口面位于计算域边界平面」，库原先把它**写死成 `"True"`** —— 端口在域**内部**时
+这个声明是错的。现在 `add_port()` / `create_waveguide_port_free()` 都接受
+`port_on_bound`（默认 `True`，**既有模型下发的 VBA 逐字节不变**）：
+
+| 你的端口 | 传什么 |
+|---|---|
+| 贴在计算域端面上（直波导两端、天线入口） | 不用传（默认 `True`） |
+| 被 `Boundary` 的扩展空间推到域**内部**，或端口面浮在入口处 | `port_on_bound=False`（端口位置由 `Xrange/Yrange/Zrange` 决定） |
+| 拾取端口，希望把面**吸附**到计算域边界 | `clip_picked_port_to_bound=True`（官方 `ClipPickedPortToBound`） |
+
+> 官方原文：`PortOnBound` *is not relevant for picked ports* —— 拾取端口这一行不起作用，
+> 要挪面得用 `ClipPickedPortToBound`。
 
 ---
 

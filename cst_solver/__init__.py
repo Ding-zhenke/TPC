@@ -308,6 +308,8 @@ class setup(
         self.t = 0
         self.cst_file = None
         self._environment_closed = False
+        # 本实例自己创建了 DE（非 attach），close() 时负责释放它。
+        self._attached = False
         # 路径错误在创建 DE 之前暴露，避免打开工程失败留下空窗口。
         # 校验统一走 _guards.require_project_file（与 open()/project_open() 同一入口），
         # 报错会分清「不存在」与「是目录不是文件」。
@@ -326,6 +328,52 @@ class setup(
                 logging.getLogger(__name__).exception('打开工程失败后的 CST 会话清理失败')
             raise
 
+    @classmethod
+    def attach(cls, pid=None, filename=None):
+        """Attach 到一个**已在运行**的 CST DE 会话（不新建实例）。
+
+        背景：许可证不足时 ``setup()`` 新建 DE 会报 ``EXITCODE_NOLICENSE``；
+        attach 到已持有许可证的现有会话即可复用其许可证（2026-09 真机验证）。
+
+        :param pid: int 或 'host:port' 可选，指定 DE；缺省用 ``connect_to_any()``
+            连到任意一个正在运行的 DE。
+        :param filename: str 或 os.PathLike 可选，attach 后打开指定工程；
+            缺省则绑定当前活动工程（若 DE 未打开任何工程，``cst_file`` 为 None，
+            之后可调用 ``.open(path)``）。
+        :return: setup 实例
+        :raises RuntimeError: 没有可 attach 的 DE
+
+        .. note::
+            attach 实例**不拥有**该会话：之后调用 :meth:`close`/
+            :meth:`close_project` 只会解除 Python 侧引用，
+            **不会**关闭借用的工程或 DE（保护用户自己开着的 CST）。
+        """
+        obj = cls.__new__(cls)
+        obj.t = 0
+        obj.cst_file = None
+        obj._environment_closed = False
+        # 标记本实例只借用（attach）了用户的 DE：close() 时**绝不**
+        # 关闭该设计环境，只解除引用（见 project.py close() 的防护）。
+        obj._attached = True
+        interface = _load_cst_module('cst.interface')
+        try:
+            if pid is None:
+                obj.project = interface.DesignEnvironment.connect_to_any()
+            else:
+                obj.project = interface.DesignEnvironment.connect(pid)
+        except Exception as e:  # noqa: BLE001
+            raise RuntimeError(
+                f"无法 attach 到运行中的 CST DE（pid={pid!r}）：{e!s}。"
+                f"请确认 CST DESIGN ENVIRONMENT 已启动。") from e
+        # 绑定当前活动工程（可能没有，None 时交给后续 .open()）
+        try:
+            obj.cst_file = obj.project.active_project()
+            get_guard_state(obj).mark_opened()
+        except Exception:  # noqa: BLE001
+            obj.cst_file = None
+        if filename is not None:
+            obj._open_and_activate(filename)
+        return obj
 
     def _open_and_activate(self, filename):
         """

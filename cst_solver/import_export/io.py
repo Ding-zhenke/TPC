@@ -233,29 +233,44 @@ End With"""
     def pattern_export(self, tree_item, save_path,
                        plottype='3d',
                        plotmode='realized gain',
-                       step=-1):
+                       step=1.0):
         """
-        导出远场方向图数据
+        导出远场方向图数据到 ASCII 文件。
 
-        :param tree_item: str, 导航树中远场结果路径
+        :param tree_item: str, Farfields 下的远场结果名，
+            如 ``'farfield (f=314) [1]'``；完整路径 ``'Farfields\\...'`` 也接受。
         :param save_path: str, 保存路径
         :param plottype: str, 'polar'/'cartesian'/'2d'/'2dortho'/'3d'
-        :param plotmode: str, 'realized gain'/'directivity'/'efield'/'hfield'/'power density'
-        :param step: float, 步长
+        :param plotmode: str, 'realized gain'/'directivity'/'gain'/'efield'
+            /'hfield'/'power density'
+        :param step: float, 角度采样步长（度）。**默认 1.0**。
+            FarfieldPlot 默认 5° 会欠采样、系统性低估峰值
+            （2026-09 真机实测 314 GHz：5°→9.77 dBi，1°→10.51 dBi，
+            与 Tables 参考 10.509 一致）。需要与 CST 旧默认一致时显式传 5。
+        :return: str, save_path
         """
-        ascii_export = self.cst_file.model3d.ASCIIExport
-        self.cst_file.model3d.SelectTreeItem("Farfields\\" + tree_item)
-        ascii_export.FileName(save_path)
+        model = self.cst_file.model3d
+        full_item = (tree_item if tree_item.startswith('Farfields')
+                     else 'Farfields\\' + tree_item)
+        model.SelectTreeItem(full_item)
 
-        FarfieldPlot = self.cst_file.model3d.FarfieldPlot
-        FarfieldPlot.Reset()
-        FarfieldPlot.Plottype(plottype)
-        FarfieldPlot.SetPlotMode(plotmode)
-        FarfieldPlot.Plot()
+        farfield_plot = model.FarfieldPlot
+        farfield_plot.Reset()
+        farfield_plot.Plottype(plottype)
+        farfield_plot.SetPlotMode(plotmode)
+        if step is not None and float(step) > 0:
+            # 细分角度步长，避免 5° 默认网格错过主瓣峰尖（真机验证的根因修复）
+            farfield_plot.Step(float(step))
+        farfield_plot.Plot()
+
+        ascii_export = model.ASCIIExport
+        ascii_export.Reset()
+        ascii_export.FileName(save_path)
         ascii_export.Execute()
+        return save_path
 
     def export_pattern(self, tree_item, save_path,
-                       plottype='3d', plotmode='realized gain', step=-1):
+                       plottype='3d', plotmode='realized gain', step=1.0):
         """
         导出方向图（蛇形命名）
         等同于 pattern_export()
