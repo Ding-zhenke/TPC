@@ -10,6 +10,7 @@
 | 你的任务 | 读 |
 |---|---|
 | **用 TPC 建拓扑光子晶体器件（直波导 / 单元天线 / 多域壁器件），或把参考工程 `硅基` 的口径搬进来** | ⭐ [`skills/user/topo-quickstart.md`](../skills/user/topo-quickstart.md) ← 先读这个（含**离线拓扑正确性自检**） |
+| 直接用 `cst_solver` 建模 / 配仿真 / 读结果，想快速确认常用 API | ⭐ [`skills/user/cst-solver.md`](../skills/user/cst-solver.md) ← 常用 API 照抄、**疑似 bug 只报告** |
 | 用 TPC 建模型、跑仿真、读结果（**使用者视角**，不改库） | [`skills/user/tpc-usage.md`](../skills/user/tpc-usage.md) |
 | 改 `cst_solver` / `mesh_grid` / `topo_modeler` / `topo_templates` / `tpc_toolkit` 的源码（**开发者视角**） | [`skills/developer/WORKFLOW.md`](../skills/developer/WORKFLOW.md) ← 先读这个 |
 | 给 `cst_solver` 加 VBA 封装 / 修封装层缺陷 | [`skills/developer/cst-solver-dev.md`](../skills/developer/cst-solver-dev.md) |

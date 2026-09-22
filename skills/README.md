@@ -14,6 +14,7 @@
 
 | 文件 | 内容 |
 |---|---|
+| [`user/cst-solver.md`](./user/cst-solver.md) | ⭐ **cst_solver 快速使用手册**：常用 API 速查（照抄即可、不必翻源码）、不常用 API 的查源码地图、三条硬约定、症状速查、CST 侧验收、**结构示意图工程制图规范（Python+Matplotlib、中文入口、变量用 LaTeX）**、**疑似库 bug 的判定与报告流程（只报告，不修库）** |
 | [`user/tpc-usage.md`](./user/tpc-usage.md) | **主手册**：按需查阅地图、报错定位表、三条硬约定（z 平面 / 布尔语义 / 阵列范围）、已知库缺陷、验收清单 |
 | [`user/topo-quickstart.md`](./user/topo-quickstart.md) | ⭐ **拓扑光子晶体建模专用技能（TOPO 模块）**：器件结构解剖（超元胞六孔 → 两种相 → 域壁 → 相区 → 阵列覆盖 → 馈源/端口）、与参考工程（`硅基` notebook）逐值对齐的参数口径表、AB/BA 不变式、装配顺序、**离线拓扑正确性自检**、语义错位清单（`l1`/`l2` 命名错位等）、验收与排错、器件族可实现性判据 |
 | [`user/tri-grid.md`](./user/tri-grid.md) | 三角晶格算法库 API 速查 |
@@ -31,6 +32,26 @@
 | [`developer/conventions.md`](./developer/conventions.md) | 项目约定与 cst_solver 结构速览 |
 | [`developer/cst-solver-dev.md`](./developer/cst-solver-dev.md) | 维护 / 扩展 `cst_solver` 的专门技能（含**待修清单**与硬约定来源） |
 | [`developer/doc-generation.md`](./developer/doc-generation.md) | API 文档生成与维护 |
+
+---
+
+## 先搞清层级：TPC → 子包 → skill
+
+**TPC 是整个库（本仓库），由多个领域范围、大小各不相同的子包组成，自底向上分层：**
+
+| 层级 | 子包 | 领域范围 | 对应 skill |
+|---|---|---|---|
+| 通用底层 | `cst_solver/` | **最小**：只做 CST VBA → Python 封装，与研究方向无关，任何 CST 模型都能用 | [`user/cst-solver.md`](./user/cst-solver.md) |
+| 通用算法 | `mesh_grid/` | 三角 / 六边形晶格、`TopoPath` 路径 DSL（不依赖 CST） | [`user/tri-grid.md`](./user/tri-grid.md)、[`user/hex-grid.md`](./user/hex-grid.md) |
+| 通用工具 | `tpc_toolkit/` | S 参数解析、遗传算法、等效介质公式 | 见 [`user/tpc-usage.md`](./user/tpc-usage.md) |
+| **研究方向专用** | `topo_modeler/`、`topo_templates/` | **最大、最贴物理**：硅基拓扑光子晶体器件（域壁 / 相 / 阵列 / 馈源） | [`user/topo-quickstart.md`](./user/topo-quickstart.md)、[`user/topo-modeler.md`](./user/topo-modeler.md) |
+| 服务 / 集成 | `tpc_service/`、`integrations/`、`cst_mcp` | 把上述能力包成服务 / MCP / 对外接口 | 见 [`user/tpc-usage.md`](./user/tpc-usage.md) |
+
+**要点**：
+
+- 越靠**底层**的包领域越小、口径越稳定 → 常用 API 直接照查对应 skill，不必翻源码；
+- 越靠**上层 / 越专用**的包口径与物理约定越多 → 必须读对应专用 skill（topo 系）；
+- **各 skill 只覆盖它声明的子包**：`cst-solver` 不管 topo 装配，`topo-quickstart` 也不重复讲 VBA 封装细节。
 
 ---
 
@@ -53,9 +74,11 @@ DSH（DeepSeek Harness）扫描的是 `.dsh/skills/`，两者内容一致、都�
 | 自动加载入口 | 指向 |
 |---|---|
 | [`../.github/copilot-instructions.md`](../.github/copilot-instructions.md) | 本目录索引 + 硬约定摘要 |
+| [`../.github/skills/cst-solver/SKILL.md`](../.github/skills/cst-solver/SKILL.md) | [`user/cst-solver.md`](./user/cst-solver.md) |
 | [`../.github/skills/cst-solver-dev/SKILL.md`](../.github/skills/cst-solver-dev/SKILL.md) | [`developer/cst-solver-dev.md`](./developer/cst-solver-dev.md) |
 | [`../.github/skills/tpc-user/SKILL.md`](../.github/skills/tpc-user/SKILL.md) | [`user/tpc-usage.md`](./user/tpc-usage.md) |
 | [`../.github/skills/topo-quickstart/SKILL.md`](../.github/skills/topo-quickstart/SKILL.md) | [`user/topo-quickstart.md`](./user/topo-quickstart.md) |
+| [`../.dsh/skills/cst-solver/SKILL.md`](../.dsh/skills/cst-solver/SKILL.md) | [`user/cst-solver.md`](./user/cst-solver.md)（DSH 自动发现入口） |
 | [`../.dsh/skills/topo-quickstart/SKILL.md`](../.dsh/skills/topo-quickstart/SKILL.md) | [`user/topo-quickstart.md`](./user/topo-quickstart.md)（DSH 自动发现入口） |
 
 **唯一事实来源是本目录**。改技能内容改这里，`.github/` 与 `.dsh/` 下的薄壳不用动
