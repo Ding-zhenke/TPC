@@ -159,6 +159,11 @@ python -m cst_mcp --check     # 打印能力报告 JSON：CST 可用性、后端
 | 端口添加 | `topo_modeler/builders/port.py` |
 | 求解器/监视器配置 | `topo_modeler/builders/solver.py` |
 | VPC 区域 / 基板 | `topo_modeler/builders/vpc_region.py`、`substrate.py`（⚠ §6） |
+| **参数扫描 `ParameterSweep`（任意离散值 / 全组合）** | `cst_solver/simulation/solver.py` → 用法见 **§13** |
+| **局部网格加密 / 分辨薄层（`Solid.SetMeshStepWidth`）** | `cst_solver/mesh/mesh.py`（⚠ §6） → 用法见 **§14** |
+| **多材料分层块（PIN 式薄层堆叠）** | 做法见 **§15** |
+| **改已有模型的一个小部件（别从 0 重建）** | 流程见 **§12** |
+| 自定义材料（ε / μ / κ / **显示颜色**） | `cst_solver/material/materials.py`（`create_material_custom`；改已有材料颜色用 `change_material_color`） |
 
 ## 3. 三条硬约定（不遵守必出错）
 
@@ -210,6 +215,7 @@ assert signed_area(my_poly) > 0        # 手写多边形拉伸前先自检
 | `TypeError: build_vpc_regions() got an unexpected keyword argument 'topology'` | `topo_templates/*.py` 传了函数不接受的参数（§6） | 不用 topo_templates，直接调 builders |
 | 改参数不生效 | `para()` 只 `StoreParameter`，需刷新 | `app.para(name, val, log_flag=1)` 或 `full_history_rebuild()` |
 | 端口选到错误的面 | `pick_face` 面编号依赖具体几何 | 试 `'10'` / `'22'`，或先在 CST 里看面号 |
+| **端口激励方向反了**（端口箭头朝外、S21 不对） | `Port.Orientation` 写成了 `"positive"/"negative"` —— **CST 只认位置枚举**，非法值会**静默回退到默认 `zmin`** 👉 2026-09-20 起库会**当场抛 `ValueError`**（不再静默；`None` 只告警） | 按端口所在侧给枚举（x 向直波导：左端 `"xmin"`、右端 `"xmax"`）；见 §11 ⑥ |
 | 求解器 VBA 报错 | `builders/solver.py` 的 `configure_solver` 含存疑 VBA（`.ParallelizationThreads`、`.GPUAcceleration`） | 优先用旧 notebook 实测过的 `With Solver … End With` 整块 |
 | `FileNotFoundError: CST project file not found` | 相对路径按**工作目录**解析 | 模板 `tmp.cst` 放 notebook 同目录 |
 | `ImportError: cst` | CST python 库路径没配 | 改 `cst_solver/config.py` 的 `CST_INSTALL_PATH` |
@@ -219,6 +225,8 @@ assert signed_area(my_poly) > 0        # 手写多边形拉伸前先自检
 | `RuntimeError: An error occurred while trying to execute add_to_history: (&H8000ffff) …` | 下发的 VBA 被 CST 拒绝 —— 走的是**异常**通道，不是消息通道 | 按 CST 原文改 VBA；例：`.Coordinates` 的合法值只有 `"Free"` / `"Full"` / `"Picks"`（§4.1） |
 | 拾取明明成功，`pick_face_auto()` 却返回 `None` | 脏工程：历史里的失败命令被 `get_messages()` **反复**报出，「消息为空」判据失效 | 改用正向判据 `get_picked_count('face') == 1`；库侧已修（§4.1 + 文末「面拾取」） |
 | 建模时刷 `[LOG_FLAG_NO_REBUILD]` 警告（守卫 T7'/T13） | ① **先判断是不是重复登记**：同一条路径的参数被**多个构建器重复登记**曾导致**误报**（2026-09 已修，`TopoPath.auto_define_cst_params()` 现已幂等），此时参数值根本没变；② 真的是「改了**已有**参数但没重建历史」 | ① 误报：升到修好的版本即可，**不用改建模代码**；② 真报警：`app.para(name, val, log_flag=1)` 或 `full_history_rebuild()`（§7） |
+| `add_to_history … (&H8000ffff) The specified shape does not exist`（形状**明明存在**） | `Solid.xxx` 用了**短名**：CST 的 `Solid` 方法要**全名** `component1:name`（TPC 布尔封装内部也一律写全名） | 改成 `"component1:pinP1"`；见 §14 |
+| 建 brick 直接报错 / 零厚度实体 | 扫描边界工况取到 0 厚度（`tgrad/1000`） | 参数表达式兜底 `max(参数,最小非零值)`；见 §15 |
 
 ### 4.1 主要反馈通道之一：CST 自己的消息日志 ✅实测
 
@@ -270,6 +278,8 @@ cst_log('完整重建后')
    改 notebook **优先整格重写**（`edit_notebook_file`），多段替换容易把单元改乱
 6. **CST 建模调用里不得出现硬编码数值**：`app.ellipse(2.0612, 1.5751, [1.3296,'0'])` ✗
    → `app.ellipse('ec_a', 'ec_b', ['ec_c','0'])` ✓（详见文末「挖孔板 / 椭圆透镜」一节）
+7. **过程文件已清理**：建模型期间新开的临时工程 / 实验工程 / 一次性探索脚本与日志已删除，
+   或已说明保留理由（见 §17）。**别把一堆过程文件留在工作区。**
 
 ## 6. 已知库缺陷（可直接改库）
 
@@ -280,6 +290,8 @@ cst_log('完整重建后')
 | `topo_templates/straight_waveguide.py` | 调 `build_vpc_regions(..., topology=...)`、`build_topological_crystal(..., xup/yup/ydn=...)`，两函数都不接受 | 模板直接 TypeError | 去掉多余参数，或给构建器加形参 |
 | `topo_templates/unit_antenna.py` | 同 `topology=` 问题 | 同 | 同 |
 | `builders/crystal.py` | 阵列范围只能从 `path.get_array_range()` 推断 | 宽板覆盖不全 | 加 `xup/yup/ydn` 形参 |
+| `cst_solver/mesh/mesh.py` | `set_mesh_region()` 生成 `With MeshShapes … .Name/.Priority/.Xmin…/.Create` —— **官方 `MeshShapes` 页没有这些方法（臆造接口）** | 局部网格加密静默不生效 | 改用 `Solid.SetMeshStepWidth "component1:name", dx, dy, dz`（§14），或删掉该封装 |
+| `cst_solver/simulation/solver.py` | 扫描封装 `configure_parameter_sweep()` / `add_sweep_parameter_sequence()` / `add_sweep_parameter_samples()` 只生成**线性等步** `AddParameter_Samples` | 表达不了任意离散取值（如 σ = 0/10/50/100/500） | 加 `add_sweep_parameter_arbitrary_points(seq, param, points)` → `AddParameter_ArbitraryPoints`（§13） |
 
 ## 7. 最小可用配方（实测写法）
 
@@ -966,3 +978,245 @@ app.rotate_port(2, [0, 0, 180], copy=True)      # 复制并旋转 ⇒ 新增一�
 **⑤ 顺带：`import_subproject(filename, subproject_name)` 两个路径都必须传绝对路径。**
 CST 用**它自己的**工作目录解析相对路径 ⇒ 传相对名会报 `Unable to read SAB file`
 （文件本身没问题：`.sab` 头 `ACIS BinaryFile … ACIS 35.0`、尾 `End-of-ACIS-data`）。
+
+**⑥ `Port.Orientation` 只接受位置枚举 —— 写 `positive/negative` 会静默错朝向（2026-09-20 实测纠正）。**
+
+CST 官方帮助 `special_vbaports_port_object.htm`：
+`Orientation ( enum key )` = “defines the orientation, i.e. **the direction of excitation**”，
+`key = {"xmin", "xmax", "ymin", "ymax", "zmin", "zmax"}`。
+
+写 `"positive"/"negative"` **不是合法值** ⇒ CST **不报错**（`get_messages()` 也干净），
+**静默回退到默认 `zmin`** ⇒ 端口激励方向就错了。实测：模型 1 的两端口直波导里，
+端口 1 看着对、**端口 2 的激励朝外**（不是朝波导里）—— 正因为两个端口面法向相反，
+回退到同一个默认枚举时总有一个反。
+
+**判据**：端口在**哪个轴的哪一侧**就给对应枚举 —— x 向直波导：
+**左端（面朝 +x）→ `"xmin"`、右端（面朝 −x）→ `"xmax"`**
+⇒ 两端激励都朝结构内部（这才是「朝波导里面传」）；
+二维/斜置端口同理，按“端口所处的坐标下界/上界”选轴与侧。
+
+**事后离线核对（不连 CST，2026-09-21 实测确定判据）**：
+
+1. `<工程>/Model/3D/ModelHistory.json` 的 `Define Port` 块 = **库当时下发的字符串**
+   ⇒ 必须是位置枚举；出现 `positive/negative` 说明那一版就是错的。
+2. `<工程>/ModelCache/Model.mif` 的 `[WAVEGUIDE: k]` 块 = **CST 把它归一化到端口局部系**的结果：
+   直波导两端应当出现 **`zmin` / `zmax` 各一个**（局部系的 z 就是端口法向），
+   并且 `ReferenceWCS` 的第二基矢分量 **随之 −1／+1 翻转**。实测对照：
+
+   | | 历史（库下发） | Model.mif（CST 归一化） |
+   |---|---|---|
+   | 修好的直波导 | 端口1 `xmin` / 端口2 `xmax` | 端口1 `zmin` + WCS `0,0,-1` / 端口2 `zmax` + WCS `0,0,+1` |
+   | 坏的（`positive/negative` 那版） | 端口1 `positive` / 端口2 `negative` | **两个都是 `zmin`、WCS 都是 `0,0,-1`** ⇒ 两端激励朝同一侧，必有一个反 |
+
+   ⇒ **两端口 `Model.mif` 里的 `.Orientation` 相同（或 `ReferenceWCS` 相同）就是坏的味道**；
+   这条只看文件、不占 CST 会话，适合批量自查存档工程。
+
+⚠️ **库默认值曾就是这个非法值**（`add_port(orientation='positive')`）—— **2026-09-20 已加固**：
+
+| 你传什么 | 现在的行为（`cst_solver.simulation.ports.check_port_orientation`） |
+|---|---|
+| `'xmin'/'xmax'/'ymin'/'ymax'/'zmin'/'zmax'`（大小写、空格不敏感） | 归一化成小写后下发 `.Orientation` 行 ✅ |
+| `'positive'` / `'negative'` 等历史写法 | **抛 `ValueError`**，错误信息里直接给出 `xmin/xmax` 的改法（不再静默）❌ |
+| **不传**（`orientation=None`，含 `add_port(1)` 这种老写法） | **不下发** `.Orientation` 行 —— 等价于改动前 CST 的实际行为（该行被静默忽略、退回默认朝向），**所以既有模型结果不变**；但会打一条 `UserWarning` 提醒你没说朝向 ⚠️ |
+
+`topo_modeler` 侧的封装也跟着改了：`add_waveguide_port(..., orientation=None)`、
+`build_multiport_waveguide(..., orientation=None)` 默认不再传非法值；
+**`add_ports_for_straight_waveguide()` / `add_port_for_antenna()` 已按 `build_waveguide` 的面号
+（`'10'` 在 x_min 端、`'22'` 在 x_max 端）默认给 `xmin/xmax`** ⇒ 直波导两端开箱即用；
+若你换用别的面号，**必须同步换朝向**（或用 5 元组条目
+`('wg1', 2, '22', 'electric', 'xmax')` 逐条显式给 `add_multiport_port_set`）。
+
+---
+
+### 11.7 几何尺寸一律用 **CST 参数表达式**（别把算好的数字写进工程）
+
+**症状**：在 CST 里改一个参数（`x1` / `GAP` / `LW` …），板长 / 阵列次数 / 镜像轴 / 喇叭顶点 /
+透镜位置**不跟着变** —— 几何要么短一截、要么多出一段；改回去也回不去。
+
+**病因**：这些量在建模脚本里被算成了**Python 数值**再写进工程（`xmax='18.5*a'`、
+`xup='54 + GAP'`、`feed_mirror_x=(53 + GAP)*A/2`），只反映「脚本跑那一刻」的参数值。
+
+**做法**（2026-09-21 在「参杂控制」4+1 个模型上落地）：
+
+| 量 | 写成 | 说明 |
+|---|---|---|
+| 板长 | `xmax = '(2*x1 + 2*(x1+x2-y1) + GAP + 1)*a'` | 由**路径步数**推出，不是 `'53.5*a'` |
+| X 向阵列 | `xup = '2*x1 + 2*(x1+x2-y1) + GAP + 2'` | = 板长/a + 1 步余量 |
+| 镜像轴 | `xmir = '(…)*a/2'` | **≡ 板中心**（两端管口才对称） |
+| 喇叭顶点 | `apex_x = '(…)*a'` | = 透镜近焦点 |
+| 板半高 | `ymax_up = 'nhalf*e2'` | 步数参数化 |
+
+- 表达式里用到的**步数常量也登记成 CST 参数**（`nhalf` / `lh` / `lseg` / `xend`）⇒ 可引用、可扫描。
+- 馈电位置同样传表达式：`mirrors=('(lseg)*a/2',)` —— `app.mirror` / `translate` / `pick_face_at` /
+  `square` / `build_waveguide` 的坐标字段都接受 **CST 表达式**（本工作区实测有效）。
+- ⚠️ **端口对象本身是 Picks 绑定的**：建完之后改 CST 参数，铜管跟着动、端口面**不会**跟
+  ⇒ 扫描参数前要重拾取端口面（或改用 Free 端口，见 §11 ⑥ 的取舍）。
+- **单一来源**：把「步数常量 + 派生公式」放一个小模块（本工作区是 `_common/model_params.py`），
+  同时输出 **CST 表达式**（给建模）与**数值**（给画图 / 自查），多份脚本都从它 import ——
+  否则「建模脚本」与「结构示意图脚本」必然不同步。
+
+**对称性自查**：镜像端（第二个馈源）到板边的距离必须**等于**输入端到板边的距离。
+踩过的坑：板长 `18.5a` 而镜像轴取 `9a` ⇒ 右端管口比左端**少 0.5a**
+（端口 pin 左 −3.4 mm / 右 +7.765 mm，板 0~4.4863 mm）。
+
+### 11.8 每个材料给不同颜色（CST 里一眼区分）
+
+```python
+app.create_material_custom('mP', 11.9, 1, 'sig_p', color='#C0392B')  # 新建时给色
+app.change_material_color('Silicon (lossy)', 0.9, 0.9, 0.95)         # 给已有材料换色
+```
+
+- 颜色支持 `'#RRGGBB'` / `'#RGB'` / `(r, g, b)`（0~1 或 0~255，两种自动判）；
+- CST 自带的 `Silicon (lossy)` 是米色 `0.94/0.82/0.76`、`Copper (annealed)` 是黄 `1/1/0`
+  ⇒ 自定义材料避开这两个色系，否则叠在一起分不清；
+- 多层掺杂（PIN 五层之类）按层**渐变配色**最直观：P 红 / PI 橙 / I 黄 / NI 青 / N 蓝。
+- **离线核对颜色**：下发的是 `.Colour`（历史里可见），CST 落库写回的是
+  `ModelCache/Model.mif` 材料段末尾的 **`.Color "r", "g", "b"`**（美式拼写！）——
+  搜 `Colour` 找不到不代表没生效，要搜 `.Color`。
+
+---
+
+### 12. 改已有模型的「增量改动」路径（**别从 0 重建**）
+
+用户说「在模型 N 的基础上改一个小部件」时，不要在空目录里重写整套脚本，也不要重新摸索库里已封装的接口。
+本次实测（2026-09-20，给模型1 加 PIN 式 5 层掺杂块）验证有效的路径：
+
+1. **先看现有工程怎么搭的**：同族模型的 `_common/`（共用构建模块，如 `topo_build.py`）+
+   `_work/gen_build_nb_*.py`（notebook 生成器）+ `_work/run_nb.py`（无头跑）。
+   器件主体（板 / VPC / 晶体阵列 / 馈电 / 端口 / 监视器 / 求解器）通常**已有共用函数**
+   ⇒ **只加/改那一个部件函数**，其余一律不动。
+2. **新建模型 = 抄最近的生成器 + 只改差异**：新工程名**必须带时间戳**
+   （`build_m5_0920_2218.cst`），否则会被上次残留的 CST 实例占住（§5 第 4 条）。
+3. **几何一律写成 CST 参数符号**（`h/2-tp-tge`），不写 Python 浮点数
+   ⇒ 之后「扫参数 / 改厚度」都不用重建工程（§13/§15）。
+4. **动手写 VBA 前先查两处**（本次省下最多时间的做法）：
+   - 本手册 §2 查阅地图（接口在哪个文件）；
+   - **CST 官方帮助就在本机**：`C:\SOFTWARE\CST Studio Suite 2026\Online Help\mergedProjects\VBA_3D\`
+     （每个对象一页 `.htm`：完整方法签名、枚举值、官方示例）—— 比猜语法快且准。
+     对象页找不到时再查 `…\Online Help\` 下其它 family。
+5. **三段合一脚本**（生成 → 跑 → 核对），见 §16。
+
+### 13. 参数研究：CST 原生 ParameterSweep（2026-09 实测）
+
+把扫描**内置进工程**（打开 `.cst` 点 Start 就自动跑完全部组合），用官方 `ParameterSweep` 对象：
+
+```python
+vba = ('With ParameterSweep\n'
+       '     .DeleteAllSequences\n'                                        # 幂等，防止叠加
+       '     .AddSequence "PIN"\n'
+       '     .AddParameter_ArbitraryPoints "PIN", "tgrad", "0;15;30;50"\n'   # ★ 任意离散值
+       '     .AddParameter_ArbitraryPoints "PIN", "sig", "0;10;50;100;500"\n'
+       '     .StartActiveSolver "True"\n'                                  # True = Start 时跑求解器
+       '     .UseDistributedComputing "False"\n'
+       'End With')
+app.cst_file.model3d.add_to_history('Define parameter sweep', vba)
+# 只定义、不启动 —— 交给人点 GUI（脚本启动：ParameterSweep.Start）
+```
+
+- **一个 sequence 内的多个参数 = 全组合**（2 个参数 4 × 5 ⇒ 20 个点）。
+- **离散值只能靠 `AddParameter_ArbitraryPoints`**（`points` 用 `;` 分隔，官方例子 `"2 ; 3 ; 3.1"`）；
+  线性的 `AddParameter_Samples(seq, param, from, to, steps, log)` 表达不了非等差取值。
+- ⚠ **库里现有扫描封装只支持线性**（§6）：要任意离散值就自己下发上面这段 VBA。
+- 每个点的 S 参数各存一份，1D 结果路径 `1D Results\S-Parameters\S2,1`。
+- **开扫前先验证角点工况**：把扫描取值的 4 个角点各设一遍 + `Rebuild()` + `get_messages()`，
+  确认 0 消息（本次实测：`tgrad=0` 会走到「1 µm 兜底层」这条边界，见 §15）。
+
+### 14. 局部网格加密：分辨薄层（10 µm 量级，2026-09 实测）
+
+薄层（10 µm）在默认网格下会被并掉（300 GHz、硅内 λ≈0.29 mm、10 lines/λ ⇒ 网格 ≈29 µm），
+必须**对层实体**限制最大步长：
+
+```python
+vba = ('With Solid\n'
+       '     .SetMeshStepWidth "component1:pinP1", "0", "0", "0.004"\n'   # dz = 4 µm
+       'End With')
+app.cst_file.model3d.add_to_history('Local mesh: component1:pinP1', vba)
+```
+
+- 官方语义：给**单个实体**三向最大步长；**某方向写 `"0"` = 该方向不施加影响**
+  ⇒ `dx=dy=0, dz=4µm` 只在高度方向加密，作用范围 = 该实体的**包围盒**（不影响全模型）。
+- ⚠ **实体名必须写全名 `component1:xxx`**。短名 `"pinP1"` 实测报
+  `add_to_history: (&H8000ffff) The specified shape does not exist`（形状明明在！）。
+  TPC 布尔封装内部也一律写全名（`ModelHistory.json` 里是 `Solid.Intersect "component1:blk1", …`）。
+- **两手准备**：`intersect` 之后（实体一定在）设一次、`insert` 之后再设一次；
+  **失败不要中断建模**（逐实体 try + 打印成败），最后在 `ModelHistory.json` 里读回确认。
+- ⚠ **不要用 `app.set_mesh_region()`** —— 臆造接口（§6）。
+- `Mesh.AddFixpoint` / `AutomeshFixpoint` 属于 **Legacy 六面体网格线生成器**：2020 弃用、
+  **2023 起在新历史块里完全无效** ⇒ 别想用 fixpoint 去「钉」层界面。
+- 代价：最小网格 4 µm 决定 TD 时间步 ⇒ 单点求解时间明显上升（分辨率是拿算力换的）。
+
+### 15. 多材料分层块（PIN 式薄层堆叠，2026-09 实测）
+
+把一个矩形掺杂块在 z 向拆成 N 层、每层一种材料，做法与单块**完全同构**
+（同 `build_blocks`：先建全部实体 → 一次建够全部介质副本 → 逐个 `intersect` → 逐个 `insert`）：
+
+```python
+app.square(f'({bx})-Lr/2', f'({bx})+Lr/2', f'({by})-Wr/2', f'({by})+Wr/2',
+           'h/2-tp', 'h/2', 'pinP1', 'component1', 'mP')       # ★ z 写参数表达式
+...
+for _ in range(len(names)):                                    # 副本一次建够（交错会重名）
+    app.translate('vpca', ['0', '0', '0'], copy=True, unite=False, log_flag=1)
+for k, nm in enumerate(names, 1):
+    app.intersect(nm, f'vpca_{k}', 'component1')               # 只留板内的部分
+set_local_mesh(app, names, dz='0.004')                         # ★ insert 前先设网格（§14）
+for nm in names:
+    app.insert('vpca', nm, 'component1')
+```
+
+- **`Insert(A,B)` = A − B 且保留 B**（官方原文：“Performs a subtraction … but does not delete solid2”）
+  ⇒ 块区域被从介质里挖走、层实体原地填回，材料分区天然正确，**不需要** `subtract` + `add`。
+- ⚠ **零厚度实体**：边界工况（如「渐变区厚度 = 0」）若直接写 `tgrad/1000`，CST 建零高 brick 会报错。
+  用参数表达式兜底：`tge = max(tgrad,1)/1000`（1 µm ≈ 网格步长 1/4，物理上等价于「无渐变」）。
+  ✅ **CST 参数表达式支持 `max()`**（实测 `Parameters.json` 里 `tge` 求值正确）。
+- **自检总厚**：`2*tp + 2*tge + ti == h`，存盘后从 `Model/Parameters.json` 的 `value` 列核对。
+- 材料：`app.create_material_custom('mP', 11.9, 1, 'sig_p')`（ε, μ, **κ = 电导率：参数名或表达式**；
+  I 区写 `'0'` 就是本征硅）。CST 用 `.Kappa`（与自带材料库一致）。
+- **给材料上色**（多层结构在 CST 里一眼分得清，2026-09-20 补）：
+  `create_material_custom('mP', 11.9, 1, 'sig_p', color='#2e6ef7')` —— 颜色也接受
+  `(r, g, b)`（0~1）或 `(r, g, b)`（0~255，自动归一化）；**不传 = CST 默认色（旧行为不变）**。
+  写法非法（分量超范围、非十六进制）会直接报 `ValueError`，不静默写错颜色。
+  改**已有**材料的颜色：`change_material_color(name, r, g, b)`（VBA 用 `.Color … .ChangeColor`；
+  而建房材料时是 `.Colour … .Create` —— 两个名字别搞反）。
+- 每层的 `Zrange` 都应是参数表达式，例：`'h/2-tp-tge' → 'h/2-tp'` —— 扫 `tgrad` 时几何自动跟随。
+
+### 16. 长任务（建模 2~3 min、求解数十分钟）的等待姿势
+
+1. **三段合一**：`生成 notebook → run_nb.py（无头跑）→ 核对` 写成一个**总控脚本**，一次调用跑完
+   （本次实测：137 s、105 条历史、含 5 层 + 局部网格 + 扫描定义）。
+   别「每步一条命令 + 反复看终端」。
+2. **日志哨兵**：总控脚本最后打印 `===== 汇总：gen rc=0, build rc=1 =====`；
+   判断是否完成**只读日志文件**（一次 `read_file`），**不要** `get_terminal_output` 反复 poll。
+3. `run_nb.py` 按 cell 实时写日志（行缓冲）⇒ 卡在哪一格、报什么错一眼可见；
+   失败时它会 `app.close()` 释放工程（否则下次同名工程报 `already open in another instance`）。
+4. 终端偶发沙箱故障（`DriveNotFoundException`、`Set-Location 拒绝访问`、命令前多出 `^U`）：
+   用**绝对路径**调 `python.exe`、脚本内部 `os.chdir(BASE)`，或原样重发一次命令。
+
+### 17. 临时文件纪律：建模过程文件，收尾必须删（2026-09-20 加入）
+
+**规则**：为建模 / 排查**新开的临时文件**（工程副本、实验工程、一次性脚本、过程日志）
+**在交付时必须删除**；拿不准是「过程」还是「交付物」的，在交付说明里写清保留理由。
+
+| 类型 | 典型名字 | 处理 |
+|---|---|---|
+| 建模型用的临时工程 | `build_mN_<时间戳>.cst` + 同名目录 | **删**（成品已另存为 `模型N_*.cst`；临时工程只是过程，不是交付物） |
+| 验证 / 卡点实验工程 | `meshtest*`、`sweepchk*`、`ovtest*`、`port_test*` | **删**（`.cst` 与工程目录一起） |
+| 一次性探索 / 探针脚本 | `explore_*`、`diag_*`、`probe_*`、`find_*`、`show_*_impl.py` | **删**（结论写进本手册即可，别留一堆半成品） |
+| 过程日志 | `gen*.log`、`verify.log`、`*_chk.log` | **删**（保留 `build.log` / `build_all.log` 作验收证据） |
+| 被取代的中间产物 | 旧版示意图 / 旧 CSV | **删** |
+
+**保留（不属于过程文件）**：交付物（`模型N_*.cst` / `CST建模.ipynb` / `结构预测图.ipynb` / `_work/*.png` / 工程目录）、
+依赖（子工程 `.sab` 与透镜工程、`_common/`）、**可复用基础设施**（`gen_build_nb*.py` / `run_*.py` /
+`verify_*.py` / `check_*.py`）、以及**用户自己建的东西**（别替他清理）。
+
+**四条操作纪律**：
+
+1. **删之前先做「复查清单」**：把交付物 + 关键依赖列成列表逐个 `Test-Path`，确认都还在再删。
+   实测教训：`模型3/4/lens/`（各 45 MB）看着像冗余副本，其实是 notebook 里 `..\lens\...` 的
+   **相对路径依赖**（CST 按**工程目录**解析）—— 删了那两个模型就再也重建不了。
+2. **CST 正在跑的工程删不掉**（`Model.lok` 被占、`WinError 32`）。
+   ⇒ 先看有没有 `CST DESIGN ENVIRONMENT` 进程在跑仿真：**是用户在跑就别动**，
+   记下来等它结束再删；只有确认是**失败残留**的实例才结束它（§5 第 4 条）。
+3. **写成幂等脚本**（形如 `cleanup_process_files.py`）：glob 模式列表 → 逐个删并打印明细
+   → 复查清单 → 统计释放空间。每次收尾跑一遍，比手工删可靠。
+4. **别把「清理」做成「删别人的东西」**：用户自建的目录、交付工程里的 `Result/`
+   （可能含真跑过的仿真结果，而新工程通常只有 ~0.3 MB）—— **先问再动**。

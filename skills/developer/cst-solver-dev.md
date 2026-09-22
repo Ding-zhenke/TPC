@@ -231,10 +231,13 @@ import _cst_interface as ci
 
 ## 待修清单
 
-**当前为空。** 此前 5 行已全部修掉（对照 [`../../docs/next_plan/README.md`](../../docs/next_plan/README.md) §5 第 1–5 号），按 [`../../skills/developer/WORKFLOW.md`](./WORKFLOW.md) §6 的「修掉一个已知缺陷 → 删掉对应行」规则清空：
+**待修 0 项（2026-09-20 清空）。**
+
+**已修（按 [WORKFLOW](./WORKFLOW.md) §6 的「修掉一个已知缺陷 → 删掉对应行」规则逐条清空）：**
 
 | 原问题 | 现状 |
 |---|---|
+| `simulation/ports.py`：`add_port(orientation='positive')`、`create_waveguide_port_free(..., orientation='positive')` 的**默认值是非法值** —— CST 的 `Port.Orientation` 只接受位置枚举（`xmin/xmax/ymin/ymax/zmin/zmax`），非法值**不报错、静默回退默认 `zmin`** ⇒ 端口激励方向错、S21 反转，而 `get_messages()` 干净得毫无线索（实测：模型 1 直波导的端口 2 激励朝外） | ✅ 已修（2026-09-20）：① 新增 `PORT_ORIENTATIONS` + `check_port_orientation()` —— `positive/negative` 抛 `ValueError`（错误信息里给改法），`None` **不下发** `.Orientation` 行（= 改动前 CST 的实际行为，既有模型结果不变）+ 打 `UserWarning`；② 三个方法的默认值全由 `'positive'` 改为 `None`；③ 同步 `setup.pyi`、`vba_specs.PortSpec.validate()`、`topo_modeler/builders/{port,feed}.py`（含 `add_ports_for_straight_waveguide` 默认给 `xmin/xmax`）、`scripts/verify_{dubious_vba,guard_export_flow,port_face_api}.py`；④ 新增 `cst_solver/tests/test_port_orientation_guard.py`（20 条）+ 基线重生成器 `scripts/gen_expected_port_vba.py`。详见[使用者手册 §11 ⑥](../../skills/user/tpc-usage.md) |
 | `builders/vpc_region.py` 顶点顺时针 → 与晶体差一个 h | ✅ 已修（两条边界链改为「每个路径点都参与」的确定绕向，全部保证 CCW，并有第 16 项单测用有向面积钉住） |
 | `builders/substrate.py` 带状多边形为 CW | ✅ 已修（同上，未改 `topo_path.build_substrate_polygon`） |
 | `builders/crystal.py` 阵列范围只能按路径推断 | ✅ 已修（加可选形参 `xup=None, yup=None, ydn=None`） |

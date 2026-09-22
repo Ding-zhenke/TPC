@@ -48,6 +48,9 @@ print(app.cst_file.get_messages())     # 必须为空
 
 CST **不抛异常**，跑通 ≠ 建模正确。
 
+**收尾**：建模型期间新开的临时工程 / 实验工程 / 一次性探索脚本与日志**必须删掉**
+（删前先复查交付物与依赖还在）；细则见 [tpc-usage.md §17](../../../skills/user/tpc-usage.md)。
+
 ## 相关
 
 - 三角晶格 / 路径 DSL → [`../../skills/user/tri-grid.md`](../../../skills/user/tri-grid.md)

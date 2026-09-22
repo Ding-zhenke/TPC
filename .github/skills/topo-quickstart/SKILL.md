@@ -99,6 +99,9 @@ print(wg.validate())                   # 结构化校验
 
 ## 相关
 
+> **收尾同样重要**：建模期间新开的临时工程 / 实验工程 / 一次性脚本与日志**必须删除**
+> （删前先确认交付物与依赖还在，尤其 `..\lens\...` 这类相对路径依赖）—— 见 [tpc-usage.md §17](../../../skills/user/tpc-usage.md)。
+
 - ⭐ **完整手册（先读这个）** → [`../../../skills/user/topo-quickstart.md`](../../../skills/user/topo-quickstart.md)
 - 库总入口 / 报错定位 / 大几何子工程 → [`../../../skills/user/tpc-usage.md`](../../../skills/user/tpc-usage.md)
 - 三角晶格 / 路径 DSL → [`../../../skills/user/tri-grid.md`](../../../skills/user/tri-grid.md)
