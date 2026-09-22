@@ -423,7 +423,7 @@ body {
     <div class="header-stats">
         <span><i class="fas fa-code"></i> 226 个方法</span>
         <span><i class="fas fa-layer-group"></i> 24 个类别</span>
-        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-17 22:08:36</span>
+        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-21 00:04:08</span>
     </div>
     <div class="search-bar">
         <i class="fas fa-search"></i>
@@ -2163,7 +2163,7 @@ End With</p></div>
                 <div class="method-details">
                     <div class="section">
                         <div class="section-title">签名</div>
-                        <div class="signature">create_material_custom(self, name, epsilon, mu, kappa, tand=None, material_type='Normal')</div>
+                        <div class="signature">create_material_custom(self, name, epsilon, mu, kappa, tand=None, material_type='Normal', color=None, colour=None)</div>
                     </div>
                     <div class="desc-text"><p>创建自定义材料（简化版）</p></div>
                     
@@ -2178,6 +2178,8 @@ End With</p></div>
 <tr><td class="param-name">kappa</td><td></td><td class="param-desc">float/str, 电导率</td></tr>
 <tr><td class="param-name">tand</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float 可选, 损耗角正切</td></tr>
 <tr><td class="param-name">material_type</td><td><span style="color:#f59e0b;font-size:12px">= Normal</span></td><td class="param-desc">str, 材料类型 'Normal' 或 'Lossy metal'</td></tr>
+<tr><td class="param-name">color</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">可选, 材料**显示颜色**（CST 的 ``Material.Colour``）。 支持三种写法：``'#RRGGBB'`` / ``'#RGB'`` 十六进制字符串、 ``(r, g, b)`` 且三分量在 0~1、``(r, g, b)`` 且三分量在 0~255 （自动归一化）。**不传时与旧版行为完全一致**（用 CST 默认色）。 例：``color='#4ec9b0'``、``color=(78, 201, 176)``、``color=(0.31, 0.79, 0.69)``</td></tr>
+<tr><td class="param-name">colour</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">``color`` 的英式拼写别名（两者同时给会报 ``ValueError``）</td></tr>
 </tbody>
                     </table>
                 </div>
@@ -6109,14 +6111,17 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                 <div class="method-details">
                     <div class="section">
                         <div class="section-title">签名</div>
-                        <div class="signature">add_port(self, id_val, orientation='positive', shield='', *, number_of_modes=1, adjust_polarization='False', polarization_angle='0.0', reference_plane_distance='0')</div>
+                        <div class="signature">add_port(self, id_val, orientation=None, shield='', *, number_of_modes=1, adjust_polarization='False', polarization_angle='0.0', reference_plane_distance='0')</div>
                     </div>
                     <div class="desc-text"><p>创建标准波导端口（波端口），用于激励和采集 S 参数</p><p>保留原函数名以兼容旧代码
 阶段 5.8：把原先写死的四项开放为**关键字参数**（默认值与改动前**逐字节相同**，
 不传就等于老行为）：
 - ``number_of_modes`` → ``.NumberOfModes``（多模波导/过模传输时用得到）
 - ``adjust_polarization`` / ``polarization_angle`` → ``.AdjustPolarization`` / ``.PolarizationAngle``
-- ``reference_plane_distance`` → ``.ReferencePlaneDistance``（参考面回退距离，做去嵌入时用）</p></div>
+- ``reference_plane_distance`` → ``.ReferencePlaneDistance``（参考面回退距离，做去嵌入时用）
+端口朝向（2026-09-20 加固）：见 :func:`check_port_orientation`。一句话 ——
+**朝向必须给位置枚举**（`xmin/xmax/ymin/ymax/zmin/zmax`），取&quot;激励波传入器件&quot;的方向；
+`'positive'/'negative'` 会抛 ``ValueError``，``None`` 会打 ``UserWarning``。</p></div>
                     
                 <div class="alias-info">
                     <i class="fas fa-info-circle"></i>
@@ -6129,7 +6134,7 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                     <table class="params-table">
                         <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
                         <tbody><tr><td class="param-name">id_val</td><td></td><td class="param-desc">int/str, 端口编号</td></tr>
-<tr><td class="param-name">orientation</td><td><span style="color:#f59e0b;font-size:12px">= positive</span></td><td class="param-desc">str, 'positive' 或 'negative'</td></tr>
+<tr><td class="param-name">orientation</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">str 可选, 端口激励方向，取 ``PORT_ORIENTATIONS`` 里的位置枚举；不传 = 不下发 ``.Orientation`` 行（CST 默认值）+ 告警</td></tr>
 <tr><td class="param-name">shield</td><td></td><td class="param-desc">str, 端口屏蔽类型 'electric'/'magnetic'/''，默认 ''</td></tr>
 <tr><td class="param-name">number_of_modes</td><td><span style="color:#f59e0b;font-size:12px">= 1</span></td><td class="param-desc">int, 端口模式数，默认 1</td></tr>
 <tr><td class="param-name">adjust_polarization</td><td><span style="color:#f59e0b;font-size:12px">= False</span></td><td class="param-desc">str/bool, 是否自动调整极化，默认 'False'</td></tr>
@@ -6331,7 +6336,7 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                 <div class="method-details">
                     <div class="section">
                         <div class="section-title">签名</div>
-                        <div class="signature">create_waveguide_port(self, id_val, orientation='positive', shield='', **kwargs)</div>
+                        <div class="signature">create_waveguide_port(self, id_val, orientation=None, shield='', **kwargs)</div>
                     </div>
                     <div class="desc-text"><p>创建波导端口（蛇形命名）</p><p>等同于 add_port()</p></div>
                     
@@ -6341,7 +6346,7 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                     <table class="params-table">
                         <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
                         <tbody><tr><td class="param-name">id_val</td><td></td><td class="param-desc"></td></tr>
-<tr><td class="param-name">orientation</td><td><span style="color:#f59e0b;font-size:12px">= positive</span></td><td class="param-desc"></td></tr>
+<tr><td class="param-name">orientation</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">str 可选, 同 ``add_port``：位置枚举（``xmin``…``zmax``）， 不传 = 不下发 ``.Orientation`` 行 + 告警；非法值抛 ``ValueError``</td></tr>
 <tr><td class="param-name">shield</td><td></td><td class="param-desc"></td></tr>
 <tr><td class="param-name">kwargs</td><td></td><td class="param-desc">透传给 ``add_port()`` 的关键字参数 （``number_of_modes`` / ``adjust_polarization`` / ``polarization_angle`` / ``reference_plane_distance``）</td></tr>
 </tbody>
@@ -6365,7 +6370,7 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                 <div class="method-details">
                     <div class="section">
                         <div class="section-title">签名</div>
-                        <div class="signature">create_waveguide_port_free(self, id_val, xrange=None, yrange=None, zrange=None, orientation='positive', shield='', *, number_of_modes=1, adjust_polarization='False', polarization_angle='0.0', reference_plane_distance='0')</div>
+                        <div class="signature">create_waveguide_port_free(self, id_val, xrange=None, yrange=None, zrange=None, orientation=None, shield='', *, number_of_modes=1, adjust_polarization='False', polarization_angle='0.0', reference_plane_distance='0')</div>
                     </div>
                     <div class="desc-text"><p>用**坐标范围**创建波导端口（``Coordinates &quot;Free&quot;``），无需任何面拾取。</p><p>与 ``create_waveguide_port`` 的分工：后者走 ``Coordinates &quot;Picks&quot;``，
 必须先 ``pick_face`` 选到面才生效，而面编号与实体几何、生成顺序强相关，
@@ -6387,7 +6392,7 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
 <tr><td class="param-name">xrange</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">tuple, (min, max)，x 方向范围，元素可为 CST 表达式</td></tr>
 <tr><td class="param-name">yrange</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">tuple, (min, max)，y 方向范围，元素可为 CST 表达式</td></tr>
 <tr><td class="param-name">zrange</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">tuple, (min, max)，z 方向范围，元素可为 CST 表达式</td></tr>
-<tr><td class="param-name">orientation</td><td><span style="color:#f59e0b;font-size:12px">= positive</span></td><td class="param-desc">str, 端口法向朝向，沿用 ``add_port`` 的约定</td></tr>
+<tr><td class="param-name">orientation</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">str 可选, 端口激励方向，取 ``PORT_ORIENTATIONS`` 里的位置枚举 （`xmin/xmax/ymin/ymax/zmin/zmax`）；不传 = 不下发 ``.Orientation`` 行 （CST 默认值，实测等价于 `zmin`）+ 告警；`'positive'/'negative'` 抛 ``ValueError``</td></tr>
 <tr><td class="param-name">shield</td><td></td><td class="param-desc">str, 端口屏蔽类型 'electric'/'magnetic'/''，默认 ''</td></tr>
 <tr><td class="param-name">number_of_modes</td><td><span style="color:#f59e0b;font-size:12px">= 1</span></td><td class="param-desc">int, 端口模式数，默认 1（阶段 5.8 新增）</td></tr>
 <tr><td class="param-name">adjust_polarization</td><td><span style="color:#f59e0b;font-size:12px">= False</span></td><td class="param-desc">str/bool, 是否自动调整极化，默认 'False'（阶段 5.8 新增）</td></tr>

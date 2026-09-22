@@ -7,6 +7,69 @@ CST 端口设置 Mixin 模块
 @author: PC
 """
 
+import warnings
+
+#: ``Port.Orientation`` 的**合法值全集** —— CST 的位置枚举
+#: （官方 VBA 帮助：Port Object → Orientation，"the direction of the excitation"）。
+#:
+#: ⚠️ 它**不是** `'positive'/'negative'`：往这一行写非法值时 CST **不报错**
+#: （`get_messages()` 也干净），会静默退回默认朝向 —— 表现是端口箭头朝外、
+#: S21 与预期相反（2026-09-20 真机实测确认）。
+PORT_ORIENTATIONS = ('xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax')
+
+#: 历史上被误当成合法值的写法（本库旧默认值、旧 notebook 都在用）—— 一律拒绝。
+_PORT_ORIENTATION_MISTAKES = ('positive', 'negative', 'pos', 'neg', 'plus', 'minus')
+
+_ORIENTATION_FIX_HINT = (
+    "改法（朝向 = 激励波**传入器件**的方向；x 向直波导两端都朝器件内部）：\n"
+    "    app.add_port(1, orientation='xmin')   # 端口在 x_min 端面 → 激励朝 +x\n"
+    "    app.add_port(2, orientation='xmax')   # 端口在 x_max 端面 → 激励朝 −x\n"
+    "  轴对齐矩形端面也可用 create_waveguide_port_free(..., orientation=...) 直接给范围。"
+)
+
+
+def check_port_orientation(orientation, where='add_port'):
+    """
+    校验并归一化 ``Port.Orientation``（防呆入口）。
+
+    设计取舍（为什么非法值抛错、``None`` 只警告）：
+
+    - **非法值抛 ``ValueError``**：`'positive'/'negative'` 这类写法曾被 CST 静默忽略，
+      是"端口朝向反了但一切看起来都正常"的根因，必须让调用方当场看见。
+    - **``None`` 只警告 + 不下发该行**：这等价于改动前 CST 的实际行为
+      （`.Reset` 后的默认朝向，实测等价于 `zmin`），所以既有代码不会因为本次加固而改变
+      建模结果；但会打一条 ``UserWarning``，提示"你没说朝向"。
+
+    :param orientation: str 可选, 调用方给的朝向
+    :param where: str, 调用方名字（用于错误/警告信息）
+    :return: str 或 None。合法枚举返回**小写**字符串；``None`` 表示不下发
+        ``.Orientation`` 行（交给 CST 默认值）
+    :raises ValueError: 给了非法值（尤其 `'positive'/'negative'`）
+    """
+    if orientation is None:
+        warnings.warn(
+            f"{where}() 没有指定端口朝向（orientation=None）⇒ 不下发 .Orientation 行，"
+            f"CST 会用它自己的默认值（实测等价于 'zmin'），端口激励方向很可能不是你要的。"
+            f"合法值（位置枚举）：{' / '.join(PORT_ORIENTATIONS)}。\n"
+            f"{_ORIENTATION_FIX_HINT}",
+            UserWarning, stacklevel=3)
+        return None
+
+    value = orientation.strip().lower() if isinstance(orientation, str) else orientation
+    if value in PORT_ORIENTATIONS:
+        return value
+
+    if value in _PORT_ORIENTATION_MISTAKES:
+        raise ValueError(
+            f"orientation={orientation!r} 不是 CST 的合法值：`Port.Orientation` **只接受位置枚举** "
+            f"{' / '.join(PORT_ORIENTATIONS)}。\n"
+            f"  写 'positive'/'negative' 时 CST **不报错、不告警**（get_messages() 也是干净的），"
+            f"它把这一行静默忽略、退回默认朝向 ⇒ 端口箭头朝外、S21 与预期相反。\n"
+            f"{_ORIENTATION_FIX_HINT}")
+    raise ValueError(
+        f"orientation={orientation!r} 不认识：`Port.Orientation` 的合法值是位置枚举 "
+        f"{' / '.join(PORT_ORIENTATIONS)}。\n{_ORIENTATION_FIX_HINT}")
+
 
 def _resolve_legacy_invert_direction(invert_direction, legacy_kwargs, func_name):
     """
@@ -40,7 +103,7 @@ class PortMixin:
     提供波导端口、离散端口、集总端口、Floquet 端口等创建功能
     """
 
-    def add_port(self, id_val, orientation='positive', shield='',
+    def add_port(self, id_val, orientation=None, shield='',
                  *, number_of_modes=1, adjust_polarization='False',
                  polarization_angle='0.0', reference_plane_distance='0'):
         """
@@ -54,14 +117,22 @@ class PortMixin:
         - ``adjust_polarization`` / ``polarization_angle`` → ``.AdjustPolarization`` / ``.PolarizationAngle``
         - ``reference_plane_distance`` → ``.ReferencePlaneDistance``（参考面回退距离，做去嵌入时用）
 
+        端口朝向（2026-09-20 加固）：见 :func:`check_port_orientation`。一句话 ——
+        **朝向必须给位置枚举**（`xmin/xmax/ymin/ymax/zmin/zmax`），取"激励波传入器件"的方向；
+        `'positive'/'negative'` 会抛 ``ValueError``，``None`` 会打 ``UserWarning``。
+
         :param id_val: int/str, 端口编号
-        :param orientation: str, 'positive' 或 'negative'
+        :param orientation: str 可选, 端口激励方向，取 ``PORT_ORIENTATIONS``
+            里的位置枚举；不传 = 不下发 ``.Orientation`` 行（CST 默认值）+ 告警
         :param shield: str, 端口屏蔽类型 'electric'/'magnetic'/''，默认 ''
         :param number_of_modes: int, 端口模式数，默认 1
         :param adjust_polarization: str/bool, 是否自动调整极化，默认 'False'
         :param polarization_angle: float/str, 极化角（度），默认 '0.0'
         :param reference_plane_distance: float/str, 参考面距离，默认 '0'
+        :raises ValueError: ``orientation`` 不是合法位置枚举
         """
+        ori = check_port_orientation(orientation, where='add_port')
+        ori_line = f'            .Orientation "{ori}"\n' if ori else ''
         if shield == 'electric':
             f2 = '.Shield "PEC"'
         elif shield == 'magnetic':
@@ -80,8 +151,7 @@ class PortMixin:
             .TextSize "50"
             .TextMaxLimit "0"
             .Coordinates "Picks"
-            .Orientation "{orientation}"
-            .PortOnBound "True"
+{ori_line}            .PortOnBound "True"
             .ClipPickedPortToBound "False"
             .SingleEnded "False"
             .WaveguideMonitor "False"
@@ -91,12 +161,14 @@ class PortMixin:
         """
         self.cst_file.model3d.add_to_history("Define Port: " + str(id_val), f1)
 
-    def create_waveguide_port(self, id_val, orientation='positive', shield='',
+    def create_waveguide_port(self, id_val, orientation=None, shield='',
                               **kwargs):
         """
         创建波导端口（蛇形命名）
         等同于 add_port()
 
+        :param orientation: str 可选, 同 ``add_port``：位置枚举（``xmin``…``zmax``），
+            不传 = 不下发 ``.Orientation`` 行 + 告警；非法值抛 ``ValueError``
         :param kwargs: 透传给 ``add_port()`` 的关键字参数
             （``number_of_modes`` / ``adjust_polarization`` /
             ``polarization_angle`` / ``reference_plane_distance``）
@@ -104,7 +176,7 @@ class PortMixin:
         self.add_port(id_val, orientation, shield, **kwargs)
 
     def create_waveguide_port_free(self, id_val, xrange=None, yrange=None,
-                                   zrange=None, orientation='positive',
+                                   zrange=None, orientation=None,
                                    shield='', *, number_of_modes=1,
                                    adjust_polarization='False',
                                    polarization_angle='0.0',
@@ -129,19 +201,25 @@ class PortMixin:
         :param xrange: tuple, (min, max)，x 方向范围，元素可为 CST 表达式
         :param yrange: tuple, (min, max)，y 方向范围，元素可为 CST 表达式
         :param zrange: tuple, (min, max)，z 方向范围，元素可为 CST 表达式
-        :param orientation: str, 端口法向朝向，沿用 ``add_port`` 的约定
+        :param orientation: str 可选, 端口激励方向，取 ``PORT_ORIENTATIONS`` 里的位置枚举
+            （`xmin/xmax/ymin/ymax/zmin/zmax`）；不传 = 不下发 ``.Orientation`` 行
+            （CST 默认值，实测等价于 `zmin`）+ 告警；`'positive'/'negative'` 抛 ``ValueError``
         :param shield: str, 端口屏蔽类型 'electric'/'magnetic'/''，默认 ''
         :param number_of_modes: int, 端口模式数，默认 1（阶段 5.8 新增）
         :param adjust_polarization: str/bool, 是否自动调整极化，默认 'False'（阶段 5.8 新增）
         :param polarization_angle: float/str, 极化角（度），默认 '0.0'（阶段 5.8 新增）
         :param reference_plane_distance: float/str, 参考面距离，默认 '0'（阶段 5.8 新增）
-        :raises ValueError: 三个方向的范围全部为 None，无法确定端口面
+        :raises ValueError: 三个方向的范围全部为 None，无法确定端口面；或 orientation 非法
         """
         if xrange is None and yrange is None and zrange is None:
             raise ValueError(
                 "create_waveguide_port_free 至少需要给出一个方向的范围"
                 "（xrange / yrange / zrange），否则无法确定端口面；"
                 "若确实要按面拾取建端口，请用 create_waveguide_port()")
+
+        ori = check_port_orientation(orientation,
+                                     where='create_waveguide_port_free')
+        ori_line = f'            .Orientation "{ori}" \n' if ori else ''
 
         ranges = ''
         for _line, _val in (('.Xrange', xrange), ('.Yrange', yrange),
@@ -167,8 +245,7 @@ class PortMixin:
             .TextSize "50" 
             .TextMaxLimit "0" 
             .Coordinates "Free" 
-            .Orientation "{orientation}" 
-            .PortOnBound "True" 
+{ori_line}            .PortOnBound "True" 
             .ClipPickedPortToBound "False" 
             {ranges}.SingleEnded "False" 
             .WaveguideMonitor "False" 

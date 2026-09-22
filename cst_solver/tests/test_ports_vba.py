@@ -12,9 +12,13 @@
 
     **不传新参数时，生成的 VBA 必须与改动前逐字节相同。**
 
-否则就等于悄悄改了所有既有模型。基线取自改动前的 `git HEAD:cst_solver/simulation/ports.py`，
-逐字节存进 `tests/data/expected_port_vba.json`（由一次性脚本
-`scripts/_check_port_vba_identity.py` 对比 HEAD 生成，已实测 7/7 相同）。
+否则就等于悄悄改了所有既有模型。基线逐字节存在 `tests/data/expected_port_vba.json`，
+现在由 `scripts/gen_expected_port_vba.py --write` 生成（改基线必须人工复核 diff）。
+
+⚠️ 2026-09-20 端口朝向加固：`orientation` 的默认值由非法的 `'positive'`
+改成 `None` ⇒ 不再下发 `.Orientation` 行（等价于改动前 CST 的实际行为：该行被
+静默忽略、退回默认朝向），并改为打 `UserWarning`；用例里的朝向一律用
+CST 合法的位置枚举。朝向防呆的专项测试见 `test_port_orientation_guard.py`。
 
 ⚠️ 顺带说明：本测试只证明**字符串**没变，不证明 CST 认得这些命令 ——
 后者只能在真 CST 上验（阶段 5.8 的 CST 验证尚未做，见 stages/05 的风险登记）。

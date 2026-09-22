@@ -332,19 +332,24 @@ class _MaterialMixin:
 # 端口设置 (PortMixin)
 # ============================================================
 class _PortMixin:
-    def add_port(self, id_val: Union[int, str], orientation: str = 'positive',
+    # ⚠️ orientation 只接受 CST 的位置枚举 'xmin'/'xmax'/'ymin'/'ymax'/'zmin'/'zmax'
+    #    （`PORT_ORIENTATIONS`）；'positive'/'negative' 抛 ValueError，
+    #    None = 不下发 .Orientation 行（CST 默认值）+ UserWarning。详见
+    #    cst_solver.simulation.ports.check_port_orientation
+    def add_port(self, id_val: Union[int, str],
+                 orientation: Optional[str] = None,
                  shield: str = '', *, number_of_modes: int = 1,
                  adjust_polarization: Any = 'False',
                  polarization_angle: Any = '0.0',
                  reference_plane_distance: Any = '0') -> None: ...
     def create_waveguide_port(self, id_val: Union[int, str],
-                              orientation: str = 'positive',
+                              orientation: Optional[str] = None,
                               shield: str = '', **kwargs: Any) -> None: ...
     def create_waveguide_port_free(self, id_val: Union[int, str],
                                    xrange: Optional[tuple] = None,
                                    yrange: Optional[tuple] = None,
                                    zrange: Optional[tuple] = None,
-                                   orientation: str = 'positive',
+                                   orientation: Optional[str] = None,
                                    shield: str = '', *,
                                    number_of_modes: int = 1,
                                    adjust_polarization: Any = 'False',

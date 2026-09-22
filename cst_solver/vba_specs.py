@@ -21,6 +21,21 @@ MONITOR_KINDS = frozenset({
     "probe",
 })
 
+#: ``Port.Orientation`` 的合法值 —— CST 的位置枚举（不是 `positive`/`negative`）。
+#: ⚠️ 必须与 ``cst_solver.simulation.ports.PORT_ORIENTATIONS`` 保持一致：
+#: 本模块是**离线契约**，故意不 import ``cst_solver.simulation``（免得拉起 CST 依赖），
+#: 两份常量的一致性由 ``cst_solver/tests/test_port_orientation_guard.py`` 守着。
+PORT_ORIENTATIONS = ("xmin", "xmax", "ymin", "ymax", "zmin", "zmax")
+
+
+def _validate_port_orientation(value: Any) -> None:
+    """非法朝向当场报错（`positive`/`negative` 会被 CST 静默忽略、朝向反了不报错）。"""
+    if str(value).strip().lower() not in PORT_ORIENTATIONS:
+        raise ValueError(
+            f"unsupported port orientation: {value!r} —— `Port.Orientation` "
+            f"只接受位置枚举 {', '.join(PORT_ORIENTATIONS)}"
+            f"（'positive'/'negative' 会被 CST 静默忽略，端口朝向反了但不报错）")
+
 
 def _required(value: Any, name: str) -> None:
     if value is None or value == "":
@@ -51,6 +66,7 @@ class PortSpec:
             raise ValueError("shield must be electric, magnetic, or empty")
         if self.kind in {"waveguide", "discrete", "discrete_face", "floquet", "cable"}:
             _required(self.orientation, "orientation")
+            _validate_port_orientation(self.orientation)
         return self
 
 
@@ -92,5 +108,5 @@ def validate_vba_specs(*, ports: Sequence[PortSpec] = (),
             "solver_started": False}
 
 
-__all__ = ["PORT_KINDS", "MONITOR_KINDS", "PortSpec", "MonitorSpec",
-           "validate_vba_specs"]
+__all__ = ["PORT_KINDS", "MONITOR_KINDS", "PORT_ORIENTATIONS", "PortSpec",
+           "MonitorSpec", "validate_vba_specs"]
