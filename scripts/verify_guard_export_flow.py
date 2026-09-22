@@ -236,7 +236,9 @@ def probe_port(workdir):
                    'Vacuum')
         picked = app.pick_face_auto('pbox', points=[(0.5, 0.5, 1.0)],
                                     candidates=('10', '1', '2', '3'))
-        app.add_port(1, orientation='positive', number_of_modes=2,
+        # ⚠️ orientation 必须是 CST 位置枚举（2026-09-20 起库会拦非法值；
+        #    早期这里写的是 'positive' —— 那会被 CST 静默忽略）
+        app.add_port(1, orientation='zmin', number_of_modes=2,
                      adjust_polarization='True', polarization_angle='30',
                      reference_plane_distance='0.5')
         messages = [str(m) for m in (app.cst_file.get_messages() or [])]

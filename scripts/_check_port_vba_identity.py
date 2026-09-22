@@ -3,10 +3,10 @@
 波导端口 VBA 逐字节一致性校验（一次性工具，保留作方法与证据记录）
 =================================================================
 
-不传新关键字参数时，`add_port()` / `create_waveguide_port_free()` 生成的
-VBA 字符串必须与改动前完全一致 —— 这是「开放写死项」（阶段 5.8）不能有的副作用。
-
-做法：把 `git HEAD:cst_solver/simulation/ports.py` 的源码 `exec` 进一个临时模块，
+阶段 5.8 把 `add_port()` / `create_waveguide_port_free()` 的四个写死属性
+（`NumberOfModes` / `AdjustPolarization` / `PolarizationAngle` /
+`ReferencePlaneDistance`）开放成了关键字参数。做法：把
+`git HEAD:cst_solver/simulation/ports.py` 的源码 `exec` 进一个临时模块，
 用它和当前模块分别生成同样的端口，逐字节比对。
 
 实测结果（2026-09-15，HEAD = 98fd0ca）：7/7 用例逐字节相同。
@@ -14,8 +14,13 @@ VBA 字符串必须与改动前完全一致 —— 这是「开放写死项」�
 + 基线数据 `cst_solver/tests/data/expected_port_vba.json`。
 
 ⚠️ 本脚本只在**提交改动之前**有意义：一旦 ports.py 的改动提交进 HEAD，
-两侧就变成了同一个版本，比对恒为真。它保留下来是为了说明基线是怎么来的，
-日常回归请跑 pytest。
+两侧就变成了同一个版本，比对恒为真。
+
+⚠️ 2026-09-20 端口朝向加固后：用例里的朝向一律改成 CST 合法的位置枚举
+（`xmin/xmax/ymin/ymax/zmin/zmax`）—— 旧用例里的 `'positive'/'negative'` 已被
+`check_port_orientation()` 挡下（会抛 `ValueError`，代表它就是那个静默错朝向的寕头）。
+基线文件的重生成现在由 `scripts/gen_expected_port_vba.py` 负责（本脚本只做
+HEAD 差异比对，不再用于生成）。
 
 用法: python scripts/_check_port_vba_identity.py
 退出码: 0 = 全部逐字节相同；1 = 有差异（差异会写到 _port_diff_old.txt / _port_diff_new.txt）
@@ -68,13 +73,13 @@ def main():
     OldPorts = _head_mixin()
 
     cases = [
-        ('add_port', (1,), {}),
-        ('add_port', (2, 'negative'), {}),
-        ('add_port', (3, 'positive', 'electric'), {}),
-        ('add_port', (4, 'positive', 'magnetic'), {}),
-        ('create_waveguide_port_free', (1,), dict(xrange=('0', 'a'), yrange=('-b', 'b'))),
-        ('create_waveguide_port_free', (2,), dict(zrange=('0', 'h'))),
-        ('create_waveguide_port_free', (3,), dict(xrange=('0', 'a'), zrange=('0', 'h'), shield='electric')),
+        ('add_port', (1, 'xmin'), {}),
+        ('add_port', (2, 'xmax'), {}),
+        ('add_port', (3, 'xmin', 'electric'), {}),
+        ('add_port', (4, 'ymax', 'magnetic'), {}),
+        ('create_waveguide_port_free', (1, 'xmin'), dict(xrange=('0', 'a'), yrange=('-b', 'b'))),
+        ('create_waveguide_port_free', (2, 'zmin'), dict(zrange=('0', 'h'))),
+        ('create_waveguide_port_free', (3, 'xmax'), dict(xrange=('0', 'a'), zrange=('0', 'h'), shield='electric')),
     ]
 
     bad = 0

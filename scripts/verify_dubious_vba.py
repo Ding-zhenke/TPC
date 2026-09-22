@@ -128,7 +128,14 @@ def pick_top_face():
 
 
 def port_vba(number, coordinates, ranges=False):
-    """构造一个 Port 定义块（结构与 `ports.py` 的 add_port 保持一致）。"""
+    """构造一个 Port 定义块（结构与 `ports.py` 的 add_port 保持一致）。
+
+    ⚠️ `.Orientation` 必须写 CST 的**位置枚举**（2026-09-20 纠正）：
+    本脚本早期版本抄的是 `"positive"`，而那是**非法值** —— CST 不报错、静默忽略，
+    于是这个探针实验里混进了一行"看起来像参数、其实没生效"的语句，
+    会影响对 `.Coordinates` 结果判读的置信度。这里改成合法的 `"zmin"`，
+    真实的朝向由 `add_port(orientation=...)` 决定（见 `ports.check_port_orientation`）。
+    """
     head = f'''With Port
      .Reset
      .PortNumber "{number}"
@@ -141,7 +148,7 @@ def port_vba(number, coordinates, ranges=False):
      .TextSize "50"
      .TextMaxLimit "0"
      .Coordinates "{coordinates}"
-     .Orientation "positive"
+     .Orientation "zmin"
      .PortOnBound "True"
      .ClipPickedPortToBound "False"
      .SingleEnded "False"

@@ -192,7 +192,8 @@ def main():
     drain(app, 'pick_clear（建 Free 端口前）')
     try:
         app.create_waveguide_port_free(
-            1, xrange=(BOX['x1'], BOX['x2']), yrange=(BOX['y1'], BOX['y2']))
+            1, xrange=(BOX['x1'], BOX['x2']), yrange=(BOX['y1'], BOX['y2']),
+            orientation='zmin')
         msg = drain(app, 'create_waveguide_port_free(1, xrange, yrange)')
         if msg:
             record('V2 Free 模式建端口', 'FAIL',
@@ -214,8 +215,8 @@ def main():
         if fid3 is not None:
             app.pick_face(BOX_NAME, fid3)
             drain(app, f'pick_face({fid3})')
-        app.add_port(2)
-        msg = drain(app, 'add_port(2)（Picks 链路）')
+        app.add_port(2, orientation='zmin')
+        msg = drain(app, 'add_port(2, orientation=\'zmin\')（Picks 链路）')
         record('对照 Picks 链路可用性', 'OK' if not msg else 'FAIL',
                '无报错' if not msg else '有报错 —— 现有端口链路本身可能不工作，'
                                         '这会让 V2 的对照失去意义')
