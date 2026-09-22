@@ -50,6 +50,11 @@ from mesh_grid.tri_grid.topo_path import (
     TopoPathBuilder,
 )
 
+from mesh_grid.tri_grid.phase_diagram import (
+    generate_crystal_holes,
+    plot_phase_structure,
+)
+
 __all__ = [
     "find_different_points",
     "equilateral_triangle_vertices",
@@ -72,4 +77,6 @@ __all__ = [
     "test_triangle_grid",
     "TopoPath",
     "TopoPathBuilder",
+    "generate_crystal_holes",
+    "plot_phase_structure",
 ]

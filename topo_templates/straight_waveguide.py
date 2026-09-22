@@ -231,9 +231,39 @@ class StraightWaveguide:
     # ---- 预览 ----
 
     def preview(self, ax=None, show_grid=True):
-        """matplotlib 预览路径 + 晶格背景。"""
+        """matplotlib 预览路径 + 晶格背景。
+
+        .. warning::
+            本方法**不着色、不按真实孔大小**，不能用来确认相分布/拓扑。
+            建模前请改用 :meth:`phase_diagram`。
+        """
         return self.path.preview(ax=ax, show_grid=show_grid,
                                   label=f'StraightWaveguide ({self.topology}, L={self.length})')
+
+    def phase_diagram(self, ax=None, waveguide=None, ports=True,
+                      title=None, strict_chinese=True, figsize=(12, 9)):
+        """**建模前必出**的相区结构示意图（见 topo-quickstart 手册 §8.0）。
+
+        自动把模板的路径、拓扑、相区半宽（``width·e2``）、阵列范围与晶格常数
+        接到 :func:`mesh_grid.tri_grid.plot_phase_structure` 上，图上看到的
+        A/B 相分布与真实孔大小 = ``build_all()`` 将建出的结果。
+
+        :param ax: plt.Axes/None, 复用坐标轴
+        :param waveguide: dict/None, 叠加铜波导/探针轮廓（默认不画）
+        :param ports: bool, 是否标注两端端口
+        :param title: str/None, 图标题
+        :param strict_chinese: bool, 缺中文字体是否直接报错（默认 True）
+        :param figsize: tuple, 新建图尺寸
+        :return: tuple[plt.Figure, plt.Axes]
+        """
+        from mesh_grid.tri_grid import plot_phase_structure
+        return plot_phase_structure(
+            self.path, topology=self.topology,
+            margin=self.width * self.e2, a=self.a,
+            large_size=self.l1, small_size=self.l2,
+            xup=self.xup, yup=self.yup, ydn=self.ydn,
+            ax=ax, waveguide=waveguide, ports=ports,
+            title=title, strict_chinese=strict_chinese, figsize=figsize)
 
     # ---- 端到端建模 ----
 

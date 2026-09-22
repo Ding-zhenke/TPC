@@ -36,6 +36,26 @@ BA 直波导必须显式 `feed_type='ba_tapered'`（默认值不随 `topology` �
 （只差"朝上孔/朝下孔"谁大谁小）；成品 = `vpc_A ∩ 晶体A` ∪ 探针 ∪ `vpc_B ∩ 晶体B`，
 **刻意没有一块额外的整块基板**（多一块会把孔洞填平）。详见完整手册 §3。
 
+## ⭐ 建模前必出相区结构示意图（强制）
+
+**任何器件，调用 `build_all()` / 任何写 CST 的步骤之前，必须先出一张相区结构示意图，
+人眼确认两相分布、区域大小与边界后再建模。** 旧的 `wg.preview()` 只画路径线，不着色、
+不按真实孔大小（参考 notebook 预览还把 `l1` 硬编码成 `0.65a`、永远画 BA），**不能用来确认拓扑**。
+
+```python
+fig, ax = wg.phase_diagram()       # StraightWaveguide / UnitAntenna 都有此方法
+fig.show()        # 或 fig.savefig(r'D:\out\phase_check.png')
+
+# 自定义 TopoPath（不走模板）时用底层函数：
+# from mesh_grid.tri_grid import plot_phase_structure
+# plot_phase_structure(path, topology='AB', margin=..., xup=..., yup=..., ydn=...)
+```
+
+图上必须看清：① A 相（路径**下**半，粉红）/ B 相（路径**上**半，绿色）分布，
+用不变式核对 AB ⇔ 域壁 +y 侧朝上孔是大孔；② 相区半宽 `margin` 包住阵列、边界留量；
+③ 域壁点划线两端落在端口；④ 两端端口标注（需要时传 `waveguide=` 叠铜波导轮廓）。
+函数纯离线、无 CST 依赖：`mesh_grid/tri_grid/phase_diagram.py`；详见完整手册 §8.0。
+
 ## 四条不能违反的规则
 
 1. **CCW + 内部 `translate -h/2`**。`ExtrudeCurve` 沿多边形法向拉伸（CCW→+z、CW→−z）；

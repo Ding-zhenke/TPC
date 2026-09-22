@@ -258,10 +258,27 @@ class UnitAntenna:
     # ---- 预览 ----
 
     def preview(self, ax=None, show_grid=True):
-        """matplotlib 预览。"""
+        """matplotlib 预览（不着色、不按真实孔大小，不能用来确认拓扑）。"""
         return self.path.preview(ax=ax, show_grid=show_grid,
                                   label=f'UnitAntenna ({self.topology}, {self.bend_angle}°, '
                                         f'L={self.straight_length}, arm={self.arm_length})')
+
+    def phase_diagram(self, ax=None, waveguide=None, ports=True,
+                      title=None, strict_chinese=True, figsize=(12, 9)):
+        """**建模前必出**的相区结构示意图（见 topo-quickstart 手册 §8.0）。
+
+        UnitAntenna 的 VPC 相区用默认半宽 ``e2``（窄带，见 ``build_vpc_regions``），
+        本方法据此如实渲染弯折路径两侧的 A/B 相分布与真实孔大小。
+
+        :return: tuple[plt.Figure, plt.Axes]
+        """
+        from mesh_grid.tri_grid import plot_phase_structure
+        return plot_phase_structure(
+            self.path, topology=self.topology, margin=self.e2, a=self.a,
+            large_size=self.l1, small_size=self.l2,
+            xup=self.xup, yup=self.yup, ydn=self.ydn,
+            ax=ax, waveguide=waveguide, ports=ports,
+            title=title, strict_chinese=strict_chinese, figsize=figsize)
 
     # ---- 端到端建模 ----
 

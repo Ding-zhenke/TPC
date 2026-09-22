@@ -57,7 +57,16 @@ ant = UnitAntenna(bend_angle=120,            # 张角：单臂偏角 = bend_angl
 ant.build_all(); ant.save()
 ```
 
-**建完立刻做两件事**：§8 的**离线拓扑自检**（秒级、不用 CST），再按 §10 验收。
+**动手 `build_all()` 之前，先出一张相区结构示意图（强制，见 §8.0）**，人眼确认两相分布、
+区域大小与边界；**建完立刻做两件事**：§8 的**离线拓扑自检**（秒级、不用 CST），再按 §10 验收。
+
+```python
+from mesh_grid.tri_grid import plot_phase_structure
+fig, ax = plot_phase_structure(
+    wg.path, topology=wg.topology, margin=wg.width * wg.e2, a=wg.a,
+    xup=wg.xup, yup=wg.yup, ydn=wg.ydn)
+fig.show()      # 或 fig.savefig(r'D:\out\phase_check.png')
+```
 
 ---
 
@@ -648,6 +657,41 @@ m.save(r'D:\out\custom.cst')
 > **这是"建好"的关键**：CST 消息为空只证明"没有非法 VBA"，**不证明域壁存在、相序正确**。
 > 下面 4 项**不需要 CST、秒级完成**，任何一次 TPC 建模都该跑。
 
+### 8.0 ⭐ 建模前必出：相区结构示意图（强制）
+
+**规则：任何器件，在调用 `build_all()` / 任何会写 CST 的步骤之前，必须先用
+`plot_phase_structure()` 出一张相区结构示意图，给人眼确认后再建模。**
+
+为什么要把它放在建模**前**、而不是建完再看：
+
+* 相画反、区域不够大、域壁没连到端口这三类错误，**CST 全程不报错**（§2 硬约定 4），
+  等仿真不导通再回头排查成本最高；
+* 库里旧的 `path.preview()` / `wg.preview()` 只画路径线 + 晶格背景，**不着色、不按真实孔大小**，
+  参考 notebook 的预览还把 `l1` 硬编码成 `0.65a` **永远画 BA** —— 它们都不能用来确认拓扑；
+* `plot_phase_structure()` 的每个孔都按 **crystal builder 同一套超元胞 + 阵列规则**数值生成，
+  再按「孔中心落在路径哪一半区」绑定相颜色与真实边长，**图上的相分布 = CST 实际建出的相分布**。
+
+图上必须能一眼看清（也是自检 checklist）：
+
+1. **两种晶相颜色**：A 相 = 路径**下**半区（默认粉红）、B 相 = 路径**上**半区（默认绿色），
+   用 AB/BA 不变式核对：AB ⇔ 域壁 +y 侧朝上孔是大孔，BA ⇔ −y 侧；
+2. **区域大小与边界**：半宽 `margin` 够不够包住阵列、边界离最外一排孔有多远；
+3. **域壁路径**（黑色点划线）起点/终点分别在两个端口上；
+4. **两端端口标注**（需要时再叠加 `waveguide=` 画铜波导/探针轮廓）。
+
+```python
+from mesh_grid.tri_grid import plot_phase_structure
+# 直波导：margin 必须与建模用的相区半宽一致（模板里是 width*e2）
+fig, ax = plot_phase_structure(path, topology='AB',
+                               margin=14 * 0.2425 * (3**0.5) / 2, a=0.2425,
+                               xup=25, yup=14, ydn=14)
+# 自定义域壁路径 / 弯折器件：同一个函数，path 换成你的 TopoPath 即可
+```
+
+> 函数位置：`mesh_grid/tri_grid/phase_diagram.py`；纯离线、无 CST 依赖。
+> 配套单元测试：`mesh_grid/tri_grid/tests/test_phase_diagram.py`（钉住 AB/BA 绑定、相区互斥与覆盖）。
+> 中文标签遵守文末「中文绘图约定」：默认 `strict=True`，找不到中文字体直接报错，**不发布缺字图**。
+
 ### 8.1 相绑定断言（离线 / 秒级 / 无需 CST）
 
 用一个"录制假 app"把 `build_topological_crystal` 的实际调用录下来，**直接断言孔到相的绑定**。
@@ -776,7 +820,7 @@ print([s for s in app.cst_file.model3d.GetAllSolidNames()])   # 实体清单：�
 
 ## 10. 验收清单（每次交付建模脚本必做）
 
-顺序固定：**§8 离线自检 → 连 CST 验收 → 磁盘侧核对**。
+顺序固定：**§8.0 结构示意图（建模前）→ §8 离线自检 → 连 CST 验收 → 磁盘侧核对**。
 
 ```python
 app = wg.app                     # 模板 / Modeler 都把 setup 实例挂在 .app 上

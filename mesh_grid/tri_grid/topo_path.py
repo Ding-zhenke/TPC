@@ -781,6 +781,92 @@ class TopoPath:
             rings.append(ring)
         return rings
 
+    # ---- 数值版相区多边形（供离线结构示意图涂色；几何与符号版逐点一致） ----
+
+    def _offset_point_numeric(self, index, kx, ky, sign, margin):
+        """路径第 ``index`` 点沿法向偏移 ``sign·margin`` 后的**数值**坐标。
+
+        与 :meth:`_offset_chains` 用同一组 Fraction 法向系数（``kx, ky``），
+        只是把 CST 表达式换成数值计算：
+        物理偏移 = ``(kx·√3/2, ky)·margin``（x 分量对应表达式 ``sqr(3)·margin`` 的半系数）。
+
+        :param index: int, 路径点序号
+        :param kx: Fraction, 法向 x 系数（见 :meth:`_normal_coeff`）
+        :param ky: Fraction, 法向 y 系数
+        :param sign: int, +1 / -1
+        :param margin: float, 带宽（物理长度）
+        :return: tuple[float, float]
+        """
+        x, y = self._xy[index]
+        x += sign * float(kx) * (np.sqrt(3) / 2.0) * margin
+        y += sign * float(ky) * margin
+        return x, y
+
+    def band_polygons_numeric(self, margin):
+        """把相区拆成**数值坐标**的 A / B 两半多边形（供结构示意图）。
+
+        这是 :meth:`build_segment_band_polygons` 的数值孪生：用同一组段法向
+        Fraction 系数 + 拐角补块逻辑，区别仅在于这里返回的是**已求值的数值顶点**
+        （符号版返回引用 CST 参数的表达式），可直接喂给 matplotlib / 点包含测试。
+
+        两半区域满足：``polys_A``（路径**下**半）与 ``polys_B``（路径**上**半）
+        互不重叠、并集 = 整条宽 ``2·margin`` 的带，与建模时
+        ``vpc_A = 下半 / vpc_B = 上半`` 的划分逐点一致。
+
+        :param margin: float, 相区**半宽**（物理长度，如 ``width*e2``）
+        :return: tuple[list[np.ndarray], list[np.ndarray]]，
+            ``(polys_A, polys_B)``；每个元素是形状 ``(k, 2)`` 的**不闭合**简单多边形，
+            折/直路径均可能返回多个（逐段四边形 + 拐角补块）
+        """
+        if self._xy is None:
+            raise RuntimeError("符号路径无法计算数值相区，请在 build() 时提供 param_values")
+        margin = float(margin)
+        steps = self._step_vectors()
+
+        def ring_of(corners):
+            """4 个角点 → (4,2) 数组（不追加闭合点）。"""
+            return np.array(corners, dtype=float)
+
+        polys_a, polys_b = [], []
+        # 逐段平行四边形
+        for index, step in enumerate(steps):
+            kx, ky = self._normal_coeff(step)
+            a0 = self._offset_point_numeric(index, kx, ky, -1, margin)
+            a1 = self._offset_point_numeric(index + 1, kx, ky, -1, margin)
+            b0 = self._offset_point_numeric(index, kx, ky, +1, margin)
+            b1 = self._offset_point_numeric(index + 1, kx, ky, +1, margin)
+            p0 = tuple(self._xy[index])
+            p1 = tuple(self._xy[index + 1])
+            # 下半（A）：下边界两点 → 路径两点
+            polys_a.append(ring_of([a0, a1, p1, p0]))
+            # 上半（B）：路径两点 → 上边界两点
+            polys_b.append(ring_of([p0, p1, b1, b0]))
+
+        # 拐角补块（与 build_segment_band_polygons 的外侧判定一致）
+        coeffs = self._vertex_offset_coeffs(steps)
+        for index in range(1, len(steps)):
+            cross = self._turn_cross(steps[index - 1], steps[index])
+            if cross == 0:
+                continue
+            outer_side = 'lower' if cross > 0 else 'upper'
+            sign = -1 if outer_side == 'lower' else +1
+            kxp, kyp = self._normal_coeff(steps[index - 1])
+            kxn, kyn = self._normal_coeff(steps[index])
+            vertex = tuple(self._xy[index])
+            before = self._offset_point_numeric(index, kxp, kyp, sign, margin)
+            after = self._offset_point_numeric(index, kxn, kyn, sign, margin)
+            # miter 点：拐点偏移系数（coeffs[index]）
+            x, y = self._xy[index]
+            miter = (x + sign * float(coeffs[index][0]) * (np.sqrt(3) / 2.0) * margin,
+                     y + sign * float(coeffs[index][1]) * margin)
+            # 顶点顺序与符号版一致：sign>0 [vertex, after, miter, before]，
+            # sign<0 [vertex, before, miter, after]
+            corners = [vertex, after, miter, before] if sign > 0 \
+                else [vertex, before, miter, after]
+            (polys_a if outer_side == 'lower' else polys_b).append(ring_of(corners))
+
+        return polys_a, polys_b
+
     @staticmethod
     def _turn_cross(step1: Tuple[int, int], step2: Tuple[int, int]) -> int:
         """
