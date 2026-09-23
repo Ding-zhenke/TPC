@@ -111,7 +111,7 @@ app.close()                            # 旧名 project_close / close_project �
 app.set_units(frequency='GHz', length='mm')          # 一般默认即可
 app.para('a', 0.2425)                    # 数值参数
 app.para('l1', '0.65*a')                 # 表达式参数（字符串）
-v = app.get_parameter('a')               # → float；表达式参数 → str；不存在 → KeyError
+v = app.get_parameter('a')               # → float（表达式也返回求值后的数）；不存在 → KeyError
 app.freq_limit(300, 380)                 # 频域监视器/求解器频率范围
 ```
 

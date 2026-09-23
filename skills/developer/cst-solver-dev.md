@@ -238,6 +238,52 @@ import _cst_interface as ci
   （实测 pid 36472，里有未保存工程）当成「本次新建的 DE」去 `connect(pid).close()`。
   纪律：先 `_load_cst_module('cst.interface')` 再取基线；**基线为空 ⇒ 拒绝执行任何关闭**；
   attach 模式下**一个都不关**，只关「我们自己新建的临时工程」（关前先存盘以免弹「是否保存更改？」）。
+- **🔴 沙箱作业对象会杀掉「直接 spawn 的 DE 子进程」—— 手动双击能起、自动化起不来的真凶**（2026-09-23 重启前后反复实测）：
+  下面这些起 DE 的方式**全部失败**，DE 进程都在 license check 之后死掉
+  （`DesignEnvironmentStartupError: Process with pid: <pid> is gone`，日志停在
+  `Checking license servers...` / `License search path found in CST registry: 27075@localhost`）：
+  `DesignEnvironment()`、官方示例 `DesignEnvironment.new()`、
+  Python `subprocess.Popen([exe])`（60 s 里**连 CST 进程都不产生**，launcher 干挂）、
+  PowerShell `Start-Process exe`（进程起来 ~20 s 后又死）。
+  ✅ **唯一成功**：`explorer.exe "<exe 全路径>"`（或资源管理器双击）——
+  走 ShellExecute、**完全脱离沙箱作业对象**，DE 正常存活并被 `running_design_environments()` 注册。
+  ⇒ 真机脚本要新建 DE 时，**不要直接 spawn**，用 explorer 双击语义拉起，再 `attach` 到它。
+  主程序：`C:\SOFTWARE\CST Studio Suite 2026\AMD64\CST DESIGN ENVIRONMENT_AMD64.exe`。
+  ⚠️ 别把这条误判成「许可证坏了」—— 见下条，许可证本身完全正常。
+- **许可证排查方法论（setup() 报 `is gone`/`EXITCODE_NOLICENSE` 时照这个查）**（2026-09-23）：
+  用**同版本** `C:\SOFTWARE\CST Studio Suite 2026\License Manager\lmutil.exe`，依次：
+  ① `netstat -ano -p tcp | findstr LISTENING | findstr :27075` 看谁占着端口；
+  ② `lmutil lmstat -a -c 27075@localhost`（看 `lmgrd/cstd UP`、各 feature 席位数与在用）；
+  ③ `lmutil lmdiag <feature> -c 27075@localhost`（客户端**能否真检出**，正常末行
+  `This license can be checked out`）；④ `lmutil lmhostid` 比对 license `SERVER` 行 hostid。
+  本机实测：`lmgrd UP v11.19.7`、`cstd UP`、各 feature **999 席、0 在用**、
+  `lmdiag 3dem` 可检出、hostid `a0ad9f592fd1` 与 SERVER 行一致 ⇒ **许可证 100% 正常**。
+  两个易踩点：ⓐ **重启电脑后 setup() 仍失败** ⇒ 不是脏 checkout / 席位没释放，是上面的沙箱问题；
+  ⓑ **多个 lmgrd 打架**：服务 `CST License Manager`（`sc qc` 显示其 PID）可能**没抢到端口、空转不监听**，
+  真正占 27075 的是另一个独立 lmgrd —— 以 netstat 的 OwningProcess 为准，别看服务 PID 想当然。
+  license 文件：服务用 `C:\SOFTWARE\CST Studio Suite 2026\license.dat`
+  （`SERVER this_host a0ad9f592fd1 27075` + `DAEMON cstd` + 各 `FEATURE ... permanent ... 999`）。
+- **⚠️ 对话框巡检会漏检 Qt 原生「Save As」窗口；探针判据失效时不得据 FAIL 下结论**（2026-09-23）：
+  ③ save 相位整体 `CstDialogTimeout 超过 600s`，但当时巡检打印「没有可见的 CST 对话框」——
+  实际挂着一个模态 **「Save As / 另存为」**（用户截图证实，标题 `Untitled_1*`，
+  保存类型 `CST Studio Suite (*.cst)`）。它是 **Qt 自己的窗口（类 `Qt683QWindowIcon`），不是 `#32770`**，
+  只认 `#32770` 的枚举必然漏。⇒ 修 `cst_dialog_guard.py`：把 Qt 的 Save/Open/另存 标题也纳入识别。
+  注意 ③ 的子步骤 **③a/③b/③c 本身全 OK**（无参 save ⇒ RuntimeError / 落盘时间戳+大小变化 /
+  attach 重开读到 `p4v10_marker=42.0`），相位 FAIL 只由这个模态框造成。
+  同理 **①背景全 FAIL 是探针工具问题**：判据靠导出 mif 读背景 ε，而这版 **`mif 背景=None`**
+  （mif 导出/解析没对上），并非修复失败 —— 旧 `.Material "Quartz (Fused) (lossy)"` 被 CST
+  **弹窗报错拒绝**，已反向证明旧写法无效、新写法不再下发它。
+  ⇒ 纪律：探针判据（mif/端口数/窗口标题）本身不可靠时，标 **UNKNOWN/工具失效**，
+  不许伪报成「缺陷仍在」；背景项应换成不依赖 mif 的判据（VBA 主动报告 / 直接读 Background ε μ）。
+- **get_parameter 真机返回值实锤：表达式参数 `RestoreDoubleParameter` 也返回求值后的 float**（2026-09-23）：
+  实测原始接口（CST 2026）：
+  数值参数 `p4v10_num=1.5` ⇒ `RestoreDoubleParameter='1.5'`、`RestoreParameter="'1.5'"`；
+  **表达式参数 `p4v10_expr=2*p4v10_num` ⇒ `RestoreDoubleParameter='3.0'`（求值后 float）、
+  `RestoreParameter="'3'"`、`RestoreParameterExpression="'2*p4v10_num'"`（只有它给原表达式串）**；
+  字符串写的数 `"3.25"` ⇒ `RestoreDoubleParameter='3.25'`。
+  ⇒ `get_parameter()` 优先 `RestoreDoubleParameter`，因此**数值/表达式/字符串数字一律返回 float（评估值）**，
+  不再是「表达式 ⇒ str」；要拿**未求值的表达式原文**需用 `RestoreParameterExpression`
+  （库的 `expression()` 路径）。`DoesParameterExist` 对数值/表达式/字符串参数均 True、不存在 False。
 - **面/棱边编号不可移植**：`pick_face` / `pick_edge` 的编号（`'10'`、`'22'` …）是 CST 内部编号，与实体几何、生成顺序强相关，扭转/布尔/阵列之后会变
   - 绕开编号：按**坐标**拾取 → `pick_face_at()` / `pick_edge_at()` / `pick_point_at()`
   - 需要编号：由坐标**反查** → `get_face_id_from_point()` / `get_edge_id_from_point()`
@@ -261,7 +307,7 @@ import _cst_interface as ci
 | `builders/crystal.py` 阵列范围只能按路径推断 | ✅ 已修（加可选形参 `xup=None, yup=None, ydn=None`） |
 | `topo_templates/straight_waveguide.py` 传了不被接受的实参 → TypeError | ✅ 已修 |
 | `topo_templates/unit_antenna.py` 同 `topology=` 问题 | ✅ 已修 |
-| **`parameters.py`：`get_parameter()` 调了不存在的 `model3d.GetParameter(name)`** —— `Model3D` 是 `__getattr__` 动态派发，写错的方法名**既不报 `AttributeError` 也不被静态检查发现**，只在真机才炸 | ✅ 已修（2026-09-23）：改为官方 API —— `DoesParameterExist(name)` 先判存在（不存在 ⇒ `KeyError`，提示用 `app.para()` 定义），再 `RestoreDoubleParameter`（数值 ⇒ `float`）/ `RestoreParameter`（表达式 ⇒ `str`）。`Model3D` **没有** `GetParameter`（官方 Parameter 一节的读取成员只有 `RestoreParameter` / `RestoreDoubleParameter` / `RestoreParameterExpression`） |
+| **`parameters.py`：`get_parameter()` 调了不存在的 `model3d.GetParameter(name)`** —— `Model3D` 是 `__getattr__` 动态派发，写错的方法名**既不报 `AttributeError` 也不被静态检查发现**，只在真机才炸 | ✅ 已修（2026-09-23）：改为官方 API —— `DoesParameterExist(name)` 先判存在（不存在 ⇒ `KeyError`，提示用 `app.para()` 定义），再 `RestoreDoubleParameter`。**真机实锤（2026-09-23）：`RestoreDoubleParameter` 对数值/表达式/字符串数字一律返回求值后的 float**（表达式 `2*p` 返回 `3.0`，不是表达式串），所以 `get_parameter()` 返回 float；只有 `RestoreParameterExpression` 给未求值的表达式原文（库的 `expression()` 走它）。`Model3D` **没有** `GetParameter`（官方 Parameter 一节的读取成员只有 `RestoreParameter` / `RestoreDoubleParameter` / `RestoreParameterExpression`） |
 | **`simulation/boundary.py`：`set_background()` 下发 `.Material "<名字>"`** —— CST 的 Background 对象**没有 `.Material`**，该行被**静默忽略**（调用方以为设好了背景） | ✅ 已修（2026-09-23）：改用 `Type("normal"/"pec")` + `Epsilon` + `Mu`；`'Vacuum'/'Air'/'Free space'` ⇒ normal + 1.0/1.0，`'PEC'/'Metal'` ⇒ pec（不下发 εr/μr），**其它名字要么显式给 `epsilon=`/`mu=`（只当标签 + `UserWarning`）、要么报 `ValueError`**（不再静默退化成真空）；`'PMC'/'Open'` 这类非法 `Type` 也一并拒掉 |
 | **`simulation/ports.py`：`add_port()` 把 `.PortOnBound` 写死成 `"True"`** —— 该行声明「端口面落在计算域边界平面」，域**内部**的端口与它矛盾 | ✅ 已修（2026-09-23）：开放 `port_on_bound`（默认 `True`，**既有 VBA 逐字节不变**，基线用例已守住）与 `clip_picked_port_to_bound`（官方 `ClipPickedPortToBound`，只对 picked 端口有效）；`create_waveguide_port_free(..., port_on_bound=)` 同样开放 |
 | **`project.py`：`save()` 不传路径时调无参 `cst_file.save()`** —— 真机上这是**静默 no-op**（不落盘、无报错、无 warning），紧接着 `close()` 把整场建模丢掉 | ✅ 已修（2026-09-23）：不传路径时改用 `cst_file.filename()` 取当前工程路径并**显式**传给 CST（`allow_overwrite=True`），并**返回实际写出的绝对路径**；工程没有路径（如刚 `new_project()`）⇒ `RuntimeError` 要求显式给路径 |
