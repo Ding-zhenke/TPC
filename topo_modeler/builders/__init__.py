@@ -33,6 +33,14 @@ from topo_modeler.builders.feed import (
     MULTIPORT_WG_X_MIN,
     MULTIPORT_WG_X_MAX,
 )
+from topo_modeler.builders.feed import (
+    build_ba_hole_array_feed,
+    register_probe_params,
+    probe_param_names,
+    probe_param_note,
+    PROBE_HOLE_ARRAY_PARAMS,
+    PROBE_PRESETS,
+)
 from topo_modeler.builders.waveguide import build_waveguide
 from topo_modeler.builders.lens import (
     GrinLensSpec,
@@ -76,6 +84,13 @@ __all__ = [
     "build_ab_elliptical_feed",
     "build_ba_tapered_feed",
     "build_cylinder_feed",
+    # 探针孔阵列（P′ 系列，2026-09-24 从下游工作区下沉）
+    "build_ba_hole_array_feed",
+    "register_probe_params",
+    "probe_param_names",
+    "probe_param_note",
+    "PROBE_HOLE_ARRAY_PARAMS",
+    "PROBE_PRESETS",
     # 多端口馈源族（P5，2026-09-17）
     "register_multiport_params",
     "build_multiport_waveguide",

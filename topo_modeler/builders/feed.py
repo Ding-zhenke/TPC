@@ -307,6 +307,262 @@ def build_cylinder_feed(app, name='cylinder_feed', radius='r_cyl',
 
 
 # ============================================================
+# BA 微锥条 + 椭圆孔阵列探针（P′ 系列）—— 2026-09-24 从下游工作区下沉
+# ============================================================
+#
+# 来源与取证（只读引用，不改下游工作区）
+# ------------------------------------
+# 几何与参数口径来自下游真实器件工程 `拓扑光子晶体模型\硅基\探针问题`：
+#   * 建模脚本 `_work\probe_build.py`：`_probe_outline()` + `build_custom_probe()`
+#   * 优化报告 `分析报告\REPORT_Pp4.md`（CST 原生 Trust Region，48 次评估）
+#   * 最优工程 `_work\opt\Pp4_L0.60\opt_Pp4_L0.60.cst`（见 `PROBE_PRESETS`）
+#
+# 它解决什么问题
+# --------------
+# 参考 BA 探针（`build_ba_tapered_feed`）靠 **lf5 = 3.0 mm 的长椭圆过渡**做匹配，
+# 所以插入管腔的长度压不下去（管内截面长宽比 ~15:1、尖端趋于刀口）。本变体把过渡段
+# 换成 **~0.6 mm 的微锥条 + 一排椭圆孔**：用孔阵列的等效电抗代替长渐变，把插入长度
+# 缩短到 0.6 mm 量级，且**末端只变细、不加宽**（不挤压铜波导的装配间隙）。
+#
+# 与工作区逐字一致的硬口径（改之前先读工作区的 `探针缩短方案.md`）
+# --------------------------------------------------------------
+# 1. **不加宽**：要求 `pb_w_tip <= wf2`，匹配只能靠孔 / 槽（不许「加粗块」）；
+# 2. 孔的**位置从探针末端量起**（`pb_x_h0` = 首孔孔心到末端的距离），
+#    与结构图（工作区 `probe_dim.py`）的标注口径一致；
+# 3. 孔心偏移写成**累加 CST 表达式**（`pb_x_h0+pb_p_e1+…`）、每个孔的长短轴
+#    各自独立 ⇒ 几何完全由 CST 参数驱动，优化器扫的是参数而不是烘好的小数
+#    （同「阵列次数必须是参数引用」的纪律）。
+#
+# ⚠️ 依赖 `register_multiport_params()` **先**登记 `wf2 / lf4 / lf5 / lf6`
+#    （外形引用 `wf2`（颈部宽）与 `lf4`（颈部长度））；缺参数时 CST 会弹
+#    「请输入变量值」**模态对话框把脚本挂住**，所以真机上由本模块提前拦截。
+
+#: `pb_*` 参数 -> 中文含义（**与孔数无关**的那三个；逐孔的名字见
+#: :func:`probe_param_names`）
+PROBE_HOLE_ARRAY_PARAMS = {
+    'pb_L_in': '插入管腔长度（管口 -> 探针末端）',
+    'pb_w_tip': '探针末端宽度（只变细、不加宽）',
+    'pb_x_h0': '首孔孔心距探针末端的距离',
+}
+
+#: `pb_*` 参数写进 CST 参数表时统一用的说明文本
+PROBE_PARAM_NOTE = 'probe geometry param (to optimize)'
+
+
+def probe_param_names(n_holes):
+    """
+    某个孔数下**逐孔**的 CST 参数名（顺序 = 从探针末端往管口）。
+
+    :param n_holes: int, 椭圆孔个数（>= 1）
+    :return: list[str], ``n_holes=4`` 时给出
+        ``['pb_x_h0', 'pb_p_e1', 'pb_p_e2', 'pb_p_e3',
+        'pb_d_ex1'...'pb_d_ex4', 'pb_d_ey1'...'pb_d_ey4']``
+    :raises ValueError: `n_holes < 1`
+    """
+    n = int(n_holes)
+    if n < 1:
+        raise ValueError(f'n_holes 必须 >= 1，收到 {n_holes!r}')
+    return (['pb_x_h0'] + [f'pb_p_e{i + 1}' for i in range(n - 1)]
+            + [f'pb_d_ex{i + 1}' for i in range(n)]
+            + [f'pb_d_ey{i + 1}' for i in range(n)])
+
+
+def probe_param_note(name):
+    """
+    单个 `pb_*` 参数的中文说明（写进 CST 参数表的 description）。
+
+    :param name: str, 参数名（`probe_param_names` 的成员，或那三个公共名）
+    :return: str, 人类可读说明；认不出的名字退回 `PROBE_PARAM_NOTE`
+    """
+    if name in PROBE_HOLE_ARRAY_PARAMS:
+        return PROBE_HOLE_ARRAY_PARAMS[name]
+    if name.startswith('pb_p_e'):
+        return f'第 {name[len("pb_p_e"):]} 个孔心距（与前一个孔的孔心距离）'
+    if name.startswith('pb_d_ex'):
+        return f'第 {name[len("pb_d_ex"):]} 个椭圆孔沿 x 的长轴'
+    if name.startswith('pb_d_ey'):
+        return f'第 {name[len("pb_d_ey"):]} 个椭圆孔沿 y 的短轴'
+    return PROBE_PARAM_NOTE
+
+
+#: 探针参数**预设**：`preset -> {...}`。**每一套 = 一次完整优化的最优解**，
+#: 供下游「照着建同一个器件」时一键取用，不必再抄一遍数字。
+PROBE_PRESETS = {
+    # ------------------------------------------------------------------
+    # P′4：BA 微锥条 + **4 个椭圆孔**（孔位 / 3 个孔距 / 4 组长短轴**全独立**，
+    #      且**允许相邻椭圆重叠** ⇒ 近似「扇贝边开槽」）
+    # ------------------------------------------------------------------
+    'Pp4': {
+        'n_holes': 4,
+        'label': 'P′4（BA 微锥条 + 4 椭圆孔阵列）',
+        'band_GHz': (300.0, 320.0),
+        # ⚠ 数值一律取 **4 位小数**（0.1 µm 分辨率）—— 比工艺下限（8 µm）
+        #   与网格分辨率（~30 µm，见工作区 `probe_opt_cfg.MIN_FEATURE`）都小几个
+        #   量级，取整无损；好处是与工作区 `REPORT_Pp4.md` 的表格逐位对得上。
+        #   工程里的原值（14~15 位）见 `project` 指向的 `Model/Parameters.json`。
+        'values': {
+            'pb_L_in': 0.5988,
+            'pb_w_tip': 0.1610,
+            'pb_x_h0': 0.0646,
+            'pb_p_e1': 0.1192,
+            'pb_p_e2': 0.1187,
+            'pb_p_e3': 0.1394,
+            'pb_d_ex1': 0.1105,
+            'pb_d_ex2': 0.1295,
+            'pb_d_ex3': 0.1270,
+            'pb_d_ex4': 0.1108,
+            'pb_d_ey1': 0.0486,
+            'pb_d_ey2': 0.0539,
+            'pb_d_ey3': 0.0539,
+            'pb_d_ey4': 0.0458,
+        },
+        'metrics': {
+            'RL_dB': 10.02,           # 回波损耗（带内最差 |S11| 的相反数）
+            'IL_dB': 2.62,            # 插入损耗（带内最差 |S21|）
+            'VSWR': 1.92,
+            'bw_minus10dB_GHz': 20.00,   # = 整个工作带 300–320 GHz
+            'baseline_A_RL_dB': 6.82,    # 对照：库自带 BA 长锥基线
+            'baseline_A_IL_dB': 3.51,
+        },
+        'provenance': ('CST 原生 Optimizer / Trust Region Framework，48 次评估'
+                       '（13:21:14 求解机时），**目标达成**（goal = 0：'
+                       'S11 带内 < -10 dB 且 S21 带内 > -3 dB）'),
+        'project': r'_work\opt\Pp4_L0.60\opt_Pp4_L0.60.cst',
+        'report': r'分析报告\REPORT_Pp4.md',
+    },
+}
+
+
+def register_probe_params(app, preset='Pp4', overrides=None):
+    """
+    把某个**探针预设**的 `pb_*` 参数登记进 CST 工程。
+
+    ⚠️ 本函数**只登记 `pb_*`**；外形还用到的 `wf2 / lf4 / lf5 / lf6` 由
+    :func:`register_multiport_params` 负责（下游的 12 步流水线里它在更早的位置）。
+
+    :param app: cst_solver.setup 实例
+    :param preset: str, `PROBE_PRESETS` 的键，默认 `'Pp4'`
+    :param overrides: dict 可选, 覆盖预设里的个别参数（例如只改 `pb_L_in`）
+    :return: dict, ``{'preset': ..., 'n_holes': ..., 'params': {名: 值}}``
+    :raises ValueError: 预设不存在
+    """
+    spec = PROBE_PRESETS.get(preset)
+    if spec is None:
+        raise ValueError(f'未知探针预设 {preset!r}，可选: '
+                         f'{sorted(PROBE_PRESETS)}')
+    values = dict(spec['values'])
+    values.update(overrides or {})
+    for pname, value in values.items():
+        app.para(pname, value, expression=probe_param_note(pname))
+    return {'preset': preset, 'n_holes': spec['n_holes'], 'params': values}
+
+
+def _require_existing_params(app, names, who):
+    """
+    真机上**提前拦下「缺参数」**（防挂死）。
+
+    CST 遇到未定义参数会弹「请输入变量值」**模态对话框把脚本挂住**，而不是抛异常
+    —— 所以不能等 CST 自己报错。离线假 app 没有 `_param_probe` ⇒ 不拦截
+    （否则单测必然误报），与 :func:`register_multiport_params` 同一套前置检查。
+
+    :param app: cst_solver.setup 实例
+    :param names: 序列, 必须有值的 CST 参数名
+    :param who: str, 调用者名字（写进错误消息）
+    :raises ValueError: 缺参数（仅真机）
+    """
+    from cst_solver._guards import get_guard_state
+
+    guard = get_guard_state(app)
+    if getattr(guard, '_param_probe', None) is None:
+        return
+    missing = [n for n in names if guard.param_existed(n) is False]
+    if missing:
+        raise ValueError(
+            f'{who} 需要这些 CST 参数先存在：{missing}。\n'
+            f'  探针参数用 register_probe_params(app, preset=...) 登记；'
+            f'wf2/lf4/lf5/lf6 用 register_multiport_params(app, ...) 登记。\n'
+            f'  ⚠️ 缺参数时 CST 会弹「输入变量值」模态对话框把脚本挂住，'
+            f'而不是抛异常 —— 所以这里提前拦下。')
+
+
+def build_ba_hole_array_feed(app, name='feed2', material='Silicon (lossy)',
+                             n_holes=4, register_preset=None):
+    """
+    BA 型**微锥条 + 椭圆孔阵列**探针（`feed_type='ba_hole_array'`）。
+
+    几何 = `build_ba_tapered_feed` 的楔形+颈部外形，但把 **3.0 mm 长椭圆过渡**
+    换成 **`pb_L_in` 长的微锥条**（半宽 `wf2/2` → `pb_w_tip/2`），再沿轴**逐孔**
+    减去 `n_holes` 个椭圆孔（孔心 `= 末端 + pb_x_h0 + Σpb_p_e…`）。
+
+    依赖的 CST 参数（需提前定义）：
+      `a, h, e1, e2, x01, wf2, lf4`（外形）+
+      `pb_L_in, pb_w_tip, pb_x_h0, pb_p_e1..n-1, pb_d_ex1..n, pb_d_ey1..n`（探针）
+
+    :param app: cst_solver.setup 实例
+    :param name: str, 馈源实体名称，默认 `'feed2'`（BA 直波导/天线族的口径）
+    :param material: str, 材料（与硅探针一致）
+    :param n_holes: int, 椭圆孔个数（**离散量**：改个数要重建模型，不放进优化器）
+    :param register_preset: str 可选, 给 `PROBE_PRESETS` 的键（如 `'Pp4'`）时
+        先调 :func:`register_probe_params` 把预设写进工程；不给则要求调用方
+        已经登记好参数（纯函数风格，与其余 builder 一致）
+    :return: str, 馈源实体名称
+    :raises ValueError: `n_holes < 1`；或真机上缺必需参数
+    """
+    n = int(n_holes)
+    if n < 1:
+        raise ValueError(f'n_holes 必须 >= 1，收到 {n_holes!r}')
+
+    if register_preset is not None:
+        register_probe_params(app, preset=register_preset)
+
+    _require_existing_params(
+        app,
+        ['a', 'h', 'e1', 'e2', 'x01', 'wf2', 'lf4',
+         'pb_L_in', 'pb_w_tip'] + probe_param_names(n),
+        'build_ba_hole_array_feed')
+
+    tip = '-lf4-pb_L_in'                 # 探针末端 x（CST 表达式）
+
+    # 1. 外形多边形（12 顶点，**CCW**，含闭合）—— 前 5 / 后 5 个顶点与
+    #    `build_ba_tapered_feed` 逐字一致，只把中间「椭圆过渡」换成微锥条。
+    data = [
+        ['a', '0'],
+        ['e1+x01*a', 'e2'],
+        ['0', 'e2'],
+        ['0', 'wf2/2'],
+        ['-lf4', 'wf2/2'],
+        [tip, 'pb_w_tip/2'],
+        [tip, '-pb_w_tip/2'],
+        ['-lf4', '-wf2/2'],
+        ['0', '-wf2/2'],
+        ['0', '-e2'],
+        ['e1+x01*a', '-e2'],
+        ['a', '0'],
+    ]
+    assert list(data[0]) == list(data[-1]), '多边形未闭合：最后一点必须回到首点'
+    app.polyline(data, name=name, curve='curve1')
+    app.extrude('curve1', name, 'h', material=material)
+
+    # 2. 逐孔：椭圆通刻 → 平移到孔心 → 从探针里减掉
+    for i in range(n):
+        # 孔心偏移 = pb_x_h0 + pb_p_e1 + … + pb_p_e(i)（累加表达式，非烘好的数）
+        off = 'pb_x_h0' + ''.join(f'+pb_p_e{k + 1}' for k in range(i))
+        hname = f'pb_hole{i + 1}'
+        app.create_elliptical_cylinder(
+            name=hname, x_radius=f'pb_d_ex{i + 1}/2',
+            y_radius=f'pb_d_ey{i + 1}/2', height='h', axis='z',
+            material=material)
+        app.translate(hname, [f'{tip}+{off}', '0', '0'],
+                      copy=False, unite=False, log_flag=1)
+        app.subtract(name, hname, 'component1')
+
+    # 3. Z 方向居中（CCW + extrude h ⇒ 实体在 +z，平移到 −h/2）
+    app.translate(name, ['0', '0', '-h/2'], copy=False, unite=False, log_flag=1)
+
+    return name
+
+
+# ============================================================
 # 统一入口
 # ============================================================
 def build_feed(app, feed_type='ab_elliptical', name=None, **kwargs):
@@ -317,6 +573,8 @@ def build_feed(app, feed_type='ab_elliptical', name=None, **kwargs):
     :param feed_type: str, 馈源类型
         - 'ab_elliptical' : AB 型三角渐变 + 椭圆过渡（直波导）
         - 'ba_tapered'    : BA 型对称渐变 + 椭圆过渡（天线）
+        - 'ba_hole_array' : BA 型**微锥条 + 椭圆孔阵列**（短探针，见
+          `build_ba_hole_array_feed` 与 `PROBE_PRESETS['Pp4']`）
         - 'cylinder'      : 圆柱辐射体
     :param name: str, 馈源实体名称（None 则按类型默认命名）
     :param kwargs: 传递给具体构建函数的额外参数
@@ -328,8 +586,12 @@ def build_feed(app, feed_type='ab_elliptical', name=None, **kwargs):
     elif feed_type == 'ba_tapered':
         name = name or 'feed2'
         return build_ba_tapered_feed(app, name=name, **kwargs)
+    elif feed_type == 'ba_hole_array':
+        name = name or 'feed2'
+        return build_ba_hole_array_feed(app, name=name, **kwargs)
     elif feed_type == 'cylinder':
         name = name or 'cylinder_feed'
         return build_cylinder_feed(app, name=name, **kwargs)
     else:
-        raise ValueError(f"未知馈源类型 '{feed_type}'，支持: ab_elliptical, ba_tapered, cylinder")
+        raise ValueError(f"未知馈源类型 '{feed_type}'，支持: ab_elliptical, "
+                         f"ba_tapered, ba_hole_array, cylinder")
