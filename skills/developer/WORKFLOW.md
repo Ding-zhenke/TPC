@@ -12,7 +12,7 @@
 看清需求 → 查统一未完成计划 → 判定归属包 → 读对应技能 → 改代码 → 同步两类 skill/存根/文档 → 验证
 ```
 
-三条铁律：
+四条铁律：
 
 1. **按包组织变更**；跨包功能可连续实施，提交时按职责拆分。
 2. **改代码必须同步文档**，同步矩阵见 §6，漏了文档视为未完成。
@@ -22,6 +22,15 @@
    只要留下过一条失败命令，之后每次读都会**再报一次**，因此**不要用「消息为空」当唯一的
    成功判据**，有正向判据就优先用它（真机依据见
    [`../../docs/validation/p4_real_machine_evidence.md`](../../docs/validation/p4_real_machine_evidence.md) §3）。
+4. 🔴 **真机（连 CST）的动作必须在「非沙箱」终端里跑。** 沙箱**作业对象**会杀掉
+   `setup()` 自己 spawn 出来的 DE 子进程 ⇒ 报
+   `DesignEnvironmentStartupError: Process with pid: … is gone` / `EXITCODE_NOLICENSE`。
+   这**看着像许可证问题，其实不是**（本机 `lmutil lmstat`：999 席 / 0 在用）。
+   判据、手动起 DE 的姿势、以及「忙碌的其它会话**不影响**新建 DE」见
+   [`cst-solver-dev.md`](./cst-solver-dev.md) 的「真机开工前 60 秒检查」与
+   [`../../docs/guides/cst_environment.md`](../../docs/guides/cst_environment.md)。
+   ⚠️ 这条教训 2026-09-23 就已记录在开发者 skill 里，**2026-09-24 仍被第二次踩到**，
+   原因正是本文件与 §4 验收清单当时没写 ⇒ 别把**环境类失败**记成「缺陷仍在」或「能力边界」。
 
 ---
 
@@ -135,6 +144,9 @@ python scripts/gen_mesh_docs.py
 
 **涉及 CST 的改动**：跑冒烟测试（不污染正式工程）：
 
+> 🔴 **先确认自己在非沙箱终端里**（§0 第 4 条）：沙箱里 `setup()` 起不来 DE，
+> 报 `Process with pid: … is gone` —— 那是**环境问题**，不要记成改动引入的缺陷，换非沙箱重跑即可。
+
 ```python
 from cst_solver import setup
 
@@ -185,6 +197,10 @@ git commit -m "<type>(<scope>): <一句话说清做了什么>" -m "<详细说明
 ---
 
 ## 4. 各包的验收清单
+
+> 🔴 **环境前置（对下面每一条都适用）**：任何**连 CST** 的验证都必须在**非沙箱**终端里跑。
+> 报 `… is gone` / `EXITCODE_NOLICENSE` 时先按**沙箱**排查（§0 第 4 条），
+> **环境问题不得记成 FAIL / 未实现**。
 
 ### `cst_solver/`
 - [ ] 新方法有 `snake_case` 名 + 旧名别名
@@ -242,6 +258,7 @@ git commit -m "<type>(<scope>): <一句话说清做了什么>" -m "<详细说明
 | 新增 builder / 模板 | `docs/packages/topo_modeler.md` 或 `docs/packages/topo_templates.md` |
 | 新增硬约定或踩坑 | `docs/ARCHITECTURE.md` §6 + 相关 skill |
 | 任务实现或验收状态变化 | `docs/next_plan/README.md`：删除完成项，只保留剩余工作与验收欠项 |
+| **新增/修改真机验收脚本** | `docs/validation/` 对应证据文件 + 本文件 §4 对应包的清单 + `cst-solver-dev.md`（引入新约定时） |
 | 任意用户可见能力变化 | `skills/developer/` 与 `skills/user/` 对应说明同步更新 |
 | 中文绘图 | 共用 `mesh_grid.plotting`；同步 [中文绘图指南](../../docs/guides/chinese_plotting.md)，导出含中文与负刻度的样例验收 |
 | 修掉一个已知缺陷 | 删掉 `cst-solver-dev.md` 的「待修清单」对应行 + `docs/next_plan/` 对应条目 |

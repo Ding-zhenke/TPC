@@ -63,10 +63,33 @@ diagnose_environment()['interface_abi']   # doctor / 诊断里也带这一段
 
 `get_cst_paths(install_path=...)` 只是查询/推导，不持久改变全局配置。供其他代码兼容的 `CST_INSTALL_PATH/CST_PYTHON_LIB/CST_MATERIAL_LIB` 常量是导入时快照，未发现时为 None；运行入口使用当前配置。
 
+### ⚠️ 新建会话起不来？先排除「沙箱」——**不是许可证问题**（2026-09-24 更正）
+
+症状：`setup()` / `DesignEnvironment()` 报
+`DesignEnvironmentStartupError: Process with pid: … is gone` 或 `EXITCODE_NOLICENSE`，
+日志停在 `Checking license servers...`。
+
+**真因**：**沙箱作业对象**把 `setup()` 自己 spawn 出来的 DE 子进程杀掉了
+（进程起来了、过完 license check 就死）。直接 `subprocess.Popen` / PowerShell
+`Start-Process` 起 DE 也一样死。
+
+- ✅ **首选修法**：换到**非沙箱**终端跑真机脚本；
+- ✅ 确实需要手动起 DE：`explorer.exe "<CST DE exe 全路径>"`（ShellExecute，
+  **脱离作业对象**）拉起后 `setup.attach()`；
+- ❌ **别把这条误判成许可证问题**：本机实测 `lmutil lmstat -a -c 27075@localhost`
+  显示 `lmgrd UP` / `cstd UP` / 各 feature **999 席、0 在用**；
+- ⚠️ 别的 CST 会话在跑求解**不影响**新建 DE（各 999 席），只影响「借那个 DE 建新工程」。
+
+> ⚠️ 本文件原先在这写的是「许可证紧张时新建实例会报 `EXITCODE_NOLICENSE`」——
+> 那个归因是**错的**，已于 2026-09-24 按真机实测更正。
+> 完整判据与排查步骤（`netstat` / `lmstat` / `lmdiag` / `lmhostid` 四步）见
+> [`../../skills/developer/cst-solver-dev.md`](../../skills/developer/cst-solver-dev.md)
+> 的「真机开工前 60 秒检查」与「许可证排查方法论」。
+
 ### 复用已有会话：`setup.attach()`（P4/V2，2026-09）
 
-许可证紧张时 `DesignEnvironment()` 新建实例会报 `EXITCODE_NOLICENSE`。
-若已有打开的 CST 会话，用 attach 复用，**不新建进程、不额外占用许可**：
+若已有打开的 CST 会话（或按上条用 `explorer.exe` 手起了一个），用 attach 复用，
+**不新建进程**：
 
 ```python
 from cst_solver import setup
