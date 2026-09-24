@@ -72,11 +72,11 @@ topo_modeler/                    建模引擎层（本包）
 ├── modeler.py                   TopoModeler —— 智能推断 + 流水线编排（所有模板的基类）
 ├── name_manager.py              NameManager —— CST 实体命名唯一化
 ├── builders/                    部件构建器：无状态纯函数 + 显式参数
-│   ├── __init__.py              统一导出 14 个符号（含 2 个 intersect_* 辅助函数）
+│   ├── __init__.py              统一导出 37 个符号（含 2 个 intersect_* 辅助函数）
 │   ├── substrate.py             基板：逐段四边形 → extrude → z 居中 → 布尔并
 │   ├── vpc_region.py            VPC-A / VPC-B 区域（逐段四边形 + 布尔并）+ 与基板求交
 │   ├── crystal.py               光子晶体三角孔阵列（超元胞，核心）
-│   ├── feed.py                  馈源 3 型：ab_elliptical / ba_tapered / cylinder
+│   ├── feed.py                  馈源 4 型：ab_elliptical / ba_tapered / ba_hole_array / cylinder
 │   ├── waveguide.py             空心矩形波导：外方体 − 内方体
 │   ├── lens.py                  GRIN 椭圆透镜：纯几何 + DXF + CST 步骤（阶段 6）
 │   ├── port.py                  波导端口：面编号 / 直波导 2 端口 / 天线 1 端口
@@ -131,7 +131,7 @@ tpc_toolkit/  独立工具层：不依赖 CST，也不被本包依赖
 | `builders/substrate.py` | `build_substrate`、`build_substrate_multi` | 沿路径生成带状基板并 z 居中；**弯折路径按「每段一个四边形 + 拐角补块」逐段建模再布尔并**（2026-09-17 修复，直线路径产物与旧实现逐字节相同）；**多路径版**各路径各做一条带再布尔并（阶段 8） | 2 |
 | `builders/vpc_region.py` | `build_vpc_regions`、`intersect_vpc_with_substrate` | 生成 VPC-A（上半区）/ VPC-B（下半区）并可与基板求交；同样按**逐段四边形 + 布尔并**（A 用 `side='lower'`、B 用 `side='upper'`） | 2 |
 | `builders/crystal.py` | `build_topological_crystal`、`intersect_crystal_with_vpc` | 三角孔超元胞阵列（最核心的重复代码：25 行 → 1 个函数），并可与 VPC 求交 | 2 |
-| `builders/feed.py` | `build_feed`、`build_ab_elliptical_feed`、`build_ba_tapered_feed`、`build_cylinder_feed` | 3 种馈源几何（统一入口 + 3 个具体实现） | 4 |
+| `builders/feed.py` | `build_feed`、`build_ab_elliptical_feed`、`build_ba_tapered_feed`、`build_ba_hole_array_feed`、`build_cylinder_feed`、`register_multiport_params`、`register_probe_params`、`PROBE_PRESETS` | **4 种馈源几何**（统一入口 + 4 个具体实现）+ 多端口族参数登记 + 探针参数预设 | 10 |
 | `builders/waveguide.py` | `build_waveguide` | 空心矩形波导（外方体 − 内方体） | 1 |
 | `builders/lens.py` | `GrinLensSpec`、`GrinLensHoles`、`LensGeometryError`、`grin_lens_spec_from_cst_params`、`build_grin_lens_holes`、`build_grin_lens` | **GRIN 椭圆透镜**（阶段 6）：纯几何层（孔心 / 孔半径 / 孔多边形 / DXF / 三道自查，**不依赖 CST**）+ CST 建模层（导入 → 镜像 → 椭圆减孔 → 楔形裁剪 → 平移 → 旋转×6） | 6 |
 | `builders/port.py` | `add_waveguide_port`、`add_ports_for_straight_waveguide`、`add_port_for_antenna` | 在指定面上添加波导端口（当前面编号硬编码，见第 8 节） | 3 |
@@ -583,6 +583,7 @@ def build_feed(app, feed_type='ab_elliptical', name=None, **kwargs)
 |---|---|---|
 | `'ab_elliptical'` | `build_ab_elliptical_feed(app, name=…)` | `'feed1'` |
 | `'ba_tapered'` | `build_ba_tapered_feed(app, name=…)` | `'feed2'` |
+| `'ba_hole_array'` | `build_ba_hole_array_feed(app, name=…, n_holes=…)` | `'feed2'` |
 | `'cylinder'` | `build_cylinder_feed(app, name=…)` | `'cylinder_feed'` |
 
 其它取值抛 `ValueError("未知馈源类型 …")`。
@@ -660,12 +661,60 @@ def build_cylinder_feed(app, name='cylinder_feed', radius='r_cyl', height='h',
 
 **返回值**：`str`（= `name`）。
 
-#### 6.4.4 三种馈源对比
+#### 6.4.4 `build_ba_hole_array_feed` —— BA 微锥条 + 椭圆孔阵列（短探针）
+
+```python
+def build_ba_hole_array_feed(app, name='feed2', material='Silicon (lossy)',
+                             n_holes=4, register_preset=None)
+```
+
+| 参数 | 类型 | 默认 | 说明 |
+|---|---|---|---|
+| `app` | `setup` | — | CST 会话 |
+| `name` | `str` | `'feed2'` | 馈源实体名（孔实体为 `pb_hole1…pb_holeN`） |
+| `material` | `str` | `'Silicon (lossy)'` | 材料 |
+| `n_holes` | `int` | `4` | 椭圆孔个数（**离散量**：改个数要重建模型，不放进优化器） |
+| `register_preset` | `str \| None` | `None` | 给 `PROBE_PRESETS` 的键（如 `'Pp4'`）时先自动登记参数 |
+
+**几何**：外形前 5 / 后 5 个顶点与 `build_ba_tapered_feed` **逐字一致**（BA 楔形 + 颈部），
+但把 3.0 mm 的椭圆过渡换成 **`pb_L_in` 长的微锥条**（半宽 `wf2/2` → `pb_w_tip/2`），
+再沿轴逐孔减去 `n_holes` 个椭圆孔（孔心 = 探针末端 + `pb_x_h0` + Σ`pb_p_e…`）。
+**匹配靠孔阵列的等效电抗，不靠长渐变** ⇒ 插入长度可压到 0.6 mm 量级，
+且末端**只变细、不加宽**（不挤压铜管 `wg_b − 2×0.025` 的装配间隙）。
+
+依赖的 CST 参数（需提前定义）：`a, h, e1, e2, x01, wf2, lf4`（外形）+ 
+`pb_L_in, pb_w_tip, pb_x_h0, pb_p_e1..n-1, pb_d_ex1..n, pb_d_ey1..n`（探针）。
+真机上缺参数会**提前抛 `ValueError`** —— CST 遇到未定义参数会弹「请输入变量值」模态
+对话框把脚本挂住（不是抛异常），所以不能等 CST 自己报错。
+
+##### 参数预设 `PROBE_PRESETS`
+
+| 预设 | 孔数 | RL / dB | IL / dB | VSWR | 来源 |
+|---|---|---|---|---|---|
+| `'Pp4'` | 4 | 10.02（基线 A 6.82） | 2.62（基线 A 3.51） | 1.92 | CST 原生 Trust Region，48 次评估，目标达成 |
+
+```python
+from topo_modeler.builders import (register_probe_params, register_multiport_params,
+                                   build_feed)
+
+register_multiport_params(app, wf2=0.2, lf4=0.2, lf5=3.0, lf6=0.2)  # 外形依赖
+register_probe_params(app, preset='Pp4')                            # 探针参数
+build_feed(app, feed_type='ba_hole_array', n_holes=4)               # → 'feed2'
+```
+
+> ⚠ 预设里的数值一律取**四位小数**（0.1 µm）—— 比工艺下限 8 µm 与网格分辨率 ~30 µm
+> 都小几个量级，取整无损；好处是与下游工程报告 `REPORT_Pp4.md` 的表格逐位对得上。
+> 孔心偏移一律写成**累加 CST 表达式**（`pb_x_h0+pb_p_e1+…`），可被 CST 优化器直接扫。
+
+**返回值**：`str`（= `name`）。
+
+#### 6.4.5 四种馈源对比
 
 | 类型 | 对应旧代码 | polyline 顶点 | 椭圆过渡 | 优化块 | 适用场景 |
 |---|---|---|---|---|---|
 | `ab_elliptical` | `feed1` | 9（上半不对称） | 有（左半椭圆） | 无 | 直波导 |
 | `ba_tapered` | `feed2` | 10（上下对称） | 有（左半椭圆） | 有（`tx1×ty1`） | 天线 |
+| `ba_hole_array` | —（下游工作区新增） | 12（上下对称，微锥条） | 无（换成 `pb_L_in` 微锥条 + 椭圆孔阵列） | 无 | **短探针**（`L_in ≤ 0.6 mm`） |
 | `cylinder` | `cylinder_antenna` | 无 | 无（等半径圆柱） | 无 | 辐射体 |
 
 ```python
@@ -673,6 +722,7 @@ from topo_modeler.builders import build_feed
 
 build_feed(app, feed_type='ab_elliptical', name='feed1')                       # → 'feed1'
 build_feed(app, feed_type='ba_tapered', name='feed2', add_optimizer=True)      # → 'feed2'
+build_feed(app, feed_type='ba_hole_array', n_holes=4)                          # → 'feed2'
 build_feed(app, feed_type='cylinder', name='rad1', radius=0.3,
            position=['1.0', '2.0', '-h/2'])                                    # → 'rad1'
 ```

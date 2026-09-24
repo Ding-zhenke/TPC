@@ -101,7 +101,7 @@ builders/        每个部件一个构建器，全部是「无状态函数 + 显
     substrate.py   基板（沿路径的带状多边形 → 拉伸 → z 居中）
     vpc_region.py  VPC-A / VPC-B 区域 + 与基板求交
     crystal.py     光子晶体阵列（超元胞：triangle×8 → add×4 → subtract×2 → rotate×2 → translate×6）
-    feed.py        馈源 3 型：ab_elliptical / ba_tapered / cylinder
+    feed.py        馈源 4 型：ab_elliptical / ba_tapered / ba_hole_array / cylinder
     waveguide.py   空心矩形波导（外方体 − 内方体）
     port.py        波导端口（面编号 / 直波导 2 端口 / 天线 1 端口）
     solver.py      时域求解器 + 监视器 + 高级参数（稳态限制、并行、GPU）

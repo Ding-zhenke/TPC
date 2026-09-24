@@ -125,7 +125,13 @@ path = (TopoPath.builder(a=0.2425, name='p')
 modeler = TopoModeler(template_cst='tmp.cst')   # 相对路径 → 按当前工作目录解析
 modeler.set_path(path)
 modeler.set_topology('BA')          # 可选，覆盖自动推断
-modeler.set_parameters({'a': 0.2425, 'h': 0.25, 'l1': 0.157625, 'l2': 0.084875})
+# ★ 派生量一定要写 **CST 表达式**，不要写算好的小数：
+#   l1/l2/e1/e2 都由晶格常数 a 决定 ⇒ 写死数值后改 a 会让三角晶格整体变形，
+#   而且参数表里看不出这层依赖（实测踩过：Parameters.json 里 l1=0.157625）。
+#   ⚠ CST 的平方根写法是 sqr(3)，不是 Python 的 sqrt。
+modeler.set_parameters({'a': 0.2425, 'h': 0.25,
+                        'l1': '0.65*a', 'l2': '0.35*a',
+                        'e1': 'a/2', 'e2': 'a*sqr(3)/2'})
 
 # 3) 分步构建（或直接 build_all()）
 modeler.build_substrate()
@@ -203,7 +209,7 @@ configure_solver(app, freq_range=(300, 380), monitors=('E',))
 | `build_substrate` | 沿路径上下各扩展 `y_margin`（默认 `'e2'`） |
 | `build_vpc_regions` | **不接受 `topology`**；AB/BA 的大孔小孔分配在 `build_topological_crystal` 里 |
 | `build_topological_crystal` | `xup/yup/ydn` 为 `None` 时才用 `path.get_array_range()` 自动推断；宽基板要显式给 |
-| `build_feed` | `feed_type`：`'ab_elliptical'`（直波导）/ `'ba_tapered'`（天线）/ `'cylinder'`（辐射体） |
+| `build_feed` | `feed_type`：`'ab_elliptical'`（直波导）/ `'ba_tapered'`（天线）/ `'ba_hole_array'`（**短探针**：微锥条 + 椭圆孔阵列，配 `PROBE_PRESETS['Pp4']`）/ `'cylinder'`（辐射体） |
 | `configure_solver` | `calculation_type` 可选 `'TD-S'`/`'FD-S'`/`'EIGENMODE'`/`'IE-S'`/`'ASYMPTOTIC'`，其它值抛 `ValueError` |
 | `add_ports_for_straight_waveguide` | 面编号 `'10'`/`'22'` 是**硬编码**的 CST 内部编号，改波导尺寸后可能指错面 |
 

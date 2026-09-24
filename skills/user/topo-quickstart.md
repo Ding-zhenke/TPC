@@ -1,6 +1,6 @@
 ---
 name: topo-quickstart
-description: '用 topo_templates / TopoModeler / builders 建 AB/BA 域壁器件及已实现的直波导、单元天线、GRIN 透镜天线、多端口天线、MZI 开关、功分器；核对参考 notebook 的几何口径、装配顺序与离线拓扑正确性。修改库源码应读开发者工作流；泄漏波、C6 环和未实现变体须先查看统一计划。'
+description: '用 topo_templates / TopoModeler / builders 建 AB/BA 域壁器件及已实现的直波导、单元天线、GRIN 透镜天线、多端口天线、MZI 开关、功分器；核对参考 notebook 的几何口径、装配顺序与离线拓扑正确性；环状多臂 1分2 + 可旋转透镜的布局设计（MZI 分路口径 / 两臂对称 / 斜臂共线 / 外轮廓过焦点且与转角无关）见 §3.8。修改库源码应读开发者工作流；泄漏波、C6 环和未实现变体须先查看统一计划。'
 applyTo: "**/*.py"
 ---
 
@@ -283,6 +283,97 @@ app.intersect('vpca', 'area1')       # ⇒ vpca = **A 相**（工具还留着，
 相序错 ⇒ 求解器正常但器件不导通；阵列范围小 ⇒ 晶体缺一块。
 所以排错要**沿链回查**，而不是只看报错那一步。
 
+### 3.8 环状多臂器件：1 分 2 分路 / 两臂对称 / 斜臂共线 / 外轮廓（2026-09-23 实测）
+
+场景：C6 六臂环，每条臂主干之后接一个 **1 分 2**（Z 型，口径 = **MZI 的分路**），
+两个输出口各放一个 **BA240 透镜**，透镜可绕自身**近焦点**转 θ。参考实现（只读）：
+`硅基\多端口\Ant6_undiretional\Ant6_C6_1div2_BA240\layout_1div2_BA240.py`
+（纯几何示意图 + shapely 离线自检，**不开 CST**）—— 先照它把几何口径钉住再建模。
+
+#### (1) 分路几何：口径来自 MZI，不是「前向 ±60°」
+
+权威口径 = `硅基\参杂控制\_common\model_params.py::mzi_points`（该库唯一 100% 用 TPC API
+写成的范例），与 `硅基\开关尝试\BA\MZI-BA.ipynb` 一致。晶格坐标 `(r, c)`：
+`x = c·a + r·a/2`，`y = r·e2`。
+
+| 段 | 晶格走法 | MZI 原文表达式 |
+|---|---|---|
+| ① 斜出 | `turn(+120°)`，走 `y1` 步：`(0, c₀) → (y1, c₀−y1)` | `px3 = px2 − y1*e1`、`py3 = py2 + y1*e2` |
+| ② 拐回、与主路平行 | `turn(−120°)`，走 `x2` 步：`→ (y1, c₀−y1+x2)` | 输出臂口径 = `x2` |
+
+> ★ **与 `divide_1_2_60DEG`（前向 ±60° 斜出）不是一回事**：MZI 是 **120° 向后斜出**。
+> 斜段每走 1 步：`c: −1`（x 退 `a`）、`r: +1`（x 再进 `a/2`）⇒ 物理 x 净 **−a/2**（后退半步）。
+> 1 分 2 只取 MZI 的**前两段**当两条输出臂（不再分回轴上）；两输出口与主路平行、
+> 横向偏移 `d = y1·e2`（两侧间距 `2d`），输出口前向坐标 `= (c₀ − y1 + x2)·a`（`c₀ = C_FORK`）。
+
+#### (2) 两臂对称：镜像要按**几何**做，别只把 `r` 取反
+
+`x = c·a + r·a/2` 里 `r` 同时进 x 和 y ⇒ **`r → −r` 会改变物理 x，两臂不对称**（实测踩过）。
+正确的「`y → −y`」在晶格上等价于：
+
+```text
+(r, c) → (−r, c + r)
+```
+
+于是 `−1` 侧路径 = `(0, c₀) → (−y1, c₀) → (−y1, c₀+x2)`，与 `+1` 侧**逐点 x 相同、y 相反**。
+自检：`max|x₊ − x₋|` 与 `max|y₊ + y₋|` 都应为 0（实测 `0.00e+00`）。
+
+#### (3) 环状布局：相邻臂的 120° 斜臂**必然共线**，只能调间隙
+
+`120°` 恰好就是 C6 上**相邻两个分路点连线的方向** ⇒ 只要 6 条臂等分路半径，
+相邻臂的斜臂就落在同一条直线上（= 共用一段域壁）。**这是几何必然，调折点方向解决不了。**
+可调的只有「两段之间的间隙」：
+
+| 量 | 表达式 | 判据 |
+|---|---|---|
+| 相邻分路点弦长 | `2·R_FORK·sin30° = C_FORK·a` | —— |
+| 两条斜臂占长 | `2·y1·a` | —— |
+| **间隙** | `(C_FORK − 2·y1)·a` | **必须 > 0** ⇒ `C_FORK > 2·y1` |
+
+实测 `C_FORK = 28`、`y1 = 12` ⇒ 间隙 `4a = 0.97 mm`（6 条斜臂互不重叠）。
+想真正不共线只能改**分路角 ≠ 120°**，那就偏离 MZI 口径了 —— 先问清楚要哪个。
+
+#### (4) 外轮廓（板边界）设计规程 —— ★ 四条要同时满足
+
+1. **过透镜近焦点**：近焦点 = 透镜与拓扑波导的交点，轮廓线必须正好从这里过（距离 = 0）；
+2. **与透镜零重叠**：边界要「分明」，不许板与透镜互相插进去；
+3. **不要求是六边形**：形状由结构决定即可（默认「域壁中心线**凸包** + 向外扩 N 步」自动贴合）；
+4. **与 θ 无关**：转透镜只改**透镜自身轮廓**，**外轮廓不动**。
+
+> **零重叠怎么做到的**：BA240 透镜背后挖掉一个 **120° 楔**（顶点在近焦点）⇒ 轮廓在输出口
+> 处被切出一个 **120° 尖角**，正嵌进透镜的缺角 ⇒ `板 ∩ 透镜 = 0`，拼出一条清晰缝。
+> **要与 θ 无关怎么做**：从轮廓里减的是 **θ = 0 的「透镜占位」**，不是当前 θ 的透镜
+> （`outline = hull.difference(占位并集)`）；转 θ 时近焦点不动 ⇒ 轮廓仍过焦点、仍零重叠。
+> θ > 0 时实际透镜会稍微跨过轮廓 —— 同一块硅，建模时按 union 处理即可。
+
+#### (5) BA240 透镜与 θ 的口径
+
+* **形状** = 整椭圆 − 背向 120° 楔 ⇒ 绕**近焦点**张开 **240°**（等价于 `topo_modeler/lens_build.py`
+  的 `Ls` 楔形裁剪；来源 `椭圆透镜单元天线\BA\D120\Ant1_grid_BA_240D_epc_epc.ipynb`）。
+* 局部系：**近焦点 = 原点**，长轴沿径向（+x）；`ec_a = Nx·a2`、`ec_b = Ny·a2·sin60`、
+  `ec_c = √(ec_a² − ec_b²)`（`a2 = a/透镜比`，`ec_c` 就是**焦点位置**）。
+* **θ 相对主路（主干轴）度量、向外转**：θ = 0 ⇒ 长轴与主路平行；θ > 0 ⇒ 绕近焦点朝离开
+  主路的方向转 ⇒ **两侧一正一负**（`+1` 侧 `+θ`、`−1` 侧 `−θ`），整体保持镜像对称。
+
+#### (6) 结构示意图的工程做法（建议照抄）
+
+* 一个**纯几何**脚本 + 顶部 `_ov('名字', 默认值)` 的**环境变量覆盖** ⇒ 一条命令扫方案：
+  `$env:Y1=14; $env:THETA=15; python layout_xxx.py`（不必改代码）。
+* **所有尺寸参数化**成 `N·a` / `N·e2` 形式，只出现表达式、不出现算好的 mm 数。
+* 用 **shapely 离线断言**把口径钉死（秒级、不用 CST），至少 5 条：
+
+```python
+assert SYM_ERR < 1e-12                                              # 1) 两臂几何镜像对称
+assert (C_FORK - 2*Y1) > 0                                          # 2) 相邻臂斜臂不共线成圈
+assert max(outline.boundary.distance(p) for p in APEX_PTS) < 1e-9   # 3) 轮廓过 12 个近焦点
+assert max(g.intersection(outline).area for g in LENS_FIXED) < 1e-9 # 4) 板 ∩ 透镜 = 0（θ=0 占位）
+# 5) 轮廓与 θ 无关：θ=0 与 θ=15 两次运行，outline.area 必须相等（实测 253.76 mm²）
+```
+
+> 这套自检就是 §8 的思路用在**布局层**：**先把几何口径钉住，再谈建模**。
+> 定了几何再按 §3.6 写多域壁相区（每臂 = 1 条主干 + 2 条支路 = 3 条域壁），
+> 并**先跑 §8.0 相区结构示意图 + §8.1 相绑定断言**才动手建 CST。
+
 ---
 
 ## 4. 三层入口：先选层，再动手
@@ -408,6 +499,18 @@ ca, cb = build_topological_crystal(
 | `wg_a` | **0.7312** | 两族 | 铜波导内腔 **z 向高度**（宽的那一维） |
 | `wg_b` | **0.3756** | 两族 | 铜波导内腔 **y 向宽度** |
 | `wg_t` | 0.2 | 两族 | 铜壁厚（四边） |
+| `pb_L_in` | 0.5988 | **孔阵列族**（`ba_hole_array`，实体名 `feed2`） | 插入管腔长度（管口 → 探针末端） |
+| `pb_w_tip` | 0.1610 | 孔阵列族 | 探针末端宽度（**只变细、不加宽**） |
+| `pb_x_h0` | 0.0646 | 孔阵列族 | 首孔孔心距探针末端的距离 |
+| `pb_p_e1..3` | 0.1192 / 0.1187 / 0.1394 | 孔阵列族 | 相邻孔心距（**各自独立**） |
+| `pb_d_ex1..4` | 0.1105 / 0.1295 / 0.1270 / 0.1108 | 孔阵列族 | 各椭圆孔沿 x 的长轴 |
+| `pb_d_ey1..4` | 0.0486 / 0.0539 / 0.0539 / 0.0458 | 孔阵列族 | 各椭圆孔沿 y 的短轴 |
+
+> 上表的孔阵列族数值 = `PROBE_PRESETS['Pp4']`（**四位小数**；CST 原生 Trust Region 48 次
+> 评估的最优解：BA 直波导 300–320 GHz 下 RL 10.02 dB / IL 2.62 dB，基线 A 是 6.82 / 3.51）。
+> 一键登记：`register_probe_params(app, preset='Pp4')`；⚠️ **外形还要**
+> `register_multiport_params(app, ...)` 登记 `wf2/lf4/lf5/lf6`。
+> 🔴 **换 `feed_type` 就必须换登记那一族**，否则 CST 弹框挂住（§11 第一行）。
 
 铜波导（空心 = 外方体 − 内方体）的 x 范围：
 
@@ -644,7 +747,7 @@ m.save(r'D:\out\custom.cst')
 | 相区（多域壁） | `build_vpc_regions_multi(app, paths, …, prefix='p', unite=True)` | **按侧全局并**；≠ 参考的"两多边形之并"（§3.6） |
 | 晶体阵列 | `build_topological_crystal(app, path, topology='AB', lattice='a', height='h', large_hole='l1', small_hole='l2', y_margin='e2', name_prefix='g', xup=None, yup=None, ydn=None, index=None)` | 返回 `('g1A','g1B')`；`xup/yup/ydn` 传**参数名字符串**；11 步见 §3.2 |
 | 裁剪 | `intersect_crystal_with_vpc(app, ca, cb, vpca, vpcb)` / `clip_crystals_with_vpc(app, vpca, vpcb, crystals)` | **操作数顺序 = 参考工程**：`vpca ∩ g1A`，相区名保留 |
-| 馈源 | `build_feed(app, feed_type='ab_elliptical', name=None, **kwargs)` | 三个类型：`ab_elliptical`→`feed1`、`ba_tapered`→`feed2`、`cylinder`→`cylinder_feed` |
+| 馈源 | `build_feed(app, feed_type='ab_elliptical', name=None, **kwargs)` | **四个类型**：`ab_elliptical`→`feed1`、`ba_tapered`→`feed2`、`ba_hole_array`→`feed2`（**短探针**：微锥条 + N 椭圆孔，配 `PROBE_PRESETS['Pp4']`）、`cylinder`→`cylinder_feed` |
 | 波导 | `build_waveguide(app, name='wg1', material='Copper (annealed)', x_min='-lf1-lf2-lf3', x_max='-lf1', y_center='e2/2', wg_b='wg_b', wg_a='wg_a', wg_t='wg_t')` | 全部参数都是 **CST 表达式字符串** |
 | 端口 | `add_ports_for_straight_waveguide(app, waveguide_name='wg1', port1_face='10', port2_face='22')` / `add_port_for_antenna(app, waveguide_name='wg1', port_face='10')` / `add_multiport_port_set(app, entries)` | 面号是 **CST 内部编号，硬编码且脆弱**（见 §9 陷阱 6） |
 | 求解器 | `configure_solver(app, freq_range=(300,380), monitors=('E',), calculation_type='TD-S', steady_state=-30, parallel_threads=1024, gpus=1, component='component1', monitor_frequencies=None)` | `calculation_type ∈ {TD-S, FD-S, EIGENMODE, IE-S, ASYMPTOTIC}`；`component` 是**死参数**（不生效） |
@@ -766,7 +869,11 @@ print(app.cst_file.get_messages())        # 必须为空
 app.cst_file.model3d.Rebuild()            # 阻塞式重放历史
 print(app.cst_file.get_messages())        # 必须为空
 print(wg.validate())                      # {'status','messages','rebuild_ok','before','guard'}
-print([s for s in app.cst_file.model3d.GetAllSolidNames()])   # 实体清单：该有的都在、无模板残留
+# 实体个数：官方 API（库自己的守卫层也在用，见 cst_solver/parameters.py）
+print(app.cst_file.model3d.Solid.GetNumberOfShapes())
+# 实体**名字**：保存后读 <工程名>\Model\3D\ModelHistory.json 里的 Solid.* 行
+# ⚠️ 不要用 model3d.GetAllSolidNames() —— 2026-09-24 在 CST 2026 真机上实测
+#    直接 `AttributeError: object has no attribute 'GetAllSolidNames'`（本条原先写错）。
 ```
 
 ### 8.5 物理侧（最终确认）
@@ -819,12 +926,52 @@ print([s for s in app.cst_file.model3d.GetAllSolidNames()])   # 实体清单：�
 12. 🟡 **参数描述不能含非 GBK 字符**：CST 用 GBK 写历史，一个 `⇒`（U+21D2）就能让整个构建以
     `UnicodeDecodeError` 崩掉。库的校验只挡会破坏 VBA 字面量的字符（引号/换行/控制符），**不查 GBK**。
     ⇒ `expression=` 里写中文没问题，但别写特殊数学符号。
+13. 🔴 **透镜局部系 ≠ 整机全局系**：透镜在自己的局部系里近焦点在原点、+x 朝前；整机全局系里
+    晶体左边界在 x=0、透镜近焦点（chevron 尖点）在 `px2=x1*a`。把局部系的摆放直接套到全局系
+    （把探针右尖点移到原点/焦点）⇒ 探针和波导整体平移**压进晶体区**。
+    规则：透镜用 `build_grad_lens(..., place=False)` 留在局部系构建，整机里统一 `translate` 到 `px2`；
+    探针/波导则用全局坐标（端口在波导最左端、晶体之外）。
+14. 🔴 **模板默认值 ≠ 参考实测值**：复现参考器件时，孔半径/张角/馈电族等必须从**参考工程逐值抄**，
+    不能直接用模板 `LENS_DEFAULTS`。实测踩坑：模板 `r1_0=0.052`，参考是 50.5 µm = **0.0505**。
+    库现状的 `build_grin_lens` 楔形裁剪是 **240°**（不是 120°）—— 见 tpc-usage.md §6a/§6b。
+15. 🔴 **派生量必须写 CST 表达式，不要写算好的小数**（2026-09-24 探针工程实测）：
+    `l1 / l2 / e1 / e2` 全部由晶格常数 `a` 派生 —— `'0.65*a'` / `'0.35*a'` / `'a/2'` /
+    `'a*sqr(3)/2'`。写成数值（`app.para('l1', 0.65 * A_LAT)`）⇒ 参数表里只剩 `0.157625`、
+    `e1=0.12125`，**改 `a` 会让三角晶格整体变形**，而表里看不出这层依赖。
+    ⚠️ **CST 的平方根是 `sqr(3)`，不是 Python 的 `sqrt`**（白名单见 `cst_solver/expressions.py`）；
+    ⚠️ `app.para(name, value)` 的 **`value`** 才能放表达式，`expression=` 是**说明文本**；
+    `TopoModeler.set_parameters({...})` 同样接受表达式字符串。
+    孔阵列族的孔心同理：写成**累加表达式** `pb_x_h0+pb_p_e1+…`（优化器才扫得动）。
+    核验工具：`python scripts/verify_model_parameter_usage.py <工程目录>`
+    （离线查「参数表 ↔ 表达式 ↔ 建模历史」的闭合性）。
+
+### 9.1 ⭐ 开工顺序铁律（2026-09 真机返工教训：先参考、再离线锁、最后出图/建模）
+
+反复迭代几乎都来自「边写边猜、库/默认值优先于参考工程」。正确顺序，一步都不能省：
+
+1. **以参考工程为唯一事实源**，先抽一张参数口径表：坐标原点/朝向、张角(120 还是 240)、
+   孔半径实测值、馈电族(AB feed1 / BA feed2)、波导位置。**库模板默认值不作数。**
+2. **离线把口径锁死**（不碰 CST）：
+   * 拓扑用 §8 的孔大小绑定自检（`tri_up/tri_dn` 与 `l1/l2` 的绑定），不靠文件名/预览/视觉；
+   * 张角用 shapely intersect 后的**角段**断言（120° ⇒ 恰 −60°~+60°）；
+   * 坐标系分清楚：透镜局部系、整机全局系，端口在晶体外。
+3. **一次性出结构示意图**给人确认，标注真实比例（波导窄边、端口开口面、探针）。
+4. 确认后才建模；复杂透镜走 **tpc-usage.md §10 子工程方案**。
+5. 交付前按 §10 验收：阻塞式 `Rebuild()` 重放 + 消息为空。
+
+> 教训原话：应「先从唯一参考抽口径表 → 离线自检锁死 → 一次出图」，
+> 而不是复用库默认值、凭视觉切 AB/BA、把局部系当全局系。
 
 ---
 
 ## 10. 验收清单（每次交付建模脚本必做）
 
 顺序固定：**§8.0 结构示意图（建模前）→ §8 离线自检 → 连 CST 验收 → 磁盘侧核对**。
+
+> 🔴 **CST 侧动作必须在「非沙箱」终端里跑**（2026-09-24）：沙箱作业对象会**杀掉直接
+> spawn 出来的 DE 子进程** ⇒ `setup()` 报 `Process with pid: … is gone`，
+> **看着像许可证问题，其实不是**（本机 999 席、0 在用）。
+> 详见 `../developer/cst-solver-dev.md` 的「真机开工前 60 秒检查」。
 
 ```python
 app = wg.app                     # 模板 / Modeler 都把 setup 实例挂在 .app 上
@@ -838,8 +985,9 @@ print('after :', app.cst_file.get_messages())
 # 3) 结构化校验（模板 / Modeler 都有）
 print(wg.validate())             # 或 m.validate()：{'status','messages','rebuild_ok','before','guard'}
 
-# 4) 实体清单：该有的都在、没有模板残留
-print([s for s in app.cst_file.model3d.GetAllSolidNames()])
+# 4) 实体：个数用官方 API；名字从落盘历史里核对（GetAllSolidNames 在 CST 2026 上不存在）
+print(app.cst_file.model3d.Solid.GetNumberOfShapes())
+# → 再读 <工程名>\Model\3D\ModelHistory.json，检查该有的 Solid.* 都在、无模板残留
 ```
 
 > **`get_messages()` 为空只在干净工程里可信**：历史里留过一条失败命令后，
@@ -866,6 +1014,7 @@ print([s for s in app.cst_file.model3d.GetAllSolidNames()])
 | `The specified material does not exist` | 忘了 `build_materials(app)` | 材料必须先建 |
 | 实体建出来了但是 **PEC 而不是硅** | `extrude`/`square`/`cylinder` 忘了 `material=`（默认 PEC） | 补 `material='Silicon (lossy)'` |
 | `TypeError: extrude() got an unexpected keyword argument 'materials'` | 参考工程用复数 `materials=` | 改单数 `material=`；形参名是 `thickness` 不是 `height` |
+| `DesignEnvironmentStartupError: Process with pid: … is gone` / `EXITCODE_NOLICENSE` | 🔴 **沙箱作业对象杀掉了自己 spawn 的 DE 子进程** —— **不是许可证问题**（本机 `lmutil lmstat`：999 席 / 0 在用） | 换成**非沙箱**终端重跑；确实需要手动起 DE 时用 `explorer.exe "<CST DE exe>"` 双击语义拉起再 attach。详见 `../developer/cst-solver-dev.md` 的「真机开工前 60 秒检查」 |
 | `ModuleNotFoundError: No module named 'cst'` | CST 路径未配 | 设 `CST_INSTALL_PATH`；`python -m cst_solver doctor --probe` |
 | `FileNotFoundError: tmp.cst` | 模板不在**当前工作目录** | 传绝对路径，或把 `tmp.cst` 放到 notebook 同目录 |
 | `RuntimeError: 符号路径无法…请提供 param_values` | 符号路径没给 `param_values` | `.build(param_values={'x1': 18, …})` |
@@ -911,9 +1060,12 @@ print([s for s in app.cst_file.model3d.GetAllSolidNames()])
 | 三环 / 六边形功分结点 / 集总电阻版 | `硅基\功分器\` | ❌ 无对应原语（库里没有环形基元） | 研究向 |
 | 多端口 Ant3（3 端口：2 轴向 + 1 侧向）/ 单向直波导 | `硅基\多端口\` | ✅ 有 `MultiPortAntenna` | |
 | C6 六边环腔（6 条 BA 域壁 + 扭端口 + `.sab` 子工程） | `硅基\多端口\Ant6_undiretional\` | ❌ 环腔、扭端口、子工程交付全缺 | 需新 builder |
+| **6 臂环 · 每臂 1分2（MZI 口径）+ 2×BA240 可旋转透镜** | `硅基\多端口\Ant6_undiretional\Ant6_C6_1div2_BA240\` | ❌ 只到「结构示意图 + 离线几何自检」（`layout_1div2_BA240.py`） | 待建：每臂 3 条域壁的相区 + per-port 透镜定位 + 透镜绕近焦点转 θ；**布局规程见 §3.8** |
 | 单元天线 + 椭圆/GRIN 透镜 | `硅基\单元天线GRIB\`、`椭圆透镜单元天线\` | ✅ 有 `GRINLensAntenna`（`dxf`/`insitu` 两条路线） | 但**per-arm 透镜定位未实现** |
 | 泄漏波天线（EPC 椭圆栅 / MK sech 剖面 / Maxwell-Garnett） | `硅基\Leaky\` | ❌ 无模板（列为 `NO_TEMPLATE`） | 需新模板 |
 | 耦合器（3 dB 同相电桥 / 间隔一行三角） | `硅基\耦合器\` | ❌ 无耦合区概念 | 研究向 |
+| **BA 短探针：微锥条 + 椭圆孔阵列**（3.0 mm 长锥 → 0.6 mm） | `硅基\探针问题\` | ✅ 已进库：`build_ba_hole_array_feed`（`feed_type='ba_hole_array'`）+ `PROBE_PRESETS['Pp4']`；✅ **真机验收已通过（2026-09-24）**：离线 14 项 + `scripts/verify_probe_hole_array_real.py` **21 项 FAIL 0**（`Rebuild()` 后消息 0 条、实体数 1、`l1='0.65*a'` 等表达式逐字生效、无死写入）；**求解验收仍未做** | 直接用；`n_holes` 是**离散量**（改个数要重建模型） |
+| **BA 短探针：矩形槽 + 缝端椭圆孔（S′）** | 同上 | ❌ 未进库（几何还在工作区 `_work\probe_build.py`） | 待下沉（计划已登记） |
 | 波导扩大段 / 缺陷波导 / 圆极化铜管 / 无晶体开槽探针 | `硅基\直波导\` 附加件 | ⚠️ 部分可用原语拼 | 逐件评估 |
 | MXene 薄膜 / 光泵柱调谐 | `硅基\针对隔离和开关的分析研究\` | ⚠️ 只有「圆柱 + 自定义材料」一种表达 | 逐件评估 |
 
@@ -922,7 +1074,7 @@ print([s for s in app.cst_file.model3d.GetAllSolidNames()])
 1. `.sab` / SAT 几何导出（CST 侧 `WriteAll`）—— 库只有 `import_subproject`，无导出 ⇒ 透镜重建无法缓存。
 2. 弧形/扭转馈源（`rotation_face` 原语存在，但**没有 builder**）。
 3. **非轴对齐端口**（`create_waveguide_port_free` 只支持轴对齐；面号路线脆弱）。
-4. per-arm 透镜定位。
+4. per-arm / per-port 透镜定位，以及**透镜绕近焦点转 θ**（见 §3.8）。
 5. 六边环腔。
 6. **多域壁相区的显式构造**（参考的"两多边形之并"没有 builder，只有"按侧全局并"）。
 7. MPI/分布式求解 VBA 块 + `Mesh.SetCreator`。

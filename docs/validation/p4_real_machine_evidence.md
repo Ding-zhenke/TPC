@@ -812,3 +812,46 @@ python -u scripts/verify_bugfixes_real.py --attach <pid> --keep
 临时目录与 `evidence.json` 会在脚本开头打印。跑之前先看目标窗口标题里有没有 `[nn% ]`；
 判不了就照跑 —— 预检会把四项记成 UNKNOWN 而**不是** FAIL（环境问题不得伪报成「缺陷仍在」）。
 
+## 13. ✅ 短探针孔阵列 builder 的真机建模验收（2026-09-24）
+
+**对象**：`topo_modeler/builders/feed.py::build_ba_hole_array_feed`（新 `feed_type='ba_hole_array'`）
+与 `PROBE_PRESETS['Pp4']` —— 下游工作区 `硅基\探针问题`「BA 微锥条 + 椭圆孔阵列」探针的库化。
+**环境**：CST Studio Suite 2026（AMD64）+ Python 3.11；**只建模，不求解**。
+**脚本**：`scripts/verify_probe_hole_array_real.py`（`--workdir` / `--log` / `--template`）。
+
+### 13.1 结果：21 项，**FAIL 0** / UNKNOWN 1
+
+| 项 | 结果 | 证据 |
+|---|---|---|
+| 建模 + `Rebuild()` + 保存 | OK | `feed` 实体名 `feed2`，工程落盘 |
+| **A1 `Rebuild()` 后 `get_messages()` 为空** | OK | **0 条消息**（阻塞式重放全历史） |
+| B1 实体数 | OK | `Solid.GetNumberOfShapes() = 1`（只剩 `feed2`） |
+| B2 逐孔减法 | OK | 历史里 4/4 个 `pb_holeN` 建出并被 `Solid.Subtract` 消耗 |
+| C1 派生量是**表达式** | OK | `{l1: '0.65*a', l2: '0.35*a', e1: 'a/2', e2: 'a*sqr(3)/2'}` |
+| C2 表达式求值 | OK | 与 `0.65a / 0.35a / a/2 / a·sqr(3)/2` 最大偏差 **3.61e-16 mm** |
+| C3 预设落表 | OK | `PROBE_PRESETS['Pp4']` 的 14 个 `pb_*` 全部写入参数表 |
+| D1/D2/D3 历史取证 | OK | 4 条 `Solid.Subtract`；孔心是**累加表达式**（3/3）；z 居中 `-h/2` |
+| E1 参数闭合性 | OK | 死写入 **0**（已引用 21 / 共 25） |
+| 收尾 | OK | 未遗留 DE；本次新建的 DE 已关闭；临时产物按 §17 纪律处理 |
+
+唯一 UNKNOWN：`verify_model_parameter_usage` 的「C 未引用分类」需要 `--template` 才能区分
+「模板遗留」与「库下发死写入」，本轮未传（不影响 E1 的死写入结论）。
+
+### 13.2 本轮附带修掉的**错误文档**（真机取证的反向价值）
+
+- 🔴 `skills/user/topo-quickstart.md` §8.4/§10 原来教 `app.cst_file.model3d.GetAllSolidNames()`
+  —— **CST 2026 真机上直接 `AttributeError: object has no attribute 'GetAllSolidNames'`**
+  （库里也没有这个方法）。已改为官方 `model3d.Solid.GetNumberOfShapes()`（守卫层同款），
+  实体**名字**改用 `Model/3D/ModelHistory.json`。
+- 🔴 `docs/next_plan/README.md` 里「本机许可是单份的」这句**已过期** ⇒ 已更正为
+  「许可证 **999 席 / 0 在用**；`Process … is gone` 的真因是**沙箱**杀掉了自己 spawn 的 DE」。
+  前置检查已收进 `skills/developer/cst-solver-dev.md` 的「真机开工前 60 秒检查」。
+
+### 13.3 复现命令
+
+```text
+python -X utf8 scripts/verify_probe_hole_array_real.py --workdir D:\TPC_out\verify_probe_ha --log D:\TPC_out\verify_probe_ha\run.log
+```
+
+⚠️ 必须在**非沙箱**终端里跑（沙箱作业对象会杀掉直接 spawn 的 DE 子进程）；
+模板用下游工作区的 `tmp.cst`（本机 `D:\TPC_out\tmp.cst` **不存在**，其余 `verify_*_real.py` 的默认路径在本机会落空）。

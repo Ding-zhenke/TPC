@@ -11,7 +11,7 @@
 - [ ] **运行中控制语义**。先核实 CST 停止/暂停能力，再决定是否支持运行中取消与进度；当前 `cancel_not_supported` 是准确行为。补充超时、中断、重启及无孤儿会话的真实求解验收。
 - [ ] **P4/V10：2026-09-23 五处封装层缺陷的真机复验**。离线回归已通过（`cst_solver/tests/test_reported_bugfixes.py`，27 条 + `test_session_lifecycle.py` 2 条），但下列四点必须在真 CST 2026 上确认后才算验收：① `set_background()` 新的 `Type/Epsilon/Mu` 写法 `get_messages()` 为空，且 `Model.mif` 里背景确为设定值（旧的 `.Material` 行是**静默忽略**，需要新旧对比证据）；② `add_port(..., port_on_bound=False)` 能在**域内部**端口上建成（`Coordinates "Free"` + 域内范围）；③ 无参 `app.save()` 确实落盘（比对文件时间戳/大小）且随后 `close()` 工程完好；④ `get_parameter()` 能读回 `para()` 写下的值（数值 ⇒ `float`，表达式 ⇒ `str`）。证据写入[真机记录](../validation/p4_real_machine_evidence.md)。
   - **取证脚本已就绪**：`scripts/verify_bugfixes_real.py` —— 只建模/保存/读参数/关工程，**不跑任何求解**；每个探针用全新空白工程（`get_messages()` 会反复报出历史失败）；内建弹窗看门狗（`scripts/cst_dialog_guard.py`）；背景那项还会把保存后的 `Model.mif` 原文另存一份，便于离线复核解析。首轮 2026-09-23 因**许可证被占用**未取证（见下条），四项一律记 UNKNOWN 而**不是** FAIL。
-  - ⚠️ **跑之前先确认许可证空闲**：本机许可是单份的（CST registry: `27075@localhost`）。已有 CST 会话在跑时 `setup()` 会报 `EXITCODE_NOLICENSE` / `DesignEnvironmentStartupError ... is gone` —— 这是环境问题，不是缺陷本身。确需借用现有会话时加 `--attach <pid>`（脚本**绝不**关闭借来的会话）。
+  - 🔴 **「许可证不够」的结论已于 2026-09-24 更正 —— 真凶是沙箱，不是许可证**：本机许可证**完全正常**（`lmutil lmstat -a -c 27075@localhost`：`lmgrd UP` / `cstd UP` / 各 feature **999 席、0 在用**）。`setup()` 报 `DesignEnvironmentStartupError: Process with pid: … is gone` / `EXITCODE_NOLICENSE` 的**实际原因**是**沙箱作业对象杀掉了自己 spawn 出来的 DE 子进程**——唯一可行解是走 `explorer.exe "<exe>"`（ShellExecute，脱离作业对象）再 attach。⇒ **不要在沙箱终端里跑任何 CST 脚本**。完整判据与排查步骤见 [`skills/developer/cst-solver-dev.md`](../../skills/developer/cst-solver-dev.md) 的「真机开工前 60 秒检查」与「许可证排查方法论」。**别的会话在跑求解不影响新建 DE**（各 999 席）—— 忙碌只影响「借那个 DE 建新工程」（见下条）。确需借用现有会话时加 `--attach <pid>`（脚本**绝不**关闭借来的会话）。
   - 🔴 **同一坑的第二次教训（2026-09-23）**：`design_environment_baseline()` 必须在 `cst.interface` **已可导入之后**才调用。`cst_solver` 是惰性把 CST 库加进 `sys.path` 的，在它之前取基线会拿到**空集合**，于是收尾的 `close_extra_design_environments(baseline=set())` 会把**用户自己开着的会话**（当时 pid 36472，里面有工程）当成「本次新建的 DE」去 `connect(pid).close()`。现在脚本里已堵死：先 `_load_cst_module('cst.interface')` 再取基线，且**基线为空就拒绝执行任何关闭**、attach 模式下一个都不关。
   - ⚠️ **第三条教训（2026-09-23）：`--attach` 只解决「许可证」，不解决「DE 正忙」**。借到许可证（`attach pid=36472` ✅）之后，只要那个 DE 里还有求解在跑（窗口标题带 `[7% ]`），在它里面 `new_project()` 就会先报 `RuntimeError: An error occurred while trying to create a new project.`、重试时甚至直接把 COM 调用**挂死**（客户端 120s 超时被杀，而 DE 侧其实已经建出了工程）。⇒ **复验必须等目标 DE 空闲**（无求解、无模态对话框）再跑；跑之前用 `Get-Process <pid>` 看标题里有没有 `[nn% ]`。
   - 本轮（2026-09-23）实测结果：attach 成功、四点探针**仍未取证**；用户的工程与求解**全程未受影响**（脚本收尾打印「用户工程与 DE 一个都没关」、跑后无弹窗、pid 36472 `Responding=True`，求解从 7% 正常走到 9%）。副作用一条：诊断用的 `de.new_project()` 在客户端超时后 DE 侧仍建出了一个空白工程 `Untitled_0`（已如实告知用户，后由用户自行关闭）。
@@ -25,7 +25,8 @@
 - [ ] 为 `MZISwitch` 增加 `parallel` 十点路径与 `anti` 不对称泵浦变体；保留 `basic`/`cascade` 同几何的已核实口径。
 - [ ] 为 `PowerDivider` 增加 `2H4L` 双透镜组及每条输出臂的透镜定位；现有 1 分 6 是 2×3 级联。
 - [ ] 为 `ANT6_C6_hexring` 评估 `.sab` 子工程透镜、扭波导、C6 环与端口随旋转；为 5 个 `Leaky` notebook 单独设计泄漏波天线模板。
-- [ ] 为 P0 `short.ipynb` 的短探针加槽结构确定变体入口；按登记表逐项补齐其余 `PARTIAL` 的几何差异。完成后重新分类，做离线测试与只建模真机验收，同步模板配置、预检和技能。
+- [x] **短探针变体入口（孔阵列那一半，2026-09-24 完成）**：把下游工作区 `硅基\探针问题` 的「BA 微锥条 + 椭圆孔阵列」探针下沉为 `topo_modeler/builders/feed.py::build_ba_hole_array_feed`（新 `feed_type='ba_hole_array'`），并登记 `PROBE_PRESETS['Pp4']`（CST 原生 Trust Region 48 次评估的最优解，四位小数）；离线测试 `topo_modeler/tests/test_probe_hole_array.py`（14 项）通过。✅ **真机建模验收已通过（2026-09-24）**：`scripts/verify_probe_hole_array_real.py` 21 项 **FAIL 0**（`Rebuild()` 后 `get_messages()` 为空、`Solid.GetNumberOfShapes()=1`、`l1='0.65*a'` 等派生量表达式逐字生效、参数闭合无死写入），证据见[真机记录](../validation/p4_real_machine_evidence.md)。⚠️ 只剩**求解**侧未验收。
+- [ ] 为 P0 `short.ipynb` 的短探针补齐**槽结构**变体入口（孔阵列已就位）；按登记表逐项补齐其余 `PARTIAL` 的几何差异。完成后重新分类，做离线测试与只建模真机验收，同步模板配置、预检和技能。
 
 ## 优先级 3：外部库提示的可选增强
 
