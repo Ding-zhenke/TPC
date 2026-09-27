@@ -421,9 +421,9 @@ body {
     <h1><i class="fas fa-cubes"></i> CST Solver Python API 文档</h1>
     <p>cst_solver 包 — 基于 Mixin 多继承模式的 CST Studio Suite 自动化 Python 接口</p>
     <div class="header-stats">
-        <span><i class="fas fa-code"></i> 229 个方法</span>
+        <span><i class="fas fa-code"></i> 236 个方法</span>
         <span><i class="fas fa-layer-group"></i> 24 个类别</span>
-        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-23 01:29:01</span>
+        <span><i class="fas fa-file-alt"></i> 生成时间: 2026-09-27 18:50:20</span>
     </div>
     <div class="search-bar">
         <i class="fas fa-search"></i>
@@ -435,12 +435,12 @@ body {
     <nav class="sidebar" id="sidebar">
         <h3>目录</h3>
         <a href="#cat-0" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-0')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-microchip"></i>求解器</a>
-<a href="#cat-1" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-1')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-code"></i>工作坐标系</a>
-<a href="#cat-2" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-2')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-flask"></i>材料与组件</a>
-<a href="#cat-3" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-3')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-file-import"></i>导入导出</a>
-<a href="#cat-4" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-4')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-cube"></i>基本体建模</a>
-<a href="#cat-5" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-5')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-hand-pointer"></i>选取操作</a>
-<a href="#cat-6" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-6')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-code"></i>绘图控制</a>
+<a href="#cat-1" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-1')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-code"></i>绘图控制</a>
+<a href="#cat-2" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-2')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-code"></i>工作坐标系</a>
+<a href="#cat-3" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-3')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-flask"></i>材料与组件</a>
+<a href="#cat-4" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-4')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-file-import"></i>导入导出</a>
+<a href="#cat-5" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-5')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-cube"></i>基本体建模</a>
+<a href="#cat-6" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-6')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-hand-pointer"></i>选取操作</a>
 <a href="#cat-7" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-7')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-intersection"></i>布尔运算</a>
 <a href="#cat-8" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-8')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-sliders-h"></i>参数管理</a>
 <a href="#cat-9" onclick="document.getElementById('search').value='';filterMethods();setTimeout(()=>{document.querySelector('#cat-9')?.scrollIntoView({behavior:'smooth',block:'start'});window.scrollBy(0,-80);},50)"><i class="fas fa-draw-polygon"></i>曲线绘制</a>
@@ -1377,6 +1377,627 @@ body {
         <div class="category" id="cat-1">
             <div class="category-header" onclick="this.nextElementSibling.nextElementSibling.querySelector('input')?.focus()">
                 <div class="icon" style="background:#7c3aed"><i class="fas fa-code"></i></div>
+                <h2>绘图控制</h2>
+                <span class="count">19 方法 + 1 别名</span>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">capture_3d_view</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">截取当前 3D 模型视图并保存为图片文件</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">capture_3d_view(self, save_path, width=0, height=0)</div>
+                    </div>
+                    <div class="desc-text"><p>截取当前 3D 模型视图并保存为图片文件</p><p>封装官方 VBA ``Plot.ExportImage(name, width, height)``，截取当前 3D
+视图（3D sheet）。属于**即时 GUI 命令**，不写入建模历史树，因此不会在
+Rebuild 时重复截图。
+:说明:
+若想让结构在截图前以标准视角充满画面，先调用
+:meth:`reset_view`（Reset View / Space）。</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">save_path</td><td></td><td class="param-desc">str, 图片保存路径。CST 要求为**绝对路径**； 支持扩展名 ``.bmp`` / ``.jpeg``/``.jpg`` / ``.png``，格式由扩展名决定。 父目录不存在时会自动创建。</td></tr>
+<tr><td class="param-name">width</td><td><span style="color:#f59e0b;font-size:12px">= 0</span></td><td class="param-desc">int, 图片宽度（像素）；``0`` 表示使用当前 3D 窗口宽度。</td></tr>
+<tr><td class="param-name">height</td><td><span style="color:#f59e0b;font-size:12px">= 0</span></td><td class="param-desc">int, 图片高度（像素）；``0`` 表示使用当前 3D 窗口高度。</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                <div class="section">
+                    <div class="section-title">返回值</div>
+                    <div class="return-section">str, 实际传给 CST 的绝对图片路径。</div>
+                </div>
+                
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">export_3d_image</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">截取当前 3D 模型视图（保留旧 VBA 语义的别名）</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">export_3d_image(self, save_path, width=0, height=0)</div>
+                    </div>
+                    <div class="desc-text"><p>截取当前 3D 模型视图（保留旧 VBA 语义的别名）</p><p>等同于 :meth:`capture_3d_view`。</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">save_path</td><td></td><td class="param-desc"></td></tr>
+<tr><td class="param-name">width</td><td><span style="color:#f59e0b;font-size:12px">= 0</span></td><td class="param-desc"></td></tr>
+<tr><td class="param-name">height</td><td><span style="color:#f59e0b;font-size:12px">= 0</span></td><td class="param-desc"></td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">farfield_plot_cartesian</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">绘制直角坐标远场方向图</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">farfield_plot_cartesian(self, frequency=None, mode='directivity', require_gain=False)</div>
+                    </div>
+                    <div class="desc-text"><p>绘制直角坐标远场方向图</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">frequency</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float 可选, 频率</td></tr>
+<tr><td class="param-name">mode</td><td><span style="color:#f59e0b;font-size:12px">= directivity</span></td><td class="param-desc">str, 显示模式</td></tr>
+<tr><td class="param-name">require_gain</td><td><span style="color:#f59e0b;font-size:12px">= False</span></td><td class="param-desc">bool, True 表示这次绘图要当增益证据用（见 T8 说明）</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">farfield_plot_polar</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">绘制极坐标远场方向图</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">farfield_plot_polar(self, frequency=None, mode='directivity', theta_start=0, theta_stop=360, theta_step=1, require_gain=False)</div>
+                    </div>
+                    <div class="desc-text"><p>绘制极坐标远场方向图</p><p>⚠️ 守卫层（陷阱 T8）：``'efield'`` 这类模式画出来的是 **Abs(E)**，
+量纲与增益无关，**不能**当作增益证据引用。要写进增益结论请用
+``'directivity'`` / ``'gain'`` / ``'realized gain'``（见
+``cst_solver.FARFIELD_GAIN_MODES``）；
+传 ``require_gain=True`` 会让守卫强制校验这一点。</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">frequency</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float 可选, 频率</td></tr>
+<tr><td class="param-name">mode</td><td><span style="color:#f59e0b;font-size:12px">= directivity</span></td><td class="param-desc">str, 显示模式 'directivity'/'gain'/'realized gain'/'efield'</td></tr>
+<tr><td class="param-name">theta_start</td><td><span style="color:#f59e0b;font-size:12px">= 0</span></td><td class="param-desc">float, 起始角度</td></tr>
+<tr><td class="param-name">theta_stop</td><td><span style="color:#f59e0b;font-size:12px">= 360</span></td><td class="param-desc">float, 终止角度</td></tr>
+<tr><td class="param-name">theta_step</td><td><span style="color:#f59e0b;font-size:12px">= 1</span></td><td class="param-desc">float, 角度步长</td></tr>
+<tr><td class="param-name">require_gain</td><td><span style="color:#f59e0b;font-size:12px">= False</span></td><td class="param-desc">bool, True 表示这次绘图要当增益证据用，强制白名单校验</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">plot_1d</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">绘制 1D 结果（S 参数等）</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">plot_1d(self, tree_path)</div>
+                    </div>
+                    <div class="desc-text"><p>绘制 1D 结果（S 参数等）</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">tree_path</td><td></td><td class="param-desc">str, 1D 结果导航树路径 如 &quot;1D Results\S-Parameters\S1,1&quot;</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">plot_2d3d</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">绘制 2D/3D 结果（场分布等）</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">plot_2d3d(self, tree_path)</div>
+                    </div>
+                    <div class="desc-text"><p>绘制 2D/3D 结果（场分布等）</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">tree_path</td><td></td><td class="param-desc">str, 2D/3D 结果导航树路径 如 &quot;2D/3D Results\E-Field\e-field (f=310)&quot;</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">plot_animate</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">创建参数动画绘图</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">plot_animate(self, tree_path, parameter, start, stop, step)</div>
+                    </div>
+                    <div class="desc-text"><p>创建参数动画绘图</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">tree_path</td><td></td><td class="param-desc">str, 结果导航树路径</td></tr>
+<tr><td class="param-name">parameter</td><td></td><td class="param-desc">str, 扫描参数名</td></tr>
+<tr><td class="param-name">start</td><td></td><td class="param-desc">float, 起始值</td></tr>
+<tr><td class="param-name">stop</td><td></td><td class="param-desc">float, 终止值</td></tr>
+<tr><td class="param-name">step</td><td></td><td class="param-desc">float, 步长</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">plot_delete_all</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">删除所有绘图结果</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">plot_delete_all(self)</div>
+                    </div>
+                    <div class="desc-text"><p>删除所有绘图结果</p></div>
+                    
+                    
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name alias">plot_reset</span>
+                    <span class="badge" style="background:#fffbeb;color:#92400e;border:1px solid #fde68a">别名</span>
+                    <span class="desc">重置绘图对象属性到默认值</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">plot_reset(self)</div>
+                    </div>
+                    <div class="desc-text"><p>重置绘图对象属性到默认值</p></div>
+                    
+                <div class="alias-info">
+                    <i class="fas fa-info-circle"></i>
+                    此函数是 <strong>reset_plot</strong> 的别名，保留以兼容旧代码。
+                </div>
+                
+                    
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">plot_set_properties</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">批量设置绘图属性</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">plot_set_properties(self, properties: dict)</div>
+                    </div>
+                    <div class="desc-text"><p>批量设置绘图属性</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">properties</td><td><span class="param-type">dict</span></td><td class="param-desc">dict, 属性键值对 例如: {'PlotMode': 'directivity', 'Frequency': '3.5'}  支持的属性: - PlotMode: 'directivity'/'gain'/'realized gain'/'efield' - Frequency: 频率值 - ThetaStart/ThetaStop/ThetaStep: 角度范围 - PhiStart/PhiStop/PhiStep: 方位角范围 - Trace: 'all'/'max'/'min'  ⚠️ ``PlotMode`` 会过守卫层（陷阱 T8）：未知模式会报警； ``'efield'`` 等非增益模式本身合法，但**不能**当增益证据引用。</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">reset_plot</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">重置绘图（蛇形命名）</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">reset_plot(self)</div>
+                    </div>
+                    <div class="desc-text"><p>重置绘图（蛇形命名）</p><p>等同于 plot_reset()</p></div>
+                    
+                    
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">reset_view</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">重置 3D 视图（相机），让整个结构充满屏幕</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">reset_view(self)</div>
+                    </div>
+                    <div class="desc-text"><p>重置 3D 视图（相机），让整个结构充满屏幕</p><p>对应 CST 菜单 **View → Change View → Reset View**（快捷键 **Space**），
+底层为官方 ``Plot.ZoomToStructure``。只调整当前 3D 视图的相机，
+**不改动几何、不写入建模历史树**。
+:说明:
+与 :meth:`plot_reset` 不同：``plot_reset()`` 重置的是 Plot 对象的
+绘图属性；本方法重置的是观察相机。</p></div>
+                    
+                    
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">reset_view_to_selection</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">把 3D 视图缩放到当前选中的形体</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">reset_view_to_selection(self)</div>
+                    </div>
+                    <div class="desc-text"><p>把 3D 视图缩放到当前选中的形体</p><p>对应 CST 菜单 **View → Change View → Reset View to Selection**
+（快捷键 **Shift+Space**），底层为 ``Plot.ZoomToSelectedStructure``。
+不写入建模历史树。</p></div>
+                    
+                    
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">reset_zoom</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">复位相机缩放，使结构、包围盒与整个工作平面均可见</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">reset_zoom(self)</div>
+                    </div>
+                    <div class="desc-text"><p>复位相机缩放，使结构、包围盒与整个工作平面均可见</p><p>底层为官方 ``Plot.ResetZoom``。与 :meth:`reset_view` 的区别：
+Reset View（ZoomToStructure）只让结构紧凑充满屏幕，而本方法还会
+把包围盒和完整工作平面（若已开启）一并显示出来。不写入建模历史树。</p></div>
+                    
+                    
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">scalar_plot_2d</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">绘制 2D 标量场图</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">scalar_plot_2d(self, tree_path, component='', frequency=None)</div>
+                    </div>
+                    <div class="desc-text"><p>绘制 2D 标量场图</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">tree_path</td><td></td><td class="param-desc">str, 场结果路径</td></tr>
+<tr><td class="param-name">component</td><td></td><td class="param-desc">str, 场分量 'Abs'/'X'/'Y'/'Z'/'Phase'</td></tr>
+<tr><td class="param-name">frequency</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float 可选, 频率</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">scalar_plot_3d</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">绘制 3D 标量场图</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">scalar_plot_3d(self, tree_path, component='Abs', frequency=None)</div>
+                    </div>
+                    <div class="desc-text"><p>绘制 3D 标量场图</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">tree_path</td><td></td><td class="param-desc">str, 场结果路径</td></tr>
+<tr><td class="param-name">component</td><td><span style="color:#f59e0b;font-size:12px">= Abs</span></td><td class="param-desc">str, 场分量 'Abs'/'X'/'Y'/'Z'/'Phase'</td></tr>
+<tr><td class="param-name">frequency</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float 可选, 频率</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">vector_plot_2d</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">绘制 2D 矢量场图</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">vector_plot_2d(self, tree_path, frequency=None)</div>
+                    </div>
+                    <div class="desc-text"><p>绘制 2D 矢量场图</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">tree_path</td><td></td><td class="param-desc">str, 场结果路径</td></tr>
+<tr><td class="param-name">frequency</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float 可选, 频率</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">vector_plot_3d</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">绘制 3D 矢量场图</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">vector_plot_3d(self, tree_path, frequency=None)</div>
+                    </div>
+                    <div class="desc-text"><p>绘制 3D 矢量场图</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">tree_path</td><td></td><td class="param-desc">str, 场结果路径</td></tr>
+<tr><td class="param-name">frequency</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float 可选, 频率</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">zoom_to_region</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">把 3D 视图缩放到指定的立方区域</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">zoom_to_region(self, xmin, ymin, zmin, xmax, ymax, zmax)</div>
+                    </div>
+                    <div class="desc-text"><p>把 3D 视图缩放到指定的立方区域</p><p>底层为官方 ``Plot.ZoomToRegion(xmin, ymin, zmin, xmax, ymax, zmax)``。
+不写入建模历史树。</p></div>
+                    
+                    
+                <div class="section">
+                    <div class="section-title">参数</div>
+                    <table class="params-table">
+                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
+                        <tbody><tr><td class="param-name">xmin</td><td></td><td class="param-desc">float | str, 区域最小 x（CST 表达式字符串也可）</td></tr>
+<tr><td class="param-name">ymin</td><td></td><td class="param-desc">float | str, 区域最小 y</td></tr>
+<tr><td class="param-name">zmin</td><td></td><td class="param-desc">float | str, 区域最小 z</td></tr>
+<tr><td class="param-name">xmax</td><td></td><td class="param-desc">float | str, 区域最大 x</td></tr>
+<tr><td class="param-name">ymax</td><td></td><td class="param-desc">float | str, 区域最大 y</td></tr>
+<tr><td class="param-name">zmax</td><td></td><td class="param-desc">float | str, 区域最大 z</td></tr>
+</tbody>
+                    </table>
+                </div>
+                
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="method-card">
+                <div class="method-card-header" onclick="toggleMethod(this)">
+                    <span class="name">zoom_to_structure</span>
+                    <span class="badge">方法</span>
+                    <span class="desc">缩放到整个结构（VBA 原名 ``Plot.ZoomToStructure`` 的蛇形别名）</span>
+                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
+                </div>
+                <div class="method-details">
+                    <div class="section">
+                        <div class="section-title">签名</div>
+                        <div class="signature">zoom_to_structure(self)</div>
+                    </div>
+                    <div class="desc-text"><p>缩放到整个结构（VBA 原名 ``Plot.ZoomToStructure`` 的蛇形别名）</p><p>等同于 :meth:`reset_view`（即 Reset View / Space）。</p></div>
+                    
+                    
+                    
+                    <div class="source-file">
+                        源文件: <code>cst_solver\postprocessing\plot.py</code>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+        
+        <div class="category" id="cat-2">
+            <div class="category-header" onclick="this.nextElementSibling.nextElementSibling.querySelector('input')?.focus()">
+                <div class="icon" style="background:#db2777"><i class="fas fa-code"></i></div>
                 <h2>工作坐标系</h2>
                 <span class="count">9 方法 + 8 别名</span>
             </div>
@@ -1941,9 +2562,9 @@ body {
             
         </div>
         
-        <div class="category" id="cat-2">
+        <div class="category" id="cat-3">
             <div class="category-header" onclick="this.nextElementSibling.nextElementSibling.querySelector('input')?.focus()">
-                <div class="icon" style="background:#db2777"><i class="fas fa-flask"></i></div>
+                <div class="icon" style="background:#dc2626"><i class="fas fa-flask"></i></div>
                 <h2>材料与组件</h2>
                 <span class="count">13 方法 + 3 别名</span>
             </div>
@@ -2163,7 +2784,7 @@ End With</p></div>
                 <div class="method-details">
                     <div class="section">
                         <div class="section-title">签名</div>
-                        <div class="signature">create_material_custom(self, name, epsilon, mu, kappa, tand=None, material_type='Normal', color=None, colour=None)</div>
+                        <div class="signature">create_material_custom(self, name, epsilon, mu, kappa, tand=None, material_type='Normal', color=None, colour=None, dispersion_model_eps=None, eps_infinity=None, dispersion_coeffs_eps=None, dispersion_model_mu=None, mu_infinity=None, dispersion_coeffs_mu=None)</div>
                     </div>
                     <div class="desc-text"><p>创建自定义材料（简化版）</p></div>
                     
@@ -2180,6 +2801,12 @@ End With</p></div>
 <tr><td class="param-name">material_type</td><td><span style="color:#f59e0b;font-size:12px">= Normal</span></td><td class="param-desc">str, 材料类型 'Normal' 或 'Lossy metal'</td></tr>
 <tr><td class="param-name">color</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">可选, 材料**显示颜色**（CST 的 ``Material.Colour``）。 支持三种写法：``'#RRGGBB'`` / ``'#RGB'`` 十六进制字符串、 ``(r, g, b)`` 且三分量在 0~1、``(r, g, b)`` 且三分量在 0~255 （自动归一化）。**不传时与旧版行为完全一致**（用 CST 默认色）。 例：``color='#4ec9b0'``、``color=(78, 201, 176)``、``color=(0.31, 0.79, 0.69)``</td></tr>
 <tr><td class="param-name">colour</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">``color`` 的英式拼写别名（两者同时给会报 ``ValueError``）</td></tr>
+<tr><td class="param-name">dispersion_model_eps</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">str 可选，电色散模型。支持 ``Debye1st`` / ``Debye2nd`` / ``Drude`` / ``Lorentz`` / ``General1st`` / ``General2nd``</td></tr>
+<tr><td class="param-name">eps_infinity</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float/str 可选，介电常数高频极限</td></tr>
+<tr><td class="param-name">dispersion_coeffs_eps</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">list/tuple 可选，电色散 Coeff1..Coeff4。 Drude 按 ``(等离子体频率, 碰撞频率)`` 传入，频率单位 遵循本方法的 ``SetMaterialUnit &quot;GHz&quot;, &quot;mm&quot;``</td></tr>
+<tr><td class="param-name">dispersion_model_mu</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">str 可选，磁色散模型，支持集合同上</td></tr>
+<tr><td class="param-name">mu_infinity</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float/str 可选，磁导率高频极限</td></tr>
+<tr><td class="param-name">dispersion_coeffs_mu</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">list/tuple 可选，磁色散 Coeff1..Coeff4</td></tr>
 </tbody>
                     </table>
                 </div>
@@ -2509,9 +3136,9 @@ End With</p></div>
             
         </div>
         
-        <div class="category" id="cat-3">
+        <div class="category" id="cat-4">
             <div class="category-header" onclick="this.nextElementSibling.nextElementSibling.querySelector('input')?.focus()">
-                <div class="icon" style="background:#dc2626"><i class="fas fa-file-import"></i></div>
+                <div class="icon" style="background:#ea580c"><i class="fas fa-file-import"></i></div>
                 <h2>导入导出</h2>
                 <span class="count">9 方法 + 6 别名</span>
             </div>
@@ -3068,9 +3695,9 @@ End With</p></div>
             
         </div>
         
-        <div class="category" id="cat-4">
+        <div class="category" id="cat-5">
             <div class="category-header" onclick="this.nextElementSibling.nextElementSibling.querySelector('input')?.focus()">
-                <div class="icon" style="background:#ea580c"><i class="fas fa-cube"></i></div>
+                <div class="icon" style="background:#ca8a04"><i class="fas fa-cube"></i></div>
                 <h2>基本体建模</h2>
                 <span class="count">9 方法 + 4 别名</span>
             </div>
@@ -3584,9 +4211,9 @@ End With</p></div>
             
         </div>
         
-        <div class="category" id="cat-5">
+        <div class="category" id="cat-6">
             <div class="category-header" onclick="this.nextElementSibling.nextElementSibling.querySelector('input')?.focus()">
-                <div class="icon" style="background:#ca8a04"><i class="fas fa-hand-pointer"></i></div>
+                <div class="icon" style="background:#16a34a"><i class="fas fa-hand-pointer"></i></div>
                 <h2>选取操作</h2>
                 <span class="count">13 方法</span>
             </div>
@@ -4041,417 +4668,6 @@ faceID。常规建模优先用 ``pick_face_at()`` 按坐标拾取，可绕开编
                     
                     <div class="source-file">
                         源文件: <code>cst_solver\modeling\picks.py</code>
-                    </div>
-                </div>
-            </div>
-            
-        </div>
-        
-        <div class="category" id="cat-6">
-            <div class="category-header" onclick="this.nextElementSibling.nextElementSibling.querySelector('input')?.focus()">
-                <div class="icon" style="background:#16a34a"><i class="fas fa-code"></i></div>
-                <h2>绘图控制</h2>
-                <span class="count">12 方法 + 1 别名</span>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">farfield_plot_cartesian</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">绘制直角坐标远场方向图</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">farfield_plot_cartesian(self, frequency=None, mode='directivity', require_gain=False)</div>
-                    </div>
-                    <div class="desc-text"><p>绘制直角坐标远场方向图</p></div>
-                    
-                    
-                <div class="section">
-                    <div class="section-title">参数</div>
-                    <table class="params-table">
-                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">frequency</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float 可选, 频率</td></tr>
-<tr><td class="param-name">mode</td><td><span style="color:#f59e0b;font-size:12px">= directivity</span></td><td class="param-desc">str, 显示模式</td></tr>
-<tr><td class="param-name">require_gain</td><td><span style="color:#f59e0b;font-size:12px">= False</span></td><td class="param-desc">bool, True 表示这次绘图要当增益证据用（见 T8 说明）</td></tr>
-</tbody>
-                    </table>
-                </div>
-                
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\postprocessing\plot.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">farfield_plot_polar</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">绘制极坐标远场方向图</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">farfield_plot_polar(self, frequency=None, mode='directivity', theta_start=0, theta_stop=360, theta_step=1, require_gain=False)</div>
-                    </div>
-                    <div class="desc-text"><p>绘制极坐标远场方向图</p><p>⚠️ 守卫层（陷阱 T8）：``'efield'`` 这类模式画出来的是 **Abs(E)**，
-量纲与增益无关，**不能**当作增益证据引用。要写进增益结论请用
-``'directivity'`` / ``'gain'`` / ``'realized gain'``（见
-``cst_solver.FARFIELD_GAIN_MODES``）；
-传 ``require_gain=True`` 会让守卫强制校验这一点。</p></div>
-                    
-                    
-                <div class="section">
-                    <div class="section-title">参数</div>
-                    <table class="params-table">
-                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">frequency</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float 可选, 频率</td></tr>
-<tr><td class="param-name">mode</td><td><span style="color:#f59e0b;font-size:12px">= directivity</span></td><td class="param-desc">str, 显示模式 'directivity'/'gain'/'realized gain'/'efield'</td></tr>
-<tr><td class="param-name">theta_start</td><td><span style="color:#f59e0b;font-size:12px">= 0</span></td><td class="param-desc">float, 起始角度</td></tr>
-<tr><td class="param-name">theta_stop</td><td><span style="color:#f59e0b;font-size:12px">= 360</span></td><td class="param-desc">float, 终止角度</td></tr>
-<tr><td class="param-name">theta_step</td><td><span style="color:#f59e0b;font-size:12px">= 1</span></td><td class="param-desc">float, 角度步长</td></tr>
-<tr><td class="param-name">require_gain</td><td><span style="color:#f59e0b;font-size:12px">= False</span></td><td class="param-desc">bool, True 表示这次绘图要当增益证据用，强制白名单校验</td></tr>
-</tbody>
-                    </table>
-                </div>
-                
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\postprocessing\plot.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">plot_1d</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">绘制 1D 结果（S 参数等）</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">plot_1d(self, tree_path)</div>
-                    </div>
-                    <div class="desc-text"><p>绘制 1D 结果（S 参数等）</p></div>
-                    
-                    
-                <div class="section">
-                    <div class="section-title">参数</div>
-                    <table class="params-table">
-                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">tree_path</td><td></td><td class="param-desc">str, 1D 结果导航树路径 如 &quot;1D Results\S-Parameters\S1,1&quot;</td></tr>
-</tbody>
-                    </table>
-                </div>
-                
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\postprocessing\plot.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">plot_2d3d</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">绘制 2D/3D 结果（场分布等）</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">plot_2d3d(self, tree_path)</div>
-                    </div>
-                    <div class="desc-text"><p>绘制 2D/3D 结果（场分布等）</p></div>
-                    
-                    
-                <div class="section">
-                    <div class="section-title">参数</div>
-                    <table class="params-table">
-                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">tree_path</td><td></td><td class="param-desc">str, 2D/3D 结果导航树路径 如 &quot;2D/3D Results\E-Field\e-field (f=310)&quot;</td></tr>
-</tbody>
-                    </table>
-                </div>
-                
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\postprocessing\plot.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">plot_animate</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">创建参数动画绘图</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">plot_animate(self, tree_path, parameter, start, stop, step)</div>
-                    </div>
-                    <div class="desc-text"><p>创建参数动画绘图</p></div>
-                    
-                    
-                <div class="section">
-                    <div class="section-title">参数</div>
-                    <table class="params-table">
-                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">tree_path</td><td></td><td class="param-desc">str, 结果导航树路径</td></tr>
-<tr><td class="param-name">parameter</td><td></td><td class="param-desc">str, 扫描参数名</td></tr>
-<tr><td class="param-name">start</td><td></td><td class="param-desc">float, 起始值</td></tr>
-<tr><td class="param-name">stop</td><td></td><td class="param-desc">float, 终止值</td></tr>
-<tr><td class="param-name">step</td><td></td><td class="param-desc">float, 步长</td></tr>
-</tbody>
-                    </table>
-                </div>
-                
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\postprocessing\plot.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">plot_delete_all</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">删除所有绘图结果</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">plot_delete_all(self)</div>
-                    </div>
-                    <div class="desc-text"><p>删除所有绘图结果</p></div>
-                    
-                    
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\postprocessing\plot.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name alias">plot_reset</span>
-                    <span class="badge" style="background:#fffbeb;color:#92400e;border:1px solid #fde68a">别名</span>
-                    <span class="desc">重置绘图对象属性到默认值</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">plot_reset(self)</div>
-                    </div>
-                    <div class="desc-text"><p>重置绘图对象属性到默认值</p></div>
-                    
-                <div class="alias-info">
-                    <i class="fas fa-info-circle"></i>
-                    此函数是 <strong>reset_plot</strong> 的别名，保留以兼容旧代码。
-                </div>
-                
-                    
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\postprocessing\plot.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">plot_set_properties</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">批量设置绘图属性</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">plot_set_properties(self, properties: dict)</div>
-                    </div>
-                    <div class="desc-text"><p>批量设置绘图属性</p></div>
-                    
-                    
-                <div class="section">
-                    <div class="section-title">参数</div>
-                    <table class="params-table">
-                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">properties</td><td><span class="param-type">dict</span></td><td class="param-desc">dict, 属性键值对 例如: {'PlotMode': 'directivity', 'Frequency': '3.5'}  支持的属性: - PlotMode: 'directivity'/'gain'/'realized gain'/'efield' - Frequency: 频率值 - ThetaStart/ThetaStop/ThetaStep: 角度范围 - PhiStart/PhiStop/PhiStep: 方位角范围 - Trace: 'all'/'max'/'min'  ⚠️ ``PlotMode`` 会过守卫层（陷阱 T8）：未知模式会报警； ``'efield'`` 等非增益模式本身合法，但**不能**当增益证据引用。</td></tr>
-</tbody>
-                    </table>
-                </div>
-                
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\postprocessing\plot.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">reset_plot</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">重置绘图（蛇形命名）</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">reset_plot(self)</div>
-                    </div>
-                    <div class="desc-text"><p>重置绘图（蛇形命名）</p><p>等同于 plot_reset()</p></div>
-                    
-                    
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\postprocessing\plot.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">scalar_plot_2d</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">绘制 2D 标量场图</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">scalar_plot_2d(self, tree_path, component='', frequency=None)</div>
-                    </div>
-                    <div class="desc-text"><p>绘制 2D 标量场图</p></div>
-                    
-                    
-                <div class="section">
-                    <div class="section-title">参数</div>
-                    <table class="params-table">
-                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">tree_path</td><td></td><td class="param-desc">str, 场结果路径</td></tr>
-<tr><td class="param-name">component</td><td></td><td class="param-desc">str, 场分量 'Abs'/'X'/'Y'/'Z'/'Phase'</td></tr>
-<tr><td class="param-name">frequency</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float 可选, 频率</td></tr>
-</tbody>
-                    </table>
-                </div>
-                
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\postprocessing\plot.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">scalar_plot_3d</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">绘制 3D 标量场图</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">scalar_plot_3d(self, tree_path, component='Abs', frequency=None)</div>
-                    </div>
-                    <div class="desc-text"><p>绘制 3D 标量场图</p></div>
-                    
-                    
-                <div class="section">
-                    <div class="section-title">参数</div>
-                    <table class="params-table">
-                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">tree_path</td><td></td><td class="param-desc">str, 场结果路径</td></tr>
-<tr><td class="param-name">component</td><td><span style="color:#f59e0b;font-size:12px">= Abs</span></td><td class="param-desc">str, 场分量 'Abs'/'X'/'Y'/'Z'/'Phase'</td></tr>
-<tr><td class="param-name">frequency</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float 可选, 频率</td></tr>
-</tbody>
-                    </table>
-                </div>
-                
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\postprocessing\plot.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">vector_plot_2d</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">绘制 2D 矢量场图</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">vector_plot_2d(self, tree_path, frequency=None)</div>
-                    </div>
-                    <div class="desc-text"><p>绘制 2D 矢量场图</p></div>
-                    
-                    
-                <div class="section">
-                    <div class="section-title">参数</div>
-                    <table class="params-table">
-                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">tree_path</td><td></td><td class="param-desc">str, 场结果路径</td></tr>
-<tr><td class="param-name">frequency</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float 可选, 频率</td></tr>
-</tbody>
-                    </table>
-                </div>
-                
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\postprocessing\plot.py</code>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="method-card">
-                <div class="method-card-header" onclick="toggleMethod(this)">
-                    <span class="name">vector_plot_3d</span>
-                    <span class="badge">方法</span>
-                    <span class="desc">绘制 3D 矢量场图</span>
-                    <span class="expand-icon"><i class="fas fa-chevron-right"></i></span>
-                </div>
-                <div class="method-details">
-                    <div class="section">
-                        <div class="section-title">签名</div>
-                        <div class="signature">vector_plot_3d(self, tree_path, frequency=None)</div>
-                    </div>
-                    <div class="desc-text"><p>绘制 3D 矢量场图</p></div>
-                    
-                    
-                <div class="section">
-                    <div class="section-title">参数</div>
-                    <table class="params-table">
-                        <thead><tr><th>名称</th><th>类型/默认值</th><th>说明</th></tr></thead>
-                        <tbody><tr><td class="param-name">tree_path</td><td></td><td class="param-desc">str, 场结果路径</td></tr>
-<tr><td class="param-name">frequency</td><td><span style="color:#f59e0b;font-size:12px">= None</span></td><td class="param-desc">float 可选, 频率</td></tr>
-</tbody>
-                    </table>
-                </div>
-                
-                    
-                    <div class="source-file">
-                        源文件: <code>cst_solver\postprocessing\plot.py</code>
                     </div>
                 </div>
             </div>

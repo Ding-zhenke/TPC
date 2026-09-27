@@ -412,6 +412,29 @@ app.pattern_export(tree, r"D:\ff314_ascii.txt")  # FarfieldPlot 原始 8 列口�
 
 > 以上结果读取的签名索引取自 `cst_solver/_result_core.py`。
 
+### 3D 视图：Reset View 与模型截图（2026-09 新增封装）
+
+封装在 `postprocessing/plot.py`，对应官方 `Plot` 对象的相机/截图命令。
+这些是**即时 GUI 命令**：只改当前 3D 视图，**不进入建模历史树**（不走
+`add_to_history`），所以 Rebuild 时不会重放，也不改变几何。
+
+```python
+app.reset_view()                  # = 菜单 View→Change View→Reset View（快捷键 Space）
+                                  #   底层 Plot.ZoomToStructure，结构充满屏幕
+app.reset_view_to_selection()     # = Shift+Space，缩放到选中形体
+app.reset_zoom()                  # Plot.ResetZoom，结构+包围盒+工作平面全可见
+app.zoom_to_region(x1,y1,z1,x2,y2,z2)   # 缩放到指定立方区域，坐标可传表达式字符串
+
+path = app.capture_3d_view(r"D:\model_view.png")          # 0,0 = 当前窗口尺寸
+path = app.capture_3d_view(r"D:\model_view.png", 1600, 1200)  # 指定像素
+# 支持 .png/.bmp/.jpg/.jpeg；父目录自动创建；返回实际绝对路径
+# app.export_3d_image(...) 为同义别名
+```
+
+- 想要结构以标准视角入镜，先 `reset_view()` 再 `capture_3d_view()`。
+- ⚠️ 不要与 `app.plot_reset()` 混淆：后者下发 `Plot.Reset`，重置的是 **Plot 绘图属性**，不是相机。
+- 已通过离线单测（`cst_solver/tests/test_view_capture.py`，38 条）；**真机截图效果尚待 CST 实测**。
+
 ---
 
 ## 离线预检 / 运行契约 / 结构化失败（P1，2026-09 新增）
@@ -811,6 +834,67 @@ app.extrude('curve1:lens_epc', 'lens_epc', 'h', material='Silicon (lossy)', log_
 app.subtract('lens_epc', 'import_1', component2='gridlens')           # 椭圆 − 孔阵列 = GRIN 透镜
 ```
 
+### 6a. ★透镜张角 120° vs 240°：裁剪机制完全不同（2026-09 真机逐值比对）
+
+上面第 6 条只给了「椭圆 − 孔阵列」，**扇形裁剪**另有 120°/240° 两种，不能混用。
+权威参考是单元天线目录（不是功分器目录）：
+`D:\成电博士生涯\拓扑光子晶体模型\硅基\椭圆透镜单元天线\BA\D120\`
+下 `Ant1_grid_BA_120D_epc_epc.ipynb`（120°）与 `…BA_240D…ipynb`（240°），
+两者逐字相同，**唯一差异在 cell10 的裁剪多边形与布尔动作**：
+
+| | 120°（前向锥） | 240°（大扇形） |
+|---|---|---|
+| 裁剪点 x | `ec_b/tand(60)` | `ec_b/tand(-60)` |
+| 布尔动作 | `intersect('epc1','line1')`（椭圆∩裁剪多边形） | subtract 后向 120°楔形（即 §6/第 877 行现状） |
+| 保留角段 | **−60° ~ +60°** | −120° ~ +120° |
+| 孔阵镜像 | 仅 1 次 y 镜像 | y + x 两次镜像 |
+
+120° 裁剪多边形（局部系，近焦点/尖点在原点）：
+```python
+data = [['ec_b/tand(60)','ec_b'], ['ec_a+ec_c','ec_b'], ['ec_a+ec_c','0'],
+        ['ec_a+ec_c','-ec_b'], ['ec_b/tand(60)','-ec_b'], [0,0],
+        ['ec_b/tand(60)','ec_b']]
+app.polyline(data, 'line1'); app.extrude('curve1:line1','line1','h', material='Silicon (lossy)')
+app.intersect('epc1','line1')          # ⚠ intersect 结果留 epc1、line1 被消耗
+```
+
+> ⚠ `build_grin_lens`（lens.py 第 877 行）现状用的是 **240°** 的「subtract 后向楔形」；
+> 要建 120° 透镜必须改成上面的 **intersect 前向多边形**，否则"透镜会建成 240"。
+> 实测（nx/ny=16/13, ratio=1）：同一孔集 713 孔 ⇒ 120° 体内保留 **518 孔**
+> （上半 y≥0 273、下半 245；DXF 只写上半 273 再 y 镜像）。
+
+### 6b. ★晶体（基板）120° 边界 = chevron，不是矩形
+
+120° 透镜搭配的基板右边界是**以透镜近焦点 O 为右尖点的 chevron**（两条 ±60° 射线），
+晶体只建在该 chevron 的**左侧**，右侧前向锥内不铺晶体。参考同 notebook cell11/5：
+
+```python
+# cell5: px2='x1*a'（近焦点/chevron 尖点），ymax_up='e2*y1'，ymax_dn='-e2*y1'
+data = [[0,0], [0,'ymax_up'], ['px2+y1*e1','ymax_up'], ['px2','py2'],
+        ['px2+y1*e1','ymax_dn'], [0,'ymax_dn'], [0,0]]
+app.polyline(data,'vpca'); app.extrude('curve1:vpca','vpca','h', material='Silicon (lossy)')
+```
+
+chevron 右上点 `(px2+y1·e1, ymax_up)` 与尖点 `(px2,py2)` 连线斜率 = √3（=60°）。
+透镜**口径点**（60° 射线与椭圆交点）**恰好落在这条 chevron 边上** ⇒ 透镜口与晶体边
+无缝对齐，无重叠、无缺口。VPC-A/B 相区（cell12–13）用同 chevron 多边形的下半/上半
+intersect 拆分（A=下半、B=上半）。
+
+> ⚠ 若用普通矩形基板（或按弯折路径推的带状基板），右边界是竖直线 ⇒ 前向锥内被
+> 错误铺满晶体，这就是"晶体边界建成了矩形、缺少 120 边界"。直馈（非弯折臂）+
+> chevron 基板 + 120° 透镜三者必须成套。
+
+### 6c. ★复现参考器件：全局坐标、馈电族、孔半径（2026-09 真机返工）
+
+- **两套坐标系别混**：透镜局部系（近焦点在原点、+x 朝前，§6a 的裁剪点都在局部系）；
+  整机全局系（晶体左边界 x=0、直段域壁 18 周期、近焦点/chevron 尖点在 `px2=x1*a=4.365`）。
+  透镜整体 `translate('epc1',['px2','py2',…])`；**探针/波导用全局坐标、全在 x<0 的晶体外**，
+  仅探针喇叭口（x:0→a，第一列晶格）与晶体耦合。把局部系当全局系会把波导/探针平移压进晶体。
+- **BA**：上下对称 `feed2` 探针 + 空心铜波导**居中 y=0**，端口在波导最左端开口面；
+  **AB**：非对称 `feed1`、波导中心上偏 `e2/2`。判拓扑用离线绑定自检，别凭图/文件名。
+- **孔半径逐值抄参考**：参考单元透镜 r = **0.0505 ~ 0.066**（50.5 µm 起），
+  模板 `LENS_DEFAULTS` 的 `r1_0=0.052` 不对，别直接用默认值。
+
 ---
 
 ## 10. 大几何「建一次 + 子工程引用」架构（2026-09 实测，ANT6_C6_hexring）
@@ -1122,6 +1206,29 @@ app.change_material_color('Silicon (lossy)', 0.9, 0.9, 0.95)         # 给已有
 - **离线核对颜色**：下发的是 `.Colour`（历史里可见），CST 落库写回的是
   `ModelCache/Model.mif` 材料段末尾的 **`.Color "r", "g", "b"`**（美式拼写！）——
   搜 `Colour` 找不到不代表没生效，要搜 `.Color`。
+
+### 11.9 Drude / Debye / Lorentz 色散材料
+
+`create_material_custom()` 可直接下发 CST 的线性电/磁色散模型。Drude 电色散示例：
+
+```python
+app.create_material_custom(
+    'Drude metal', epsilon=1, mu=1, kappa=0,
+    dispersion_model_eps='Drude',
+    eps_infinity=3.7,
+    dispersion_coeffs_eps=('f_plasma', 'f_collision'),  # CST 参数，单位 GHz
+)
+```
+
+- 支持 `Debye1st` / `Debye2nd` / `Drude` / `Lorentz` / `General1st` /
+  `General2nd`；系数按 CST 官方 `Coeff1..Coeff4` 顺序传入。
+- 磁色散使用对应的 `dispersion_model_mu` / `mu_infinity` /
+  `dispersion_coeffs_mu`。
+- 该方法下发 `SetMaterialUnit "GHz", "mm"`，因此 Drude/Lorentz/Debye 的频率或
+  时间系数要按 CST 在这一材料单位下的口径给值；不要直接把 Hz 数值当 GHz 传入。
+- 模型所需系数数量不对或缺少高频极限时，函数会在下发 CST 前抛
+  `ValueError`，避免留下失败历史。
+- 不传色散参数时，生成的普通材料 VBA 与旧版一致。
 
 ---
 

@@ -86,6 +86,17 @@ VBA 命令通过 `self.cst_file.model3d.add_to_history("<日志名>", f1)` 下�
 | `setup.pyi` | — | 类型存根，**改 API 必须同步**（Pylance 补全靠它） |
 | `tests/test_guards.py` | — | 守卫层与结构化验收单测（假 CST 对象，43 条） |
 
+### 材料色散封装
+
+`MaterialMixin.create_material_custom()` 的色散参数直接对应 CST 2026
+`Material Object` 官方命令：`DispModelEps/Mu`、`Eps/MuInfinity` 和
+`DispCoeff1..4Eps/Mu`。当前封装线性 `Debye1st`、`Debye2nd`、`Drude`、
+`Lorentz`、`General1st`、`General2nd`；参数个数必须按官方表校验后才进入
+`add_to_history`。Drude 的 `Coeff1/2` 分别是等离子体频率和碰撞频率。
+
+离线回归：`pytest cst_solver/tests/test_material_dispersion.py -q`。这只验证 VBA 映射与
+预检；真机仍要在干净工程检查调用异常、`get_messages()` 和 `Rebuild()`。
+
 > ⚠️ **两类 `log_flag` 含义不同，不要互相类推**：几何类方法（`polyline`/`extrude`/`translate`…）
 > 默认 `log_flag=1`，`0` = 只返回 VBA 文本不下发；`para()`/`paras()` 默认 `log_flag=0`，
 > `0` = **写入参数表但不重建历史**（参数存了、几何没变 → 陷阱 T2）。详见
