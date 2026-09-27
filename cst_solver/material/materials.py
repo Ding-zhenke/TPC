@@ -27,6 +27,18 @@ MATERIAL_ERROR_CODES = (
 _logger = logging.getLogger(__name__)
 
 
+# CST 2026 Material Object 的线性色散模型参数个数。
+# 系数按官方帮助的 Coeff1..Coeff4 顺序传入。
+_LINEAR_DISPERSION_COEFFICIENT_COUNTS = {
+    'Debye1st': 2,
+    'Debye2nd': 4,
+    'Drude': 2,
+    'Lorentz': 3,
+    'General1st': 2,
+    'General2nd': 4,
+}
+
+
 def _parse_colour(color):
     """把颜色输入归一成 CST ``Material.Colour`` 需要的三个 0~1 字符串。
 
@@ -79,6 +91,56 @@ def _parse_colour(color):
 def _fmt_colour(value):
     """0~1 的分量 → 紧凑字符串（去掉浮点尾巴，如 0.3058823529411765 → 0.305882）。"""
     return '%.6g' % value
+
+
+def _material_dispersion_block(model, infinity, coefficients, quantity):
+    """校验并生成 CST 线性材料色散 VBA 片段。
+
+    :param model: str 或 None，CST 色散模型名
+    :param infinity: float/str 或 None，高频极限值
+    :param coefficients: list/tuple 或 None，Coeff1..Coeff4
+    :param quantity: str，``'eps'`` 或 ``'mu'``
+    :return: str，可插入 ``With Material`` 的 VBA 片段
+    :raises ValueError: 模型、高频极限或系数配置不完整
+    """
+    suffix = 'Eps' if quantity == 'eps' else 'Mu'
+    infinity_name = 'eps_infinity' if quantity == 'eps' else 'mu_infinity'
+    model_name = ('dispersion_model_eps' if quantity == 'eps'
+                  else 'dispersion_model_mu')
+    coefficients_name = ('dispersion_coeffs_eps' if quantity == 'eps'
+                         else 'dispersion_coeffs_mu')
+
+    if model is None:
+        if infinity is not None or coefficients is not None:
+            raise ValueError(
+                f'设置 {infinity_name} 或 {coefficients_name} 时必须同时设置 '
+                f'{model_name}')
+        return ''
+
+    if model not in _LINEAR_DISPERSION_COEFFICIENT_COUNTS:
+        supported = ', '.join(_LINEAR_DISPERSION_COEFFICIENT_COUNTS)
+        raise ValueError(
+            f'{model_name}={model!r} 不支持；可选：{supported}')
+    if infinity is None:
+        raise ValueError(f'{model_name}={model!r} 时必须设置 {infinity_name}')
+    if not isinstance(coefficients, (list, tuple)):
+        raise ValueError(f'{coefficients_name} 必须是 list 或 tuple')
+
+    expected = _LINEAR_DISPERSION_COEFFICIENT_COUNTS[model]
+    if len(coefficients) != expected:
+        raise ValueError(
+            f'{model_name}={model!r} 需要 {expected} 个系数，'
+            f'{coefficients_name} 收到 {len(coefficients)} 个')
+
+    lines = [
+        f'            .DispModel{suffix} "{model}"',
+        f'            .{suffix}Infinity "{infinity}"',
+    ]
+    lines.extend(
+        f'            .DispCoeff{index}{suffix} "{value}"'
+        for index, value in enumerate(coefficients, start=1)
+    )
+    return '\n'.join(lines) + '\n'
 
 
 class MaterialMixin:
@@ -267,9 +329,12 @@ class MaterialMixin:
 End With
 """
 
-    def create_material_custom(self, name, epsilon, mu, kappa, tand=None,
-                               material_type='Normal', color=None,
-                               colour=None):
+    def create_material_custom(
+            self, name, epsilon, mu, kappa, tand=None,
+            material_type='Normal', color=None, colour=None,
+            dispersion_model_eps=None, eps_infinity=None,
+            dispersion_coeffs_eps=None, dispersion_model_mu=None,
+            mu_infinity=None, dispersion_coeffs_mu=None):
         """
         创建自定义材料（简化版）
 
@@ -285,7 +350,17 @@ End With
             （自动归一化）。**不传时与旧版行为完全一致**（用 CST 默认色）。
             例：``color='#4ec9b0'``、``color=(78, 201, 176)``、``color=(0.31, 0.79, 0.69)``
         :param colour: ``color`` 的英式拼写别名（两者同时给会报 ``ValueError``）
-        :raises ValueError: 颜色格式非法，或 ``color`` / ``colour`` 同时给出
+        :param dispersion_model_eps: str 可选，电色散模型。支持
+            ``Debye1st`` / ``Debye2nd`` / ``Drude`` / ``Lorentz`` /
+            ``General1st`` / ``General2nd``
+        :param eps_infinity: float/str 可选，介电常数高频极限
+        :param dispersion_coeffs_eps: list/tuple 可选，电色散 Coeff1..Coeff4。
+            Drude 按 ``(等离子体频率, 碰撞频率)`` 传入，频率单位
+            遵循本方法的 ``SetMaterialUnit "GHz", "mm"``
+        :param dispersion_model_mu: str 可选，磁色散模型，支持集合同上
+        :param mu_infinity: float/str 可选，磁导率高频极限
+        :param dispersion_coeffs_mu: list/tuple 可选，磁色散 Coeff1..Coeff4
+        :raises ValueError: 颜色或色散模型配置非法
         """
         if colour is not None:
             if color is not None:
@@ -304,6 +379,10 @@ End With
         if color is not None:
             r, g, b = _parse_colour(color)
             colour_block = f'            .Colour "{r}", "{g}", "{b}"\n'
+        dispersion_block = _material_dispersion_block(
+            dispersion_model_eps, eps_infinity, dispersion_coeffs_eps, 'eps')
+        dispersion_block += _material_dispersion_block(
+            dispersion_model_mu, mu_infinity, dispersion_coeffs_mu, 'mu')
         f1 = f"""
         With Material
             .Reset
@@ -315,7 +394,7 @@ End With
             .Epsilon "{epsilon}"
             .Mu "{mu}"
             .Kappa "{kappa}"
-            {tand_block}{colour_block}
+            {tand_block}{colour_block}{dispersion_block}
             .Create
         End With
         """
