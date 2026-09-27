@@ -80,10 +80,20 @@ REGISTRY = OrderedDict([
         'reason': '上下文管理器收尾时移除自己的收集器；此时移除失败意味着收集器栈已乱，'
                   '再抛异常只会掩盖用户的原始异常。',
     }),
-    ('cst_solver/parameters.py::ParametersMixin._guard_param_probe', {
+    ('cst_solver/parameters.py::ParametersMixin._parameter_exists', {
+        'max': 2,
+        'risk_ok': '这是参数存在性探针的故障安全回退：DoesParameterExist 不可用时试 RestoreParameter，两者都失败则按「新参数」处理。'
+                   '这个方向避免把新参数误判为已存在而产生守卫噪音；可能漏提醒的风险由建模后的 Rebuild 验收兜底。',
+        'reason': 'CST 不同版本可能只暴露 DoesParameterExist 或 RestoreParameter；探针按顺序回退，两个查询均不可用时返回 False。',
+    }),
+    ('cst_solver/postprocessing/farfield.py::FarfieldMixin._parse_ascii_export', {
         'max': 1,
-        'reason': '探测守卫层是否挂上了 `_param_probe`；没有守卫（离线/裸用）就返回 None，'
-                  '调用方据此跳过守卫逻辑，属于能力探测。',
+        'risk_ok': '导出文件中的列名、分隔线等非数值行会按设计跳过；若整份文件都无数值行，函数会显式抛 ValueError，不会静默返回成功结果。',
+        'reason': '远场 ASCII 导出格式含非数值表头；跳过单行解析失败行，空结果会提升为显式异常。',
+    }),
+    ('cst_solver/postprocessing/farfield.py::FarfieldMixin.read_farfield', {
+        'max': 1,
+        'reason': '尽力删除本次创建的中转文件；清理失败不应覆盖 ASCII 导出/解析的原始结果，且这里只对临时文件走清理路径。',
     }),
     ('cst_solver/parameters.py::ParametersMixin._set_parameter_description', {
         'max': 1,
