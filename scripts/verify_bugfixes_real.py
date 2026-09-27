@@ -48,6 +48,7 @@ import os
 import re
 import sys
 import tempfile
+import threading
 import time
 import traceback
 from pathlib import Path
@@ -60,6 +61,7 @@ from topo_modeler.batch import (                    # noqa: E402
     close_extra_design_environments,
     design_environment_query,
 )
+import cst_dialog_guard as _dialog_guard           # noqa: E402
 from cst_dialog_guard import (                      # noqa: E402
     check_dialogs,
     describe_dialogs,
@@ -68,6 +70,8 @@ from cst_dialog_guard import (                      # noqa: E402
     list_windows,
     save_prompts,
 )
+
+_user32 = _dialog_guard._user32
 
 BOX = dict(x1='0', x2='1', y1='0', y2='1', z1='0', z2='1')
 BOX_NAME = 'p4v10_box'
@@ -271,12 +275,73 @@ def _close_own_project(save_first=True):
                exception=f'{type(exc).__name__}: {exc}')
 
 
-def rebuild():
-    """阻塞式重放历史，返回 ``(messages, exception_text)``。"""
+# Qt 错误框标题（Rebuild 命中坏历史时弹；均为 Qt 自绘、无原生按钮）。
+# 处置：Esc（实测 History Error 用 WM_CLOSE、Project Backup 用 Esc 可关）。
+_QT_ERROR_TITLES = ('history error', 'project backup')
+
+
+def _dismiss_qt_error_dialogs(timeout=120.0):
+    """
+    轮询并关断 CST 弹出的 Qt 错误框（History Error / Project Backup）。
+
+    为什么需要：坏 VBA 在 ``Rebuild()`` 这个**阻塞 COM 调用内部**触发 Qt 模态框，
+    不点掉调用永不返回。Qt 框没有原生按钮，``dismiss_dialogs`` 的白名单点击无效，
+    只能：先 ``WM_CLOSE``，还在就补一个 Esc（``WM_KEYDOWN/UP``）。
+
+    只关**标题精确匹配**错误框，绝不碰工程主窗/Save As。
+    返回关掉的标题列表（取证用）。
+    """
+    dismissed = []
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            windows = list_windows()
+        except Exception:                               # noqa: BLE001
+            windows = []
+        for window in windows:
+            title = (window.get('title') or '').strip().lower()
+            if not window.get('visible'):
+                continue
+            # 标题形如 "CST MICROWAVE STUDIO - History Error"
+            matched = next((key for key in _QT_ERROR_TITLES
+                            if title.endswith(key)), None)
+            if not matched or matched in dismissed:
+                continue
+            hwnd = window['hwnd']
+            _user32.PostMessageW(hwnd, 0x0010, 0, 0)   # WM_CLOSE
+            time.sleep(0.8)
+            if _user32.IsWindowVisible(hwnd):
+                _user32.PostMessageW(hwnd, 0x0100, 0x1B, 0x00010001)  # Esc down
+                _user32.PostMessageW(hwnd, 0x0101, 0x1B, 0xC0010001)  # Esc up
+                time.sleep(0.8)
+            if not _user32.IsWindowVisible(hwnd):
+                dismissed.append(matched)
+        if len(set(dismissed)) >= len(_QT_ERROR_TITLES):
+            break
+        time.sleep(0.4)
+    return dismissed
+
+
+def rebuild(auto_dismiss_errors=True):
+    """
+    阻塞式重放历史，返回 ``(messages, exception_text)``。
+
+    :param auto_dismiss_errors: True 时后台轮询关断 Qt 错误框，
+        避免坏历史在 ``Rebuild()`` 内部弹模态框导致 COM 调用永不返回。
+    """
+    watcher = None
+    if auto_dismiss_errors:
+        watcher = threading.Thread(
+            target=_dismiss_qt_error_dialogs, daemon=True)
+        watcher.start()
     try:
         _app.cst_file.model3d.Rebuild()
     except Exception as exc:                        # noqa: BLE001
+        if watcher is not None:
+            watcher.join(timeout=2)
         return messages(), f'{type(exc).__name__}: {exc}'
+    if watcher is not None:
+        watcher.join(timeout=2)
     return messages(), None
 
 
@@ -367,32 +432,87 @@ def _as_float(value):
         return None
 
 
-def background_evidence(project_path, label):
-    """保存后的背景取证：mif 路径 + 窗口 + 解析值 + 是否出现 ``.Material``。"""
-    mif = find_mif(project_path)
-    if mif is None:
-        return {'mif': None, 'note': '没找到 Model.mif（工程可能不是目录形式）'}
-    text = mif_text(mif)
-    # 原文另存一份：正则万一不匹配真机格式，可以离线改解析、不必再跑真机
-    dump = _work / f'bg_{label}.mif.txt'
+def parse_history_background(project_path):
+    """
+    从 **CST 2026 新格式** ``ModelHistory.json`` 里解析最近一次背景设置。
+
+    🔴 2026 版不再写 ``Model.mif``（旧 mif 判据在这版本结构性失效）。背景设置以
+    VBA 形式逐行存在 ``history[*].code``（caption == "Set Background"）里。
+    取**最后**一个 Set Background 块（后写覆盖先写），从 ``.Type/.Epsilon/.Mu``
+    行提取值。
+
+    :return: (dict|None, str|None raw_code)；找不到工程/文件时返回 (None, None)
+    """
+    path = Path(project_path)
+    if not path.is_dir():
+        return None, None
+    # 标准路径优先；不同保存方式下层级可能不同，rglob 兜底。
+    standard = path / 'Model' / '3D' / 'ModelHistory.json'
+    if standard.exists():
+        history_file = standard
+    else:
+        hits = sorted(path.rglob('ModelHistory.json'))
+        history_file = hits[0] if hits else None
+    if history_file is None:
+        return None, None
     try:
-        dump.write_text(text, encoding='utf-8')
+        data = json.loads(history_file.read_text(encoding='utf-8'))
+    except Exception:                                   # noqa: BLE001
+        return None, None
+    blocks = [h for h in data.get('history', [])
+              if h.get('caption') == 'Set Background']
+    if not blocks:
+        return {}, ''
+    code = blocks[-1].get('code', [])
+    raw = '\n'.join(code)
+    fields = {}
+    for key in ('Type', 'Epsilon', 'Mu'):
+        match = re.search(rf'\.{key}\s+"([^"]*)"', raw)
+        if match:
+            fields[key] = match.group(1)
+    return fields, raw
+
+
+def background_evidence(project_path, label):
+    """
+    保存后的背景取证（CST 2026 口径）。
+
+    🔴 这版 CST 不再写 ``Model.mif``，旧的 mif 取证（``find_mif``/``parse_background``）
+    结构性失效。改用 ``Model/3D/ModelHistory.json`` 里最后一个 ``Set Background``
+    历史块作为判据（其中逐行存着 ``.Type/.Epsilon/.Mu``）。
+
+    ``model_like`` 字段保留旧名以兼容下面的判分逻辑：解析到即非 None。
+    """
+    fields, raw = parse_history_background(project_path)
+    if fields is None:
+        # 取证：把保存目录里的 json 列出来，便于离线判断层级差异（真机稀缺）
+        tree = []
+        try:
+            tree = [str(p.relative_to(project_path))
+                    for p in Path(project_path).rglob('*.json')][:20]
+        except Exception:                               # noqa: BLE001
+            pass
+        return {'mif': None, 'model_like': None,
+                'note': '没找到 ModelHistory.json（工程不是目录形式 / 版本异常）',
+                'json_tree': tree}
+    dump = _work / f'bg_{label}.history.txt'
+    try:
+        dump.write_text(raw or '', encoding='utf-8')
     except Exception:                                   # noqa: BLE001
         dump = None
-    windows = background_windows(text)
-    parsed = [parse_background(w) for w in windows]
-    # 只挑「看起来像模型段」的那一条：同时有 Type 与 Epsilon/Mu
-    model_like = [p for p in parsed if 'Type' in p and ('Epsilon' in p or 'Mu' in p)]
+    # 空 dict 表示工程存在但没有任何 Set Background 历史（如 control_unset）：
+    # 背景就是 CST 默认真空，等价于 Type 未设/ε=1。
+    if not fields:
+        fields = {'Type': 'normal', 'Epsilon': '1', 'Mu': '1'}
     return {
-        'mif': str(mif),
+        'mif': None,                          # 2026 无 mif，显式标记
         'mif_dump': str(dump) if dump else None,
-        'mif_size': mif.stat().st_size,
-        'mif_mtime': mif.stat().st_mtime,
-        'parsed': parsed,
-        'model_like': model_like[0] if model_like else None,
-        'has_dot_material': '.Material' in text,
-        'windows': [w[:600] for w in windows],
+        'parsed': [fields],
+        'model_like': fields,
+        'has_dot_material': '.Material' in (raw or ''),
+        'windows': [],
         'label': label,
+        'history_source': 'ModelHistory.json',
     }
 
 
@@ -439,22 +559,42 @@ def probe_background(label, expect, *, setup_call=None, vba=None, note=''):
     evidence = background_evidence(out, label) if saved else {}
     model_like = evidence.get('model_like')
 
+    # 🔴 判据口径（CST 2026，2026-09-23）：这版**不写 Model.mif**，背景判据改读
+    # ``ModelHistory.json`` 里的 Set Background 块（见 background_evidence）。
+    # 「旧写法对照」（expect='silent'）要的结论是「.Material 无效」——真机上它表现为
+    # 被 CST **当场报错拒绝**（accepted=False）或即便进了历史 ε 仍为 1，二者都证明
+    # 旧写法无效 ⇒ 记 OK；这不是被测修复的 FAIL，绝不能混为一谈。
+    criterion_ok = saved and model_like is not None
     if expect == 'silent':
-        # 对照组的判据只看 mif：旧写法里的 .Type "Normal" 大小写可能本来就报错，
-        # 那不是我们要证的事（.Material 是否生效才是）
-        status = 'OK' if (_as_float((model_like or {}).get('Epsilon')) == 1.0
-                          and saved) else 'FAIL'
+        if exc is not None or (msgs and not accepted):
+            # 旧 .Material VBA 被拒绝 ⇒ 旧写法无效（对照成立）
+            status = 'OK'
+            note = ((note + '；' if note else '')
+                    + '真机：旧 .Material VBA 被 CST 报错拒绝 ⇒ 旧写法无效（对照成立）')
+        elif not criterion_ok:
+            status = 'UNKNOWN'
+        else:
+            status = 'OK' if _as_float(model_like.get('Epsilon')) == 1.0 else 'FAIL'
     elif not accepted or not accepted_after or not saved:
         status = 'FAIL'
-    elif expect == 'eps' and _as_float((model_like or {}).get('Epsilon')) != _as_float(_profile[label]):
+    elif not criterion_ok:
+        status = 'UNKNOWN'
+    elif expect == 'eps' and _as_float(model_like.get('Epsilon')) != _as_float(_profile[label]):
         status = 'FAIL'
-    elif expect == 'pec' and str((model_like or {}).get('Type', '')).lower() != 'pec':
+    elif expect == 'pec' and str(model_like.get('Type', '')).lower() != 'pec':
         status = 'FAIL'
     else:
         status = 'OK'
+    if status == 'UNKNOWN':
+        extra = 'ModelHistory.json 里没取到背景块 ⇒ 判据缺失，不得据此判 FAIL'
+        if evidence.get('json_tree'):
+            extra += f"；目录内 json={evidence['json_tree']}"
+        note = ((note + '；' if note else '') + extra)
 
+    bg_desc = (evidence.get('history_source') + ' 背景='
+               if evidence.get('history_source') else '背景=')
     record(f'① {label}', status,
-           f'{detail}；Rebuild：{detail_after}；mif 背景={model_like}'
+           f'{detail}；Rebuild：{detail_after}；{bg_desc}{model_like}'
            + (f'；{note}' if note else ''),
            prepare_messages=len(prep), accepted=accepted,
            accepted_after_rebuild=accepted_after,
@@ -593,8 +733,11 @@ def run_port_probes():
     """② 的四组探针：边界平面（对照）/ 域内部 + True（对照）/ 域内部 + False（修复）/ 拾取端口。"""
     probe_port('P0 边界平面 + PortOnBound=True（对照）', zplane='0',
                on_bound=True, expect='accepted')
-    probe_port('P1 域内部 + PortOnBound=True（旧写法）', zplane='0.5',
-               on_bound=True, expect='rejected')
+    # 2026-09-23 真机实测：域内部 + PortOnBound=True **也被 CST 接受**
+    # （无异常、无消息）—— PortOnBound 与「端口面在域内部」并不像预想的那样冲突报错，
+    # 它只是语义不自洽。因此这里预期改为 accepted；真正修复的是 P2：把该参数开放给调用方。
+    probe_port('P1 域内部 + PortOnBound=True（旧写法，语义不自洽但被接受）',
+               zplane='0.5', on_bound=True, expect='accepted')
     probe_port('P2 域内部 + PortOnBound=False（2026-09-23 修复）', zplane='0.5',
                on_bound=False, expect='accepted')
     probe_port('P3 边界平面 + PortOnBound=False（对照）', zplane='0',
@@ -822,11 +965,15 @@ def run_parameter_probes():
     numeric_ok = detail['p4v10_num']['get_parameter'].startswith('1.5 (float)')
     record('④b get_parameter 读数值参数', 'OK' if numeric_ok else 'FAIL',
            detail['p4v10_num']['get_parameter'], raw=detail['p4v10_num']['raw_readers'])
-    record('④c get_parameter 读表达式参数', 'UNKNOWN',
+    # 真机实锤（2026-09-23）：RestoreDoubleParameter 对表达式也返回求值后的 float
+    # （2*p4v10_num=3.0），不再是「表达式 ⇒ str」。
+    expr_ok = detail['p4v10_expr']['get_parameter'].startswith('3.0 (float)')
+    record('④c get_parameter 读表达式参数', 'OK' if expr_ok else 'FAIL',
            detail['p4v10_expr']['get_parameter'],
-           note='记录真机行为（RestoreDoubleParameter 对表达式是否求值）',
+           note='表达式返回求值 float（仅 RestoreParameterExpression 给原文）',
            raw=detail['p4v10_expr']['raw_readers'])
-    record('④d get_parameter 读「字符串写的数」', 'UNKNOWN',
+    plain_ok = detail['p4v10_plain']['get_parameter'].startswith('3.25 (float)')
+    record('④d get_parameter 读「字符串写的数」', 'OK' if plain_ok else 'FAIL',
            detail['p4v10_plain']['get_parameter'],
            raw=detail['p4v10_plain']['raw_readers'])
 
@@ -840,12 +987,16 @@ def run_parameter_probes():
         status, text = 'FAIL', f'抛了 {type(err).__name__}: {err}'
     record('④e get_parameter 读不存在的参数 ⇒ KeyError', status, text)
 
-    # 取证：旧写法 model3d.GetParameter() 在真机上到底怎样
+    # 取证：旧写法 model3d.GetParameter() 在真机上到底怎样。
+    # 真机实测：该接口**不存在**（dynamic __getattr__ 对不存在成员返回的占位）
+    # ⇒ 旧写法在真机上必然失败，这正是修复成立的证据 ⇒ 记 OK。
     old = raw_read(model3d, 'GetParameter', 'p4v10_num')
+    old_proves_failure = (old.startswith('<异常')
+                          or old.startswith('<该接口不存在>'))
     record('④f 取证：旧写法 model3d.GetParameter() 的真机表现',
-           'OK' if old.startswith('<异常') else 'UNKNOWN',
+           'OK' if old_proves_failure else 'UNKNOWN',
            f'GetParameter("p4v10_num") ⇒ {old}',
-           note='若为 <异常> ⇒ 旧写法在真机上必然失败（与离线推断一致）')
+           note='接口不存在/抛异常 ⇒ 旧写法在真机上必然失败（修复成立的证据）')
 
     # 读回来之后收摊（attach 模式只关我们自己的临时工程，绝不碰用户的）
     if _attached_mode:

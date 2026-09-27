@@ -58,6 +58,12 @@ _kernel32 = ctypes.windll.kernel32
 
 _PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
 _DIALOG_CLASS = '#32770'                  # 标准 Win32 对话框 / 消息框类名
+# Qt 原生对话框类名（2026 版 CST 的 Save As / Open / 另存为 是 Qt 自己的窗口，
+# 不是 #32770；只认 #32770 的巡检必然漏，2026-09-23 用户实测挂死 600s）
+_QT_DIALOG_CLASS_PREFIX = 'Qt'
+# Qt 窗口里只有这些**标题关键词**命中时才算对话框 —— Qt 的普通主窗口/无标题工具窗
+# 同属 Qt 类，不能把它们误判成模态框。
+_QT_DIALOG_TITLE_KEYWORDS = ('save as', 'open', '另存', '保存为', '打开')
 
 # Win32 常量
 _GW_OWNER = 4
@@ -176,6 +182,27 @@ def _is_cst_process(name):
     return 'cst' in name.lower()
 
 
+def _is_qt_dialog(klass, title, visible):
+    """
+    Qt 原生对话框判定（Save As / Open / 另存为）。
+
+    2026 版 CST 的文件对话框类名形如 ``Qt683QWindowIcon``，既不是 ``#32770``、
+    其按钮也不是标准 ``Button`` 控件（EnumChildWindows 枚不到）。所以这里：
+    - 只按「Qt* 类名 + 可见 + 标题关键词」识别；
+    - 返回 True 即把它计入对话框，但 Qt 对话框 **buttons 恒为空**，
+      :func:`dismiss_dialogs` 的白名单点击对它无效（需要时只能键盘/路径自动化）。
+
+    :param klass: str, 窗口类名
+    :param title: str, 窗口标题
+    :param visible: bool
+    :return: bool
+    """
+    if not visible or not klass.startswith(_QT_DIALOG_CLASS_PREFIX):
+        return False
+    low = (title or '').lower()
+    return any(word in low for word in _QT_DIALOG_TITLE_KEYWORDS)
+
+
 def _child_buttons(hwnd):
     """
     枚举对话框上的按钮（类名 ``Button``）。
@@ -216,15 +243,18 @@ def list_windows(only_cst=True):
         if only_cst and not _is_cst_process(name):
             return True
         klass = _class_name(hwnd)
+        vis = bool(_user32.IsWindowVisible(hwnd))
+        title = _window_text(hwnd)
+        is_dialog = klass == _DIALOG_CLASS or _is_qt_dialog(klass, title, vis)
         windows.append({
             'hwnd': hwnd,
             'pid': pid,
             'process': name,
-            'title': _window_text(hwnd),
+            'title': title,
             'class': klass,
-            'visible': bool(_user32.IsWindowVisible(hwnd)),
+            'visible': vis,
             'responding': bool(_user32.IsHungAppWindow(hwnd)) is False,
-            'is_dialog': klass == _DIALOG_CLASS,
+            'is_dialog': is_dialog,
             'owner': _user32.GetWindow(hwnd, _GW_OWNER),
         })
         return True
@@ -270,7 +300,7 @@ def list_dialogs(only_cst=True):
     return dialogs
 
 
-_SAVE_KEYWORDS = ('保存', 'save', '未保存', 'unsaved', '更改', 'changes')
+_SAVE_KEYWORDS = ('保存', 'save', '另存', '未保存', 'unsaved', '更改', 'changes')
 
 
 def save_prompts(only_cst=True):
@@ -310,7 +340,12 @@ def describe_dialogs(only_cst=True):
         for button in dialog['buttons']:
             lines.append(f"      按钮: {button['text']!r} (id={button['ctrl_id']})")
         if not dialog['buttons']:
-            lines.append('      （没有枚举到按钮 —— 可能是自绘/CST 私有对话框）')
+            if dialog['class'].startswith(_QT_DIALOG_CLASS_PREFIX):
+                # Qt 原生对话框：能识别、但无法用白名单点按钮关闭
+                lines.append('      （Qt 原生对话框：按钮不是标准 Button 控件，'
+                             'dismiss_dialogs 对它无效，需人工或键盘处理）')
+            else:
+                lines.append('      （没有枚举到按钮 —— 可能是自绘/CST 私有对话框）')
     return '\n'.join(lines)
 
 

@@ -113,3 +113,25 @@ def test_check_dialogs_raises_on_visible_dialog(fake_dialogs):
 def test_check_dialogs_silent_when_clean(fake_dialogs):
     """没有对话框时不抛异常，返回空列表。"""
     assert guard.check_dialogs('build_x') == []
+
+
+# ------------------------------------------------------------------
+# Qt 原生 Save As / Open 对话框识别（2026-09-23 真机挂死教训）
+# ------------------------------------------------------------------
+
+def test_qt_save_as_is_recognized():
+    """可见的 Qt「Save As」要算对话框（旧版只认 #32770 必然漏）。"""
+    assert guard._is_qt_dialog('Qt683QWindowIcon', 'Save As', True)
+    assert guard._is_qt_dialog('Qt683QWindowIcon', '另存为', True)
+    assert guard._is_qt_dialog('Qt683QWindowIcon', 'Open', True)
+
+
+def test_qt_main_window_is_not_dialog():
+    """Qt 普通主窗口/无标题工具窗不能被误判成对话框。"""
+    assert not guard._is_qt_dialog('Qt683QWindowIcon',
+                                   'Untitled_1* - CST Studio Suite 2026', True)
+    assert not guard._is_qt_dialog('Qt683QWindowIcon', '', True)
+    # 不可见窗口不算
+    assert not guard._is_qt_dialog('Qt683QWindowIcon', 'Save As', False)
+    # 非 Qt 类交给 #32770 逻辑，这里一律 False
+    assert not guard._is_qt_dialog('#32770', 'Save As', True)
