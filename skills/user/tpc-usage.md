@@ -319,7 +319,8 @@ app.para('l1', '0.65*a'); app.para('l2', '0.35*a')      # BA：l1 大孔 / l2 �
 app.para('lx1', lx1)
 path.auto_define_cst_params(app, prefix='p')            # 生成 p1x,p1y,p2x,p2y
 app.new_material('Copper (annealed)'); app.new_material('Silicon (lossy)')
-app.para('fmin', '300'); app.para('fmax', '380'); app.freq_limit('fmin', 'fmax')
+# 频率范围必须引用命名 CST 参数，不能直接传 300、380 等数值
+app.para('fmin', '300'); app.para('fmax', '380'); app.freq_limit('"fmin"', '"fmax"')
 
 # 裁剪框用 Brick（显式 z，最稳）；菱形板用 CCW 顶点 + extrude 'h' + translate '-h/2'
 app.square('0', 'd_xmax', '0', 'd_ymax', '-h/2', 'h/2',
@@ -894,6 +895,90 @@ intersect 拆分（A=下半、B=上半）。
   **AB**：非对称 `feed1`、波导中心上偏 `e2/2`。判拓扑用离线绑定自检，别凭图/文件名。
 - **孔半径逐值抄参考**：参考单元透镜 r = **0.0505 ~ 0.066**（50.5 µm 起），
   模板 `LENS_DEFAULTS` 的 `r1_0=0.052` 不对，别直接用默认值。
+
+### 6d. ★透镜 ratio 与孔网格口径（2026-09 二次返工，BA120 直馈）
+
+参考 `Ant1_grid_BA_120D_epc_epc.ipynb` CELL 7 口径，**ratio=2**（不是 1.5）：
+
+| 量 | 表达式 | ratio=2, y1=14, a=0.2425 的值 |
+|---|---|---|
+| `ratio` | 手填 | 2.0 |
+| `a2` | `a/ratio` | 0.12125 |
+| `Nx` | `int(y1*1.15)*ratio+1` | 33 |
+| `Ny` | `y1*ratio+1` | 29 |
+| `d0` | `12*a2`（**用 a2 不是 a**） | 1.455 |
+| `d_out` | `ec_a` | 4.00125 |
+| `ec_a` | `Nx*a2` | 4.00125 |
+| `ec_b` | `Ny*a2*sind(60)` | 3.04516 |
+| `ec_c` | `sqr(ec_a^2-ec_b^2)` | 2.59557 |
+| 外椭圆 e | `ec_c/ec_a` | 0.64869 |
+
+- **`r1`/`r2` 是物理半径，不除 ratio**：r1=0.0505、r2=0.066。老代码若写成
+  `f'{R1_0}/ratio'` 这类表达式参数是把 ratio 当缩放用的错误口径，直接登记 `float`。
+- **椭圆包络容差 `tol=1.1`**（参考 CELL 9 用 1.1，库默认 1.03 会少一圈孔）。
+- **孔心筛选在 120° 体内**：先 `d_ell=sqrt(x^2+y^2/(1-eg^2))`（eg=内部渐变离心率）、
+  `t=clip((d_ell-d0)/(ec_a-d0),0,1)`、`r=r1+(r2-r1)*t`，再只保留
+  `(d1+d2) <= 2*ec_a*tol` 且落在 `x>=0 & y>=0` 的孔写 DXF（CST 端再 y 镜像）。
+- **锁死孔数（ratio=2，120° 体内）**：上半 DXF = **1679**、轴上 = 58、y 镜像后整机总孔 = **3300**。
+  实测面积 29.553 mm²。这三个数是离线自检的硬断言，改 ratio/容差必先更新。
+  ⚠️ 曾一度写成 1170/55/2285 —— 那是**多叠了一道 120° 锥筛孔**的错误结果：
+  参考工程从不按锥筛孔，锥外/体外的孔减去的是"不存在的体"，本就不产生几何；
+  额外 `region.covers()` 只会丢掉 509 个孔（其中 33 个恰好落在 60° 切割线上、65 个与体边缘相交会切出可见缺口）。
+- 内部渐变离心率 `eg` 是**唯一**区分构型的量：V0 基线 `eg=外椭圆离心率`(0.64869)、
+  V1 对比 `eg=0.88`；外椭圆/孔位/外轮廓两构型完全相同。
+
+---
+
+### 6e. ★固定外轮廓、只扫内部渐变：单文件参数扫描器的口径（2026-09 交付）
+
+需求形态：把一个 py 搬到服务器，自己建模→求解→导出→排序，找增益最优的内部渐变参数。
+
+**关键不变式（扫描能成立的根本原因）**：`build_grad_lens_holes` 里孔**位置**只由
+`gx,gy,ec_a,tol` 决定，**与 eg 无关**；只有半径随 eg 变。所以扫 eg 天然满足
+"外轮廓/孔位固定"的约束 —— `--list` 离线自检即可证明：8 个 eg 全部得到
+**1679 / 58 / 3300**、`r∈[0.0505,0.0660]`，孔数一个不差。
+
+**监视器必须在求解之前建全**（最容易翻车）：
+- 远场 `define_monitor('Farfield', [300,302,…,324])`（13 点）、
+  近场 `monitor2d('E', [310,320], plane_normal='z', plane_position=0)`
+  都要在**建整机时**写进 history；
+- 求解之后才建监视器 = 白跑一次，结果树里根本没有那些频点。
+
+**结果树条目名不能猜**（见 `_result_core.py:189` `_TREE_PREFIXES`）：
+- 树条目是**完整路径**：`Farfields\farfield (f=300) [1]`、
+  `2D/3D Results\E-Field\e-field (f=310) [1]`；
+- ⚠️ 树里可能有**纯文件夹条目**（`2D/3D Results\E-Field`），它比叶条目**短**，
+  "取最短路径"会把它挑出来交给 `field_export`；必须按 `f=<freq>` 强制过滤才排除得掉；
+- 匹配用 `f\s*=\s*300(?!\d)` 这种带负向断言的正则，否则 `f=300` 会撞上 `f=3000`。
+
+**四个前缀陷阱（都实测）**：
+
+| 函数 | 自己补的前缀 | 传参要求 |
+|---|---|---|
+| `export_result_1d` | `1D Results\` | 传 `r'S-Parameters\S1,1'` |
+| `field_export` | `2D/3D Results\` | **必须先剥掉**该前缀，否则双重前缀 |
+| `pattern_export` / `read_farfield` | `Farfields\` | 带不带都行（内部判 `startswith('Farfields')`） |
+| `export_result_2d3d` | **不补** | 必须传完整路径 |
+
+**导出顺序**：`save(include_results=True)` 必须在导出 2D/3D/远场**之前**完成
+（守卫 T3：先导结果再带结果存盘有把工程写坏的风险）。
+
+**远场离线读不了**：`Result.export_farfield_csv()` 恒抛 `NotImplementedError`，
+远场只能经 DE 的 `get_farfield_metrics()` / `read_farfield()` / `export_farfield_csv()`。
+`read_farfield()` 规整网格返回 `gain:(nθ,nφ)`，不规整返回
+`theta_flat/phi_flat/gain_flat`（`postprocessing/farfield.py:130-134`）——两条分支都要写。
+
+**角度步长**：远场一律 `step=1.0`。实测 5°→9.77 dBi、1°→10.51 dBi（参考 10.509 dBi），
+步长太粗会系统性低估峰值增益。
+
+**跑法**：父进程对每个 eg 起**独立子进程**（`--eg <v>`），避免 DE/Session 累积；
+`_done/egXXX.json` 断点续跑；`PER_EG_TIMEOUT=0` 不限时（时域求解数十分钟很正常）；
+每跑完一个构型 `kill_our_de()` 收尾，否则孤儿 DE 占住工程。
+
+**解析函数必须离线单测**：`_read_1d_ascii` / `_parse_2d_field` / `_criteria` / `_find_item`
+在真机跑之前无法验证，而这正是"搬到服务器才发现"的重灾区。用合成 ASCII 把
+三列长表/四列 re-im/定宽矩阵 A/定宽矩阵 B/结构损坏 五条分支都覆盖一遍
+（矩阵分支要按**行号**而非**列数**遍历候选表头，否则"首列带 y 标签"的表会被当成无标签表）。
 
 ---
 
