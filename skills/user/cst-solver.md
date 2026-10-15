@@ -203,6 +203,30 @@ app.create_floquet_port(id_val, number_of_modes=2)
 ⚠️ `orientation` 非法（含旧写法 `'positive'`）现在**当场 ValueError**；
 传 `None` 则不下发朝向行（用于完全可控的手动场景）。**不要依赖默认朝向**，显式传枚举。
 
+#### 参数化微带端口的 CST 历史块（CST 2026 实测）
+
+Free 微带端口的截面范围用全局参数定义时，端口历史中的参数名要带引号，并在三个方向的范围后显式添加零偏移。此设置经验用于端口 3/4：截面 x 范围围绕微带线，y 范围固定在端口面，z 范围从底部地金属延伸至硅片上方空气；`ymin` 朝向对应 `+y` 入射。
+
+```vb
+With Port
+     .Reset
+     .PortNumber "3"
+     .Coordinates "Free"
+     .Orientation "ymin"
+     .PortOnBound "False"
+     .Xrange "port3_xmin", "port3_xmax"
+     .Yrange "port_y", "port_y"
+     .Zrange "zport_min", "zport_max"
+     .XrangeAdd "0.0", "0.0"
+     .YrangeAdd "0.0", "0.0"
+     .ZrangeAdd "0.0", "0.0"
+     .Create
+End With
+```
+
+端口 4 使用 `.PortNumber "4"` 和 `port4_xmin/port4_xmax`，其余截面参数可共用。这里的 `RangeAdd` 是范围偏移量，不代替参数化边界。实测该参数化端口需要保留三组零偏移行；TPC 当前 `create_waveguide_port_free()` 封装不提供 `RangeAdd` 参数，需用 `add_to_history()` 写入完整端口块，或先扩展封装再调用。
+
+
 ### 3.9 监视器 / 边界 / 求解
 
 ```python
