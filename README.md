@@ -104,6 +104,7 @@ modeler.save('antenna.cst')
 | 目的 | 读哪份 |
 |---|---|
 | ⭐ **要给拓扑光子晶体建模、想直接动手**（结构解剖 + 可复制配方 + 参考工程参数口径 + AB/BA 不变式 + 离线拓扑自检 + 排错） | [`skills/user/topo-quickstart.md`](./skills/user/topo-quickstart.md) |
+| **绘制/审查拓扑结构示意图**（晶相、路径、节点、尺寸和版式统一） | [`skills/user/topological-schematic.md`](./skills/user/topological-schematic.md) |
 | **主手册**：按需查阅地图、报错定位表、三条硬约定、已知库缺陷、验收清单 | [`skills/user/tpc-usage.md`](./skills/user/tpc-usage.md) |
 | 三角晶格 / 路径 DSL | [`skills/user/tri-grid.md`](./skills/user/tri-grid.md) |
 | 六边形晶格 / DXF | [`skills/user/hex-grid.md`](./skills/user/hex-grid.md) |

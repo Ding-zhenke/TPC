@@ -62,6 +62,8 @@ s21 = res.read_s_parameter('S2,1')
 - 中文必须走 `mesh_grid.plotting.chinese_plot_style(strict=True)`；禁写死字体、禁屏蔽缺字警告。
 - 变量标注一律 **LaTeX mathtext `$...$`**：`r'$a$'`、`r'$l_1$'`、`r'$\theta$'`；中文留在 `$...$` 外。
 
+拓扑光子晶体结构图还需读 [统一风格技能](../../../skills/user/topological-schematic.md)：晶相、路径、节点和尺寸语义以目标模型为准。
+
 ## 相关
 
 - ⭐ **完整手册（先读这个）** → [`../../skills/user/cst-solver.md`](../../../skills/user/cst-solver.md)

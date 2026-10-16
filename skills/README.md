@@ -17,6 +17,7 @@
 | [`user/cst-solver.md`](./user/cst-solver.md) | ⭐ **cst_solver 快速使用手册**：常用 API 速查（照抄即可、不必翻源码）、不常用 API 的查源码地图、三条硬约定、症状速查、CST 侧验收、**结构示意图工程制图规范（Python+Matplotlib、中文入口、变量用 LaTeX）**、**疑似库 bug 的判定与报告流程（只报告，不修库）** |
 | [`user/tpc-usage.md`](./user/tpc-usage.md) | **主手册**：按需查阅地图、报错定位表、三条硬约定（z 平面 / 布尔语义 / 阵列范围）、已知库缺陷、验收清单 |
 | [`user/topo-quickstart.md`](./user/topo-quickstart.md) | ⭐ **拓扑光子晶体建模专用技能（TOPO 模块）**：器件结构解剖（超元胞六孔 → 两种相 → 域壁 → 相区 → 阵列覆盖 → 馈源/端口）、与参考工程（`硅基` notebook）逐值对齐的参数口径表、AB/BA 不变式、装配顺序、**离线拓扑正确性自检**、语义错位清单（`l1`/`l2` 命名错位等）、验收与排错、器件族可实现性判据 |
+| [`user/topological-schematic.md`](./user/topological-schematic.md) | **拓扑结构图统一风格**：晶相映射、路径与节点、尺寸变量、版式和交付验收；含 BA Σ 合路器审批图参考 |
 | [`user/tri-grid.md`](./user/tri-grid.md) | 三角晶格算法库 API 速查 |
 | [`user/hex-grid.md`](./user/hex-grid.md) | 六边形晶格算法库 API 速查 |
 | [`user/topo-modeler.md`](./user/topo-modeler.md) | 建模引擎使用者视角（模板层 / Modeler 层 / Builder 层三种用法） |
@@ -78,8 +79,10 @@ DSH（DeepSeek Harness）扫描的是 `.dsh/skills/`，两者内容一致、都�
 | [`../.github/skills/cst-solver-dev/SKILL.md`](../.github/skills/cst-solver-dev/SKILL.md) | [`developer/cst-solver-dev.md`](./developer/cst-solver-dev.md) |
 | [`../.github/skills/tpc-user/SKILL.md`](../.github/skills/tpc-user/SKILL.md) | [`user/tpc-usage.md`](./user/tpc-usage.md) |
 | [`../.github/skills/topo-quickstart/SKILL.md`](../.github/skills/topo-quickstart/SKILL.md) | [`user/topo-quickstart.md`](./user/topo-quickstart.md) |
+| [`../.github/skills/topological-schematic/SKILL.md`](../.github/skills/topological-schematic/SKILL.md) | [`user/topological-schematic.md`](./user/topological-schematic.md) |
 | [`../.dsh/skills/cst-solver/SKILL.md`](../.dsh/skills/cst-solver/SKILL.md) | [`user/cst-solver.md`](./user/cst-solver.md)（DSH 自动发现入口） |
 | [`../.dsh/skills/topo-quickstart/SKILL.md`](../.dsh/skills/topo-quickstart/SKILL.md) | [`user/topo-quickstart.md`](./user/topo-quickstart.md)（DSH 自动发现入口） |
+| [`../.dsh/skills/topological-schematic/SKILL.md`](../.dsh/skills/topological-schematic/SKILL.md) | [`user/topological-schematic.md`](./user/topological-schematic.md)（DSH 自动发现入口） |
 
 **唯一事实来源是本目录**。改技能内容改这里，`.github/` 与 `.dsh/` 下的薄壳不用动
 （但**新增 skill 时要同时补这两个薄壳**，否则 IDE / DSH 发现不到）。
